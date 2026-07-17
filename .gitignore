@@ -1,0 +1,19 @@
+# temp / duplicate build folders
+LIVE_temp/
+deploy_temp/
+src_temp/
+script-fix-temp/
+
+# deploy archives
+*.zip
+
+# React source (if added later)
+node_modules/
+build/
+.env
+.env.*
+
+# logs & OS
+*.log
+.DS_Store
+Thumbs.db
