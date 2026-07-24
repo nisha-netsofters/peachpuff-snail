@@ -1,0 +1,48 @@
+@import "./base/bootstrap.scss";
+@import "./base/bootstrap-extended.scss";
+@import "./base/colors.scss";
+@import "./base/components.scss";
+
+// Themes
+@import "./base/themes/dark-layout.scss";
+@import "./base/themes/bordered-layout.scss";
+@import "./base/themes/semi-dark-layout.scss";
+// @import './base/custom-rtl.scss';
+
+// React Specific
+@import "react/index";
+.ant-checkbox-checked {
+  .ant-checkbox-inner {
+    background-color: $primary !important;
+    border-color: $primary !important;
+  }
+}
+.ant-checkbox-wrapper {
+    &:hover {
+        .ant-checkbox-inner {
+            border-color: $primary !important;
+        }
+    }
+}
+.ant-color-picker-trigger {
+  &:hover {
+    border-color: $primary !important;
+  }
+}
+.ant-color-picker-trigger-active {
+  border-color: $primary !important;
+}
+
+.ant-select-item-option-selected {
+  background-color: $primary !important;
+  color: $white !important;
+}
+
+.agencyColorPicker {
+  // .ant-popover .ant-color-picker{
+    z-index: 9999999999999999 !important;
+  // }
+}
+// .view-collapse {
+//   color: $primary !important;
+// }

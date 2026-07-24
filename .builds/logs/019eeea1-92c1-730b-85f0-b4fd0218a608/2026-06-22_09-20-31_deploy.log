@@ -1,0 +1,301 @@
+npm error code ERESOLVE
+npm error ERESOLVE could not resolve
+npm error
+npm error While resolving: @casl/react@2.3.0
+npm error Found: react@18.2.0
+npm error node_modules/react
+npm error   react@"^18.2.0" from the root project
+npm error   peer react@">=16.0.0" from @ant-design/cssinjs@1.18.4
+npm error   node_modules/@ant-design/cssinjs
+npm error     @ant-design/cssinjs@"^1.18.4" from antd@5.14.2
+npm error     node_modules/antd
+npm error       antd@"^5.14.2" from the root project
+npm error   102 more (@ant-design/icons, @ant-design/react-slick, ...)
+npm error
+npm error Could not resolve dependency:
+npm error peer react@"^15.0.0 || ^16.0.0 || ^17.0.0" from @casl/react@2.3.0
+npm error node_modules/@casl/react
+npm error   @casl/react@"^2.3.0" from the root project
+npm error
+npm error Conflicting peer dependency: react@17.0.2
+npm error node_modules/react
+npm error   peer react@"^15.0.0 || ^16.0.0 || ^17.0.0" from @casl/react@2.3.0
+npm error   node_modules/@casl/react
+npm error     @casl/react@"^2.3.0" from the root project
+npm error
+npm error Fix the upstream dependency conflict, or retry
+npm error this command with --force or --legacy-peer-deps
+npm error to accept an incorrect (and potentially broken) dependency resolution.
+npm error
+npm error
+npm error For a full report see:
+npm error /home/u387173212/.npm/_logs/2026-06-22T09_20_32_438Z-eresolve-report.txt
+npm error A complete log of this run can be found in: /home/u387173212/.npm/_logs/2026-06-22T09_20_32_438Z-debug-0.log
+[31mERROR: Failed to install dependencies[0m
+[36mNOTICE: Attempting to install with legacy peer dependencies enabled[0m
+npm warn deprecated w3c-hr-time@1.0.2: Use your platform's native performance.now() and performance.timeOrigin.
+npm warn deprecated stable@0.1.8: Modern JS already guarantees Array#sort() is a stable sort, so this library is deprecated. See the compatibility table on MDN: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/sort#browser_compatibility
+npm warn deprecated sourcemap-codec@1.4.8: Please use @jridgewell/sourcemap-codec instead
+npm warn deprecated rollup-plugin-terser@7.0.2: This package has been deprecated and is no longer maintained. Please use @rollup/plugin-terser
+npm warn deprecated workbox-cacheable-response@6.6.0: workbox-background-sync@6.6.0
+npm warn deprecated redux-devtools-extension@2.13.9: Package moved to @redux-devtools/extension.
+npm warn deprecated querystring@0.2.0: The querystring API is considered Legacy. new code should use the URLSearchParams API instead.
+npm warn deprecated domexception@2.0.1: Use your platform's native DOMException instead
+npm warn deprecated i18next-xhr-backend@3.2.2: replaced by i18next-http-backend
+npm warn deprecated svgo@1.3.2: This SVGO version is no longer supported. Upgrade to v2.x.x.
+npm warn deprecated abab@2.0.6: Use your platform's native atob() and btoa() methods instead
+npm warn deprecated @storybook/addon-knobs@6.4.0: deprecating @storybook/addon-knobs in favor of @storybook/addon-controls
+npm warn deprecated @babel/plugin-proposal-private-methods@7.18.6: This proposal has been merged to the ECMAScript standard and thus this plugin is no longer maintained. Please use @babel/plugin-transform-private-methods instead.
+npm warn deprecated @babel/plugin-proposal-numeric-separator@7.18.6: This proposal has been merged to the ECMAScript standard and thus this plugin is no longer maintained. Please use @babel/plugin-transform-numeric-separator instead.
+npm warn deprecated @babel/plugin-proposal-optional-chaining@7.21.0: This proposal has been merged to the ECMAScript standard and thus this plugin is no longer maintained. Please use @babel/plugin-transform-optional-chaining instead.
+npm warn deprecated @babel/plugin-proposal-class-properties@7.18.6: This proposal has been merged to the ECMAScript standard and thus this plugin is no longer maintained. Please use @babel/plugin-transform-class-properties instead.
+npm warn deprecated @babel/plugin-proposal-nullish-coalescing-operator@7.18.6: This proposal has been merged to the ECMAScript standard and thus this plugin is no longer maintained. Please use @babel/plugin-transform-nullish-coalescing-operator instead.
+npm warn deprecated @babel/plugin-proposal-private-property-in-object@7.21.11: This proposal has been merged to the ECMAScript standard and thus this plugin is no longer maintained. Please use @babel/plugin-transform-private-property-in-object instead.
+
+added 1965 packages, and audited 2188 packages in 52s
+
+354 packages are looking for funding
+  run `npm fund` for details
+
+111 vulnerabilities (19 low, 23 moderate, 64 high, 5 critical)
+
+To address issues that do not require attention, run:
+  npm audit fix
+
+To address all issues possible (including breaking changes), run:
+  npm audit fix --force
+
+Some issues need review, and may require choosing
+a different dependency.
+
+Run `npm audit` for details.
+
+> Unique-World@1.0.1 build
+> craco build
+
+Creating an optimized production build...
+Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+Compiled with warnings.
+
+Warning
+(6:29534) autoprefixer: Replace color-adjust to print-color-adjust. The color-adjust shorthand is currently deprecated.
+
+Warning
+(6:29534) autoprefixer: Replace color-adjust to print-color-adjust. The color-adjust shorthand is currently deprecated.
+
+static/css/main.b3257807.css from Css Minimizer plugin
+postcss-svgo:: Non-whitespace before first tag.
+
+> 1 | %3csvg width='26px' height='26px' viewBox='0 0 26 27' version='1.1' xmlns='http:…
+    | ^
+ webpack://./src/@core/components/ripple-button/ripple-button.scss:7:0
+
+static/css/main.b3257807.css from Css Minimizer plugin
+postcss-svgo:: Non-whitespace before first tag.
+
+> 1 | %3csvg width='26px' height='26px' viewBox='0 0 26 27' version='1.1' xmlns='http:…
+    | ^
+ webpack://./src/@core/components/ripple-button/ripple-button.scss:7:0
+
+static/css/main.b3257807.css from Css Minimizer plugin
+postcss-svgo:: Non-whitespace before first tag.
+
+> 1 | %3csvg width='26px' height='26px' viewBox='0 0 26 27' version='1.1' xmlns='http:…
+    | ^
+ webpack://./src/@core/components/ripple-button/ripple-button.scss:7:0
+
+Search for the keywords to learn more about each warning.
+To ignore, add // eslint-disable-next-line to the line before.
+
+File sizes after gzip:
+
+  2.9 MB     build/static/js/8736.5d8fb8c1.chunk.js
+  147.4 kB   build/static/js/6973.2ab39d55.chunk.js
+  137.33 kB  build/static/js/817.7c7bc9aa.chunk.js
+  135.71 kB  build/static/js/6498.ab105662.chunk.js
+  135.69 kB  build/static/js/main.6bf3a612.js
+  109.46 kB  build/static/js/5125.ba497ea0.chunk.js
+  88.38 kB   build/static/css/main.0ef6eea4.css
+  64.92 kB   build/static/js/8256.9fec2699.chunk.js
+  64.1 kB    build/static/css/8256.708cc57e.chunk.css
+  45.97 kB   build/static/js/5498.a129c05d.chunk.js
+  42.35 kB   build/static/js/6513.9a816c4a.chunk.js
+  27.29 kB   build/static/js/9897.00ba5ca2.chunk.js
+  26.33 kB   build/static/js/3513.7bdd9d6c.chunk.js
+  25.63 kB   build/static/js/6273.ee183ac0.chunk.js
+  22.65 kB   build/static/js/558.5924ecee.chunk.js
+  20.87 kB   build/static/js/8939.4dad11e5.chunk.js
+  19.94 kB   build/static/js/1640.c28b6298.chunk.js
+  17.92 kB   build/static/js/5042.0203655d.chunk.js
+  17.19 kB   build/static/js/5114.91638da1.chunk.js
+  16.72 kB   build/static/js/9557.05a473d0.chunk.js
+  15.7 kB    build/static/css/8736.9ee59f61.chunk.css
+  14.09 kB   build/static/js/3217.c1704653.chunk.js
+  13.36 kB   build/static/js/2619.bcbc5825.chunk.js
+  12.48 kB   build/static/js/7536.c4d1424c.chunk.js
+  12.42 kB   build/static/js/6188.94462b02.chunk.js
+  11.67 kB   build/static/js/1948.8cba8a2e.chunk.js
+  11.4 kB    build/static/css/817.1b393cd9.chunk.css
+  11.11 kB   build/static/js/2252.9e2d0176.chunk.js
+  10.79 kB   build/static/js/7114.0958731e.chunk.js
+  8.61 kB    build/static/js/8703.223261b0.chunk.js
+  8.54 kB    build/static/js/6342.0df39323.chunk.js
+  8.28 kB    build/static/js/605.e9a9f6e6.chunk.js
+  7.51 kB    build/static/js/9354.d231fff3.chunk.js
+  7.12 kB    build/static/js/9272.45b8e038.chunk.js
+  6.23 kB    build/static/js/7678.d8812bfd.chunk.js
+  6.13 kB    build/static/js/272.df31039c.chunk.js
+  6.09 kB    build/static/js/3923.2273ea57.chunk.js
+  5.91 kB    build/static/js/5518.d592b662.chunk.js
+  5.9 kB     build/static/js/9335.51decad1.chunk.js
+  5.84 kB    build/static/js/6044.34f909f2.chunk.js
+  5.48 kB    build/static/js/6940.57263535.chunk.js
+  5.42 kB    build/static/js/516.a083cb14.chunk.js
+  4.33 kB    build/static/js/3562.92fb8f17.chunk.js
+  4.16 kB    build/static/js/5142.67bbfdd4.chunk.js
+  4.02 kB    build/static/js/7230.fd87f507.chunk.js
+  3.92 kB    build/static/js/9456.f5f7616e.chunk.js
+  3.66 kB    build/static/css/4159.6e51cb2f.chunk.css
+  3.62 kB    build/static/js/5963.08935b98.chunk.js
+  3.59 kB    build/static/css/6973.8ddeaf35.chunk.css
+  3.51 kB    build/static/js/2489.06bd4fbb.chunk.js
+  3.04 kB    build/static/js/3144.97f35ab0.chunk.js
+  3.03 kB    build/static/js/8316.2ba808b8.chunk.js
+  2.76 kB    build/static/js/1138.6d671607.chunk.js
+  2.72 kB    build/static/js/525.6bfeaa86.chunk.js
+  2.53 kB    build/static/css/1948.01fb41db.chunk.css
+  2.53 kB    build/static/css/3923.01fb41db.chunk.css
+  2.53 kB    build/static/css/1805.01fb41db.chunk.css
+  2.53 kB    build/static/css/2252.01fb41db.chunk.css
+  2.53 kB    build/static/css/2509.01fb41db.chunk.css
+  2.53 kB    build/static/css/8355.01fb41db.chunk.css
+  2.53 kB    build/static/css/6188.01fb41db.chunk.css
+  2.53 kB    build/static/css/272.01fb41db.chunk.css
+  2.53 kB    build/static/css/63.01fb41db.chunk.css
+  2.49 kB    build/static/js/4544.3f704e48.chunk.js
+  2.37 kB    build/static/js/2990.f0f8e6b2.chunk.js
+  1.86 kB    build/static/js/7961.f8e49913.chunk.js
+  1.7 kB     build/static/css/3144.229e2f78.chunk.css
+  1.7 kB     build/static/css/6940.229e2f78.chunk.css
+  1.7 kB     build/static/css/7114.229e2f78.chunk.css
+  1.7 kB     build/static/css/9354.229e2f78.chunk.css
+  1.7 kB     build/static/css/6342.229e2f78.chunk.css
+  1.7 kB     build/static/css/9272.229e2f78.chunk.css
+  1.7 kB     build/static/css/516.229e2f78.chunk.css
+  1.7 kB     build/static/css/605.229e2f78.chunk.css
+  1.39 kB    build/static/js/4269.8c7c73aa.chunk.js
+  1.38 kB    build/static/js/7268.f9ad918f.chunk.js
+  1.32 kB    build/static/js/7565.e5b72650.chunk.js
+  1.24 kB    build/static/js/5314.00d1f2cd.chunk.js
+  1.22 kB    build/static/css/2619.9b5e9b13.chunk.css
+  1.21 kB    build/static/css/5963.ff5aea3a.chunk.css
+  1.17 kB    build/static/js/9446.81cf75e4.chunk.js
+  1.06 kB    build/static/css/5518.e2e7dd59.chunk.css
+  990 B      build/static/css/5042.f335a1ae.chunk.css
+  612 B      build/static/js/6715.58748666.chunk.js
+  523 B      build/static/js/828.801db368.chunk.js
+  493 B      build/static/js/2509.2cd6f86c.chunk.js
+  256 B      build/static/js/63.ce38e224.chunk.js
+  240 B      build/static/js/8355.ce17efe8.chunk.js
+  218 B      build/static/js/1805.65b14a13.chunk.js
+
+The bundle size is significantly larger than recommended.
+Consider reducing it with code splitting: https://goo.gl/9VhYWB
+You can also analyze the project dependencies: https://goo.gl/LeUzfb
+
+The project was built assuming it is hosted at /.
+You can control this with the homepage field in your package.json.
+
+The build folder is ready to be deployed.
+You may serve it with a static server:
+
+  npm install -g serve
+  serve -s build
+
+Find out more about deployment here:
+
+  https://cra.link/deployment
+

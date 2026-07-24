@@ -1,0 +1,111 @@
+// @import '../node_modules/prismjs/themes/prism-tomorrow';
+// @import './assets/scss/app.scss';
+
+.react-dataTable {
+  position: relative;
+  .loader {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: #fff;
+    opacity: 0.8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 999;
+  }
+}
+.modal-loader {
+  .modal-content {
+    background-color: transparent !important;
+    box-shadow: none !important;
+  }
+}
+.welcome {
+  color: #323D76;
+  margin-right: 8px;
+  margin-top: 15px;
+}
+
+@media only screen and (max-width: 600px) {
+  .welcome {
+    display: none;
+  }
+}
+
+@media only screen and (max-width: 992px) {
+  .brand-logo {
+    justify-content: center !important;
+    left: 0px !important;
+    padding: 0px !important;
+  }
+}
+@media only screen and (min-width: 1020px) and (max-width: 1030px),
+  (width: 1024px) {
+  .filterDataButton {
+    margin-top: 5px !important;
+  }
+}
+
+.react-selectformails {
+  .css-3w2yfm-ValueContainer {
+    height: 100px;
+    overflow-y: auto;
+  }
+}
+.marquee-slider {
+  .overlay::before,
+  .overlay::after {
+    opacity: 0 !important;
+  }
+}
+.selected-options {
+  .select__value-container {
+    max-width: 200px !important;
+  }
+}
+
+.css-1nmdiq5-menu {
+  z-index: 9999999 !important;
+}
+
+.react-dataTable {
+  text-transform: capitalize;
+}
+
+.apexcharts-data-labels text {
+  fill: #ffffff !important;
+}
+// @keyframes slideIn {
+//   from {
+//     transform: translateX(0);
+//     opacity: 0.2;
+//   }
+//   to {
+//     transform: translateX(-100%);
+//     opacity: 0;
+//     display: none;
+//   }
+// }
+// @keyframes slideOut {
+//   from {
+//     opacity: 0.5;
+//     transform: translateX(100%);
+//   }
+//   to {
+//     opacity: 0.8;
+//     transform: translateX(0);
+//   }
+// }
+
+// .loginForm {
+//   opacity: 1;
+//   animation: slideOut 0.60s ease-in;
+// }
+
+// .loginCard {
+//   opacity: 0.5;
+//   animation: slideIn 0.90s ease-out;
+// }

@@ -1,0 +1,13 @@
+const JobsApplyActions = {
+    // ...existing types
+  
+    POST_JOB_APPLY: "POST_JOB_APPLY",
+    POST_JOB_APPLY_SUCCESS: "POST_JOB_APPLY_SUCCESS",
+    POST_JOB_APPLY_FAILURE: "POST_JOB_APPLY_FAILURE",
+    SET_JOB_APPLY_LOADER: "SET_JOB_APPLY_LOADER",
+
+    RESET_JOB_APPLY_STATE: "RESET_JOB_APPLY_STATE" ,
+  };
+  
+  export default JobsApplyActions;
+  
