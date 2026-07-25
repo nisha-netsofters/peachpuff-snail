@@ -689,7 +689,7 @@ const Msg = () => {
       }
       const nextApis = normalizeApis(data);
       setApis(nextApis);
-      setOpenApiIds(nextApis[0]?.id ? [nextApis[0].id] : []);
+      setOpenApiIds([]);
     } catch (err) {
       tostify(
         err?.response?.data?.error || "Failed to load message configuration"
