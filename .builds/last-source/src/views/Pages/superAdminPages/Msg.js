@@ -660,7 +660,7 @@ const TemplateEasyEditor = ({ api, onChangeBodyParams, onUploadImage }) => {
 
 const Msg = () => {
   const [apis, setApis] = useState([createEmptyApi(0)]);
-  const [openFaq, setOpenFaq] = useState({ config: true, logs: false });
+  const [openFaq, setOpenFaq] = useState({ config: true, logs: true });
   const [openApiIds, setOpenApiIds] = useState([]);
   const [openAdvanced, setOpenAdvanced] = useState({});
   const [loading, setLoading] = useState(true);
