@@ -6,6 +6,7 @@ import { selectThemeColors } from "@utils";
 import { useSelector } from "react-redux";
 import { tostify } from "../../Tostify";
 import { resolveIndianAddress } from "../../../utility/resolveIndianAddress";
+import apiCall from "../../../utility/axiosInterceptor";
 // import Repeater from '../Repeater/index'
 
 const DEFAULT_API_CONFIG_ERROR =
@@ -46,21 +47,6 @@ const getFriendlyExtractError = (result) => {
     return AI_VALIDATION_MESSAGES.AI_API_KEY_INVALID;
   }
   return raw || "Unable to parse resume. Please try again.";
-};
-
-const buildApiBaseCandidates = () => {
-  const host = window.location.hostname || "localhost";
-  let baseUrl = localStorage.getItem("baseUrl") || "";
-  if (!baseUrl || baseUrl.startsWith("/") || !baseUrl.includes("http")) {
-    baseUrl = "http://" + host + ":7001/api/v2";
-  }
-  if (baseUrl.endsWith("/")) baseUrl = baseUrl.slice(0, -1);
-  const bases = [baseUrl];
-  const fallback7001 = "http://" + host + ":7001/api/v2";
-  const fallback8080 = "http://" + host + ":8080/api/v2";
-  if (!bases.includes(fallback7001)) bases.push(fallback7001);
-  if (!bases.includes(fallback8080)) bases.push(fallback8080);
-  return bases;
 };
 
 const Basic = ({
@@ -108,51 +94,20 @@ const Basic = ({
   const [apiConfigChecking, setApiConfigChecking] = useState(true);
   const [extractError, setExtractError] = useState("");
 
-  const getAuthHeaders = () => {
-    const token = localStorage.getItem("token") || "";
-    const agencyId = localStorage.getItem("agencyId") || "";
-    const slug = localStorage.getItem("slug") || "";
-    const headers = {};
-    if (token && token !== "null" && token !== "undefined") {
-      headers.Authorization = "Bearer " + token;
-      headers.token = token;
-    }
-    if (agencyId && agencyId !== "null" && agencyId !== "undefined") {
-      headers.agencyId = agencyId;
-    }
-    if (slug && slug !== "null" && slug !== "undefined") {
-      headers.slug = slug;
-    }
-    return headers;
-  };
-
+  // Use same SERVER_URL as job-description AI (axios apiCall) — not frontend host:7001
   const fetchResumeExtractionStatus = async () => {
-    const headers = getAuthHeaders();
-    const bases = buildApiBaseCandidates();
     const paths = [
       "/candidate/public-resume-extraction-status",
       "/candidate/resume-extraction-status",
     ];
-
-    for (let b = 0; b < bases.length; b++) {
-      const base = bases[b];
-      for (let p = 0; p < paths.length; p++) {
-        try {
-          const statusUrl = base.endsWith("/api")
-            ? base + "/v2" + paths[p]
-            : base + paths[p];
-          const res = await fetch(statusUrl, {
-            method: "GET",
-            headers: paths[p].includes("public") ? {} : headers,
-          });
-          if (!res.ok) continue;
-          const data = await res.json();
-          const status = data?.resumeExtraction;
-          if (status && typeof status.ready === "boolean") {
-            return status;
-          }
-        } catch (e) {}
-      }
+    for (let p = 0; p < paths.length; p++) {
+      try {
+        const data = await apiCall.get(paths[p]);
+        const status = data?.resumeExtraction;
+        if (status && typeof status.ready === "boolean") {
+          return status;
+        }
+      } catch (e) {}
     }
     return null;
   };
@@ -218,60 +173,17 @@ const Basic = ({
     try {
       const formData = new FormData();
       formData.append('resume', file);
-      const token = localStorage.getItem('token') || '';
-      const agencyId = localStorage.getItem('agencyId') || '';
-      const slug = localStorage.getItem('slug') || '';
-      
-      const host = window.location.hostname || 'localhost';
-      let baseUrl = localStorage.getItem('baseUrl') || '';
-      if (!baseUrl || baseUrl.startsWith('/') || !baseUrl.includes('http')) {
-        baseUrl = 'http://' + host + ':7001/api/v2';
-      }
-      if (baseUrl.endsWith('/')) baseUrl = baseUrl.slice(0, -1);
-      const apiUrl = baseUrl.endsWith('/api') ? (baseUrl + '/v2/candidate/parse-resume') : (baseUrl + '/candidate/parse-resume');
-      
-      const headers = {};
-      if (token && token !== 'null' && token !== 'undefined') {
-        headers['Authorization'] = 'Bearer ' + token;
-        headers['token'] = token;
-      }
-      if (agencyId && agencyId !== 'null' && agencyId !== 'undefined') {
-        headers['agencyId'] = agencyId;
-      }
-      if (slug && slug !== 'null' && slug !== 'undefined') {
-        headers['slug'] = slug;
-      }
 
       let result = null;
-      let response;
-      let resultText = '';
 
-      // Tier 1: Try primary apiUrl
+      // Same production API as job-description AI (SERVER_URL via apiCall)
       try {
-        response = await fetch(apiUrl, { method: 'POST', headers: headers, body: formData });
-        resultText = await response.text();
-        result = JSON.parse(resultText);
+        result = await apiCall.post("/candidate/parse-resume", formData);
       } catch (err1) {
-        // Tier 2: If primary fetch threw CORS or network error, fallback to exact local port 7001 then 8080
-        const fallback7001 = 'http://' + host + ':7001/api/v2/candidate/parse-resume';
-        if (apiUrl !== fallback7001) {
-          try {
-            response = await fetch(fallback7001, { method: 'POST', headers: headers, body: formData });
-            resultText = await response.text();
-            result = JSON.parse(resultText);
-          } catch (err2) {}
-        }
-        if (!result) {
-          const fallback8080 = 'http://' + host + ':8080/api/v2/candidate/parse-resume';
-          try {
-            response = await fetch(fallback8080, { method: 'POST', headers: headers, body: formData });
-            resultText = await response.text();
-            result = JSON.parse(resultText);
-          } catch (err3) {}
-        }
+        result = err1?.response?.data || null;
       }
 
-      // Tier 3: session-token failures only (not AI "access token" / API key errors)
+      // Session-token failures only (not AI "access token" / API key errors)
       const isAiValidationError =
         result?.code &&
         ["AI_API_KEY_INVALID", "AI_MODEL_INVALID", "AI_RATE_LIMIT", "AI_PARSE_FAILED", "API_CONFIG_NOT_SET"].includes(
@@ -283,26 +195,13 @@ const Basic = ({
           (result?.error && /invalid token|expired token/i.test(String(result.error))));
 
       if ((!result || !result.success) && (isSessionTokenError || !result) && !isAiValidationError) {
-        const pubUrls = [
-          baseUrl.endsWith('/api') ? (baseUrl + '/v2/candidate/publicParseResume') : (baseUrl + '/candidate/publicParseResume'),
-          'http://' + host + ':7001/api/v2/candidate/publicParseResume',
-          'http://' + host + ':8080/api/v2/candidate/publicParseResume'
-        ];
-        for (let i = 0; i < pubUrls.length; i++) {
-          try {
-            const resPub = await fetch(pubUrls[i], { method: 'POST', body: formData });
-            const pubText = await resPub.text();
-            const pubRes = JSON.parse(pubText);
-            if (pubRes && pubRes.success) {
-              result = pubRes;
-              break;
-            }
-            // Keep AI validation error from public endpoint too
-            if (pubRes && !pubRes.success && pubRes.code) {
-              result = pubRes;
-              break;
-            }
-          } catch (ePub) {}
+        try {
+          const pubRes = await apiCall.post("/candidate/publicParseResume", formData);
+          if (pubRes && (pubRes.success || pubRes.code)) {
+            result = pubRes;
+          }
+        } catch (ePub) {
+          if (ePub?.response?.data) result = ePub.response.data;
         }
       }
 

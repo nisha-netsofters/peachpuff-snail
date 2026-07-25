@@ -76,6 +76,7 @@ import ReactCanvasConfetti from "react-canvas-confetti";
 import { calculateProfileCompleteness } from "../../utility/profileCompleteness";
 import { resolveIndianAddress } from "../../utility/resolveIndianAddress";
 import { resolveAssetUrl } from "../../utility/resolveAssetUrl";
+import apiCall from "../../utility/axiosInterceptor";
 import clientactions from "../../redux/client/actions";
 // import { uploadFiles } from './../../helper/fileUpload'
 import Loader from "../../components/Dialog/Loader";
@@ -1255,55 +1256,18 @@ const SecondPage = ({
     },
   ];
 
-  const buildParseResumeUrl = () => {
-    const host = window.location.hostname || "localhost";
-    let baseUrl = localStorage.getItem("baseUrl") || "";
-    if (!baseUrl || baseUrl.startsWith("/") || !baseUrl.includes("http")) {
-      baseUrl = "http://" + host + ":7001/api/v2";
-    }
-    if (baseUrl.endsWith("/")) baseUrl = baseUrl.slice(0, -1);
-    return baseUrl.endsWith("/api")
-      ? baseUrl + "/v2/candidate/parse-resume"
-      : baseUrl + "/candidate/parse-resume";
-  };
-
   const parseResumeFile = async (file) => {
     const formData = new FormData();
     formData.append("resume", file);
-    const token = localStorage.getItem("token") || "";
-    const agencyId = localStorage.getItem("agencyId") || "";
-    const slugValue = localStorage.getItem("slug") || "";
-    const headers = {};
-    if (token && token !== "null" && token !== "undefined") {
-      headers.Authorization = "Bearer " + token;
-      headers.token = token;
-    }
-    if (agencyId && agencyId !== "null" && agencyId !== "undefined") {
-      headers.agencyId = agencyId;
-    }
-    if (slugValue && slugValue !== "null" && slugValue !== "undefined") {
-      headers.slug = slugValue;
-    }
 
-    const host = window.location.hostname || "localhost";
-    const urls = [
-      buildParseResumeUrl(),
-      `http://${host}:7001/api/v2/candidate/parse-resume`,
-      `http://${host}:8080/api/v2/candidate/parse-resume`,
-    ];
-
-    let result = null;
-    for (let i = 0; i < urls.length; i++) {
+    try {
+      const result = await apiCall.post("/candidate/parse-resume", formData);
+      if (result?.success) return result.data || {};
+    } catch (e) {
       try {
-        const response = await fetch(urls[i], {
-          method: "POST",
-          headers,
-          body: formData,
-        });
-        const text = await response.text();
-        result = JSON.parse(text);
-        if (result?.success) return result.data || {};
-      } catch (e) {}
+        const pubRes = await apiCall.post("/candidate/publicParseResume", formData);
+        if (pubRes?.success) return pubRes.data || {};
+      } catch (e2) {}
     }
     return null;
   };
