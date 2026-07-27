@@ -11,8 +11,6 @@ import {
 import { getCandidateAPI } from "../../apis/candidate";
 import { tostifySuccess } from "../../components/Tostify";
 
-const userId = JSON.parse(localStorage.getItem("user"));
-
 export function* WATCH_GET_INTERVIEW(action) {
   const resp = yield getInterviewAPI(action.payload);
   yield put({
@@ -25,11 +23,12 @@ export function* WATCH_CREATE_INTERVIEW(action) {
   const data = yield createInterviewAPI(action.payload.data);
   if (data?.id) {
     tostifySuccess("Data Posted Successfully");
+    const user = JSON.parse(localStorage.getItem("user"));
     const resp = yield getInterviewAPI({
-      page: action.payload?.page,
+      page: 1,
       perPage: action.payload?.perPage,
       filterData: [],
-      userId: userId?.id,
+      userId: user?.id,
     });
     resp.isSuccess = true;
     yield put({

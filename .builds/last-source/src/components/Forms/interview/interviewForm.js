@@ -43,9 +43,11 @@ const InterviewForm = ({
   const [disableField, setDisableField] = useState(false);
   const { agencyDetail } = useSelector((state) => state?.agency);
 
-  console.info("--------------------");
-  console.info("candidateIdURL => ", candidateIdURL);
-  console.info("--------------------");
+  const patchInterview = (fields) =>
+    setInterview((prev) => ({
+      ...(Array.isArray(prev) ? {} : prev || {}),
+      ...fields,
+    }));
 
   const getCandidate = async (text) => {
     const payload = {
@@ -68,8 +70,8 @@ const InterviewForm = ({
   };
 
   useEffect(() => {
-    if (create) {
-      setInterview({ ...interview, userId: loginUser.id });
+    if (create && loginUser?.id) {
+      patchInterview({ userId: loginUser.id });
     }
 
     if (interview?.candidateId) {
@@ -82,7 +84,7 @@ const InterviewForm = ({
     if (update === true || interview?.candidateId !== undefined) {
       setDisableField(true);
     } else setDisableField(false);
-  }, [update, create, joiningDate]);
+  }, [update, create, joiningDate, loginUser?.id]);
 
   const interviewOptions = [
     { value: "personal", id: "interviewType", label: "Personal" },
@@ -192,10 +194,14 @@ const InterviewForm = ({
   const debouncedHandleChange = useCallback(
     debounce((e) => {
       setSelectCandidate(e);
-      handleChange(e, "candidate");
+      setInterview((prev) => ({
+        ...(Array.isArray(prev) ? {} : prev || {}),
+        candidateId: e.value,
+        userId: prev?.userId || loginUser?.id,
+      }));
       setSelectCandidateValidation(e.value);
     }, 100),
-    []
+    [loginUser?.id, setInterview, setSelectCandidateValidation]
   );
   const handleInputChange = (newValue) => {
     const val = newValue.replace(/\W/g, "");
@@ -277,7 +283,7 @@ const InterviewForm = ({
                   setDate(date[0]);
                   const dateFormat = moment(date[0]).format("L");
                   setDateValidation(date[0]);
-                  setInterview({ ...interview, date: dateFormat });
+                  patchInterview({ date: dateFormat });
                 }}
               />
             </div>
@@ -319,14 +325,17 @@ const InterviewForm = ({
               onChange={(e) => {
                 setStatusOp(e);
                 const interviewStatusUpdate = new Date().toISOString();
-                setInterview({
-                  ...interview,
-                  interviewStatus: e.value,
-                  candidate: {
-                    ...interview?.candidate,
+                setInterview((prev) => {
+                  const base = Array.isArray(prev) ? {} : prev || {};
+                  return {
+                    ...base,
                     interviewStatus: e.value,
-                    interviewStatusUpdate,
-                  },
+                    candidate: {
+                      ...base?.candidate,
+                      interviewStatus: e.value,
+                      interviewStatusUpdate,
+                    },
+                  };
                 });
               }}
             />
@@ -377,7 +386,7 @@ const InterviewForm = ({
                   }}
                   onChange={(val) => {
                     setStartTime(val[0]);
-                    setInterview({ ...interview, time: val[0] });
+                    patchInterview({ time: val[0] });
                     setInterviewStartValidation(val[0]);
                   }}
                 />
@@ -406,7 +415,7 @@ const InterviewForm = ({
                 value={interview?.link}
                 placeholder={"Enter Link"}
                 onChange={(e) =>
-                  setInterview({ ...interview, [e.target.id]: e.target.value })
+                  patchInterview({ [e.target.id]: e.target.value })
                 }
               />
             </div>
@@ -439,7 +448,7 @@ const InterviewForm = ({
                   onChange={(date) => {
                     setJoiningDate(date[0]);
                     const dateFormat = moment(date[0]).format("L");
-                    setInterview({ ...interview, joiningDate: dateFormat });
+                    patchInterview({ joiningDate: dateFormat });
                     // setDateValidation(date)
                   }}
                 />
@@ -461,8 +470,7 @@ const InterviewForm = ({
                 value={interview?.startingSalary}
                 placeholder="Enter Starting Salary"
                 onChange={(e) => {
-                  setInterview({
-                    ...interview,
+                  patchInterview({
                     [e.target.id]: e.target.value.replace(/\D/g, ""),
                   });
                 }}
@@ -486,7 +494,7 @@ const InterviewForm = ({
             value={interview?.comments}
             placeholder="Enter Comments"
             onChange={(e) => {
-              setInterview({ ...interview, [e.target.id]: e.target.value });
+              patchInterview({ [e.target.id]: e.target.value });
             }}
           />
         </Col>

@@ -287,11 +287,13 @@ const Interview = () => {
     {
       name: "candidate Name",
       selector: (row) =>
-        `${row?.candidate?.firstname} ${row?.candidate?.lastname}`,
+        row?.candidate
+          ? `${row.candidate.firstname || ""} ${row.candidate.lastname || ""}`.trim()
+          : "-",
     },
     {
       name: "Mobile",
-      selector: (row) => `${row?.candidate?.mobile}`,
+      selector: (row) => row?.candidate?.mobile || "-",
     },
     {
       name: "Company Name",
@@ -349,9 +351,14 @@ const Interview = () => {
 
   const interviewCreatehandler = async () => {
     setLoading(true);
+    setCurrentPage(1);
+    const payload = {
+      ...(Array.isArray(interview) ? {} : interview || {}),
+      userId: interview?.userId || loginUser?.id,
+    };
     await dispatch({
       type: interviewActions.CREATE_INTERVIEW,
-      payload: { data: interview, page: currentPage, perPage: perPage },
+      payload: { data: payload, page: 1, perPage: perPage },
     });
   };
 

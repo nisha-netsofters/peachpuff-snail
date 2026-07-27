@@ -30,18 +30,23 @@ const InterviewDialog = ({
 }) => {
   // const history = useHistory();
   const handleChange = (e, text = "") => {
+    const patch = (fields) =>
+      setInterview((prev) => ({
+        ...(Array.isArray(prev) ? {} : prev || {}),
+        ...fields,
+      }));
+
     if (text == "candidate") {
-      setInterview({ ...interview, candidateId: e.value });
+      patch({ candidateId: e.value });
     } else {
       if (e?.target?.id === undefined) {
         if (e.key === undefined) {
-          setInterview({ ...interview, [e.id]: e.value });
+          patch({ [e.id]: e.value });
         } else {
-          setInterview({ ...interview, [e.key]: e.id });
+          patch({ [e.key]: e.id });
         }
       } else {
-        setInterview({
-          ...interview,
+        patch({
           [e.target.id]: e.target.value.replace(/[^a-z ]/gi, ""),
         });
       }
