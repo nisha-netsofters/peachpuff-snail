@@ -37,8 +37,39 @@ export const Address = ({
     });
   }, [cities]);
 
+  // Prefill state/city selects after resume AI extraction
+  useEffect(() => {
+    if (!candidate?.resumeParsedAt) return;
+    if (candidate?.state && states?.length) {
+      const matchedState =
+        states.find(
+          (s) =>
+            s.name === candidate.state ||
+            s.isoCode === candidate.stateId ||
+            s.value === candidate.state
+        ) || null;
+      if (matchedState) {
+        setSelectedState({
+          ...matchedState,
+          label: matchedState.name || matchedState.label,
+          value: matchedState.name || matchedState.value,
+          key: "state",
+        });
+      }
+    }
+    if (candidate?.city) {
+      setSelectedCity({
+        label: candidate.city,
+        value: candidate.city,
+        key: "city",
+      });
+    }
+  }, [candidate?.resumeParsedAt, candidate?.state, candidate?.city, states]);
+
   useEffect(() => {
     if (candidate?.state && (selectedCity != undefined || selectedState != undefined)) {
+      // Avoid wiping AI-prefilled city when state is first set from extract
+      if (candidate?.resumeParsedAt && !selectedState) return;
       const updatedUserData = { ...candidate };
       delete updatedUserData.city;
       delete updatedUserData.cityId;
@@ -48,33 +79,12 @@ export const Address = ({
   }, [candidate?.state])
 
   const onSubmit = async () => {
-    if (
-      candidate?.street === undefined ||
-      candidate?.street?.length === 0 ||
-      candidate?.city === undefined ||
-      candidate?.city?.length === 0 ||
-      candidate?.city == '' ||
-      candidate?.zip === undefined ||
-      candidate?.zip?.length !== 6 ||
-      candidate?.state === undefined ||
-      candidate?.state?.length === 0 ||
-      candidate?.state == ''
-    ) {
-      if (candidate?.street === undefined || candidate?.street?.length === 0) {
-        setStreetError(true);
-      }
-      if (candidate?.city === undefined || candidate?.city?.length === 0 || candidate?.city == '') {
-        setcityerr(true);
-      }
-      if (candidate?.zip === undefined || candidate?.zip?.length !== 6) {
-        setZipError(true);
-      }
-      if (candidate?.state === undefined || candidate?.state?.length === 0 || candidate?.state == '') {
-        setStateError(true)
-      }
-    } else {
-      stepper?.next();
-    }
+    // Address fields are optional after AI extract (zip especially often missing)
+    setStreetError(false);
+    setcityerr(false);
+    setStateError(false);
+    setZipError(false);
+    stepper?.next();
   };
   const [focus, setIsfocus] = useState(null);
   return (

@@ -9,7 +9,6 @@ import actions from "./../../../redux/jobCategory/actions";
 import course from "./../Course";
 import industriesActions from "../../../redux/industries/actions";
 import { toast } from "react-toastify";
-import { tostify } from "./../../Tostify";
 import useBreakpoint from "./../../../utility/hooks/useBreakpoints";
 
 const Professional = ({
@@ -20,6 +19,9 @@ const Professional = ({
   jobOpeningIndustries,
   setProfessional,
   candidate,
+  CandidateHandler = () => {},
+  loading = false,
+  isFinalStep = false,
 }) => {
   const { width } = useBreakpoint();
   const jobCategory = useSelector((state) => state.jobCategory.results);
@@ -152,106 +154,216 @@ const Professional = ({
     <>
       <Formik initialValues={{}}>
         {({ values, setFieldValue }) => {
-          useEffect(() => {
-            if (candidate?.id) {
-              for (const key in candidate?.professional) {
-                setFieldValue(key, candidate?.professional[key]);
-              }
-              if (candidate?.professional?.experienceInyear?.length > 0) {
-                setExperienceInYear({
-                  label: candidate?.professional?.experienceInyear,
-                  value: candidate?.professional?.experienceInyear,
-                });
-              }
+          // Normalize AI qualification to form option values
+          const normalizeQualification = (q) => {
+            if (!q) return null;
+            const lq = String(q).toLowerCase().trim();
+            if (/post\s*graduat|master|mba|m\.?tech|m\.?sc|m\.?a|m\.?com|m\.?e\b|phd|doctorate/i.test(lq))
+              return { value: "post graduate", label: "Post Graduate", id: "highestQualification" };
+            if (/graduat|bachelor|b\.?tech|b\.?sc|b\.?a|b\.?com|b\.?e\b|bca|bba|degree/i.test(lq))
+              return { value: "graduation", label: "Graduation", id: "highestQualification" };
+            if (/under\s*graduat|diploma|12th|hsc|intermediate|10\+2|iti|polytechnic|10th|ssc|high\s*school/i.test(lq))
+              return { value: "under graduate", label: "Under Graduate", id: "highestQualification" };
+            // Fallback: return as graduation
+            return { value: "graduation", label: "Graduation", id: "highestQualification" };
+          };
 
-              if (candidate?.professional?.highestQualification?.length > 0) {
-                let label = "12th";
-                const value = candidate?.professional?.highestQualification;
-                if (value === "graduation") label = "Graduation";
-                if (value === "post graduate") label = "Post Graduate";
-                if (value === "under graduate") label = "Under Graduate";
-                setQuelification({
-                  value,
-                  label,
-                  id: "highestQualification",
-                });
-              }
-              if (candidate?.professional?.jobCategoryId?.length > 0) {
-                setJobCat({
-                  label: candidate?.professional?.jobCategory?.jobCategory,
-                  value: candidate?.professional?.jobCategoryId,
-                });
-              }
-              if (candidate?.professional?.noticePeriod?.length > 0) {
-                setNoticePeriod({
-                  label: candidate?.professional?.noticePeriod,
-                  value: candidate?.professional?.noticePeriod,
-                });
-              }
-              if (candidate?.professional?.english?.length > 0) {
-                setEng({
-                  label: candidate?.professional?.english,
-                  value: candidate?.professional?.english,
-                  id: "english",
-                });
-              }
+          // Normalize AI experience to form option values
+          const normalizeExperience = (exp) => {
+            if (!exp) return null;
+            const num = parseFloat(String(exp).replace(/[^0-9.]/g, ""));
+            if (isNaN(num)) return null;
+            if (num < 1) return { value: "0-1 year", label: "0-1 Year", id: "experienceInyear" };
+            if (num < 3) return { value: "1-3 year", label: "1-3 Year", id: "experienceInyear" };
+            if (num < 5) return { value: "3-5 year", label: "3-5 Year", id: "experienceInyear" };
+            return { value: "5 year above", label: "5 Year Above", id: "experienceInyear" };
+          };
 
-              if (candidate?.professional?.currentlyWorking?.length > 0) {
-                setCurrentlyWorking({
-                  label: candidate?.professional?.currentlyWorking,
-                  value: candidate?.professional?.currentlyWorking,
-                });
-              }
-              if (candidate?.professional?.field?.length > 0) {
-                course.filter((ele) => {
-                  if (ele.name === candidate?.professional?.field) {
-                    setField({ value: ele.sub, label: ele.name });
+          // Normalize AI notice period to form option values
+          const normalizeNoticePeriod = (np) => {
+            if (!np) return null;
+            const lnp = String(np).toLowerCase();
+            if (/none|immediate|0/i.test(lnp))
+              return { value: "none", label: "None", id: "noticePeriod" };
+            const days = parseInt(String(np).replace(/\D/g, ""), 10);
+            if (!isNaN(days)) {
+              if (days <= 15) return { value: "1-15 days", label: "1-15 Days", id: "noticePeriod" };
+              if (days <= 30) return { value: "15-30 days", label: "15-30 Days", id: "noticePeriod" };
+              return { value: "30-45 days", label: "30-45 Days", id: "noticePeriod" };
+            }
+            return { value: np, label: np, id: "noticePeriod" };
+          };
+
+          // Match AI education field to course list
+          const matchCourseField = (fieldStr) => {
+            if (!fieldStr) return null;
+            const lf = String(fieldStr).toLowerCase().trim();
+            for (const c of course) {
+              if (c.name.toLowerCase() === lf) return { value: c.sub, label: c.name };
+              if (c.sub && Array.isArray(c.sub)) {
+                for (const sub of c.sub) {
+                  if (sub.name && sub.name.toLowerCase() === lf) {
+                    return { value: c.sub, label: c.name };
                   }
-                });
+                }
               }
             }
-          }, [candidate]);
-          const Validations = async () => {
-            const error = false;
-            if (
-              selectindustries?.length === 0 ||
-              selectindustries === undefined
-            )
-              return tostify(" Please Select Industries", error);
-            else if (
-              values?.highestQualification === undefined ||
-              values?.highestQualification?.length === 0
-            )
-              return tostify("Please Enter Qualification", error);
-            else if (values?.field === undefined || values?.field?.length === 0)
-              return tostify("Please Enter Education", error);
-            else if (
-              values?.designation === undefined ||
-              values?.designation?.length === 0
-            )
-              return tostify("Please Enter Designation", error);
-            else if (
-              values?.jobCategoryId === undefined ||
-              values?.jobCategoryId?.length === 0
-            )
-              return tostify("Please Enter Job Category", error);
-            else if (
-              values?.preferedJobLocation?.length < 2 ||
-              values?.preferedJobLocation === undefined
-            )
-              return tostify("Please Enter Prefered Job Location", error);
-            else if (
-              values?.english === undefined ||
-              values?.english?.length === 0
-            )
-              return tostify("Please Enter Speaking Level", error);
+            // Fuzzy match
+            for (const c of course) {
+              if (lf.includes(c.name.toLowerCase()) || c.name.toLowerCase().includes(lf)) {
+                return { value: c.sub, label: c.name };
+              }
+            }
+            return null;
+          };
 
-            return error;
+          useEffect(() => {
+            if (candidate?.id || candidate?.resumeParsedAt) {
+              const prof = candidate?.professional || {};
+              for (const key in prof) {
+                setFieldValue(key, prof[key]);
+              }
+
+              // Experience
+              const expOpt = normalizeExperience(prof.experienceInyear);
+              if (expOpt) {
+                setExperienceInYear(expOpt);
+                setFieldValue("experienceInyear", expOpt.value);
+              }
+
+              // Qualification
+              const qualOpt = normalizeQualification(prof.highestQualification);
+              if (qualOpt) {
+                setQuelification(qualOpt);
+                setFieldValue("highestQualification", qualOpt.value);
+              }
+
+              // Education field / course
+              const fieldMatch = matchCourseField(prof.field || prof.course);
+              if (fieldMatch) {
+                setField(fieldMatch);
+                setFieldValue("field", fieldMatch.label);
+              } else if (prof.field) {
+                // Fallback: set raw value
+                setField({ value: [], label: prof.field });
+                setFieldValue("field", prof.field);
+              }
+              if (prof.course) {
+                setSubCourse({ label: prof.course, value: prof.course, field: fieldMatch?.label });
+                setFieldValue("course", prof.course);
+              }
+
+              // Job Category — match AI name to real options
+              const jobCatName = String(
+                prof.jobCategory?.jobCategory || prof.jobCategory || ""
+              ).trim();
+              const jobCatId = prof.jobCategoryId;
+              const matchedJobCat =
+                (jobCatId &&
+                  jobCategoryOptions?.find(
+                    (o) =>
+                      String(o.id) === String(jobCatId) ||
+                      String(o.value) === String(jobCatId)
+                  )) ||
+                (jobCatName &&
+                  jobCategoryOptions?.find(
+                    (o) =>
+                      String(o.jobCategory || o.label || "")
+                        .toLowerCase()
+                        .trim() === jobCatName.toLowerCase()
+                  )) ||
+                (jobCatName &&
+                  jobCategoryOptions?.find(
+                    (o) =>
+                      String(o.jobCategory || o.label || "")
+                        .toLowerCase()
+                        .includes(jobCatName.toLowerCase()) ||
+                      jobCatName
+                        .toLowerCase()
+                        .includes(String(o.jobCategory || o.label || "").toLowerCase())
+                  )) ||
+                null;
+              if (matchedJobCat) {
+                setJobCat(matchedJobCat);
+                setFieldValue("jobCategoryId", matchedJobCat.id || matchedJobCat.value);
+              } else if (jobCatId) {
+                setJobCat({ label: jobCatName || "Selected", value: jobCatId, id: jobCatId });
+                setFieldValue("jobCategoryId", jobCatId);
+              } else if (jobCatName && jobCategoryOptions?.length > 0) {
+                // Set as custom label so user can see what AI extracted
+                setJobCat({ label: jobCatName, value: jobCatName });
+              }
+
+              // Notice Period
+              const npOpt = normalizeNoticePeriod(prof.noticePeriod);
+              if (npOpt) {
+                setNoticePeriod(npOpt);
+                setFieldValue("noticePeriod", npOpt.value);
+              }
+
+              // English Speaking
+              if (prof.english) {
+                const engVal = String(prof.english).trim();
+                const engMatch = ["Poor", "Average", "Excellent"].find(
+                  (e) => e.toLowerCase() === engVal.toLowerCase()
+                );
+                if (engMatch) {
+                  setEng({ label: engMatch, value: engMatch, id: "english" });
+                  setFieldValue("english", engMatch);
+                } else {
+                  setEng({ label: engVal, value: engVal, id: "english" });
+                  setFieldValue("english", engVal);
+                }
+              }
+
+              // Currently Working
+              if (prof.currentlyWorking) {
+                const cwVal = /yes|true/i.test(String(prof.currentlyWorking)) ? "Yes" : "No";
+                setCurrentlyWorking({ label: cwVal, value: cwVal, id: "currentlyWorking" });
+                setFieldValue("currentlyWorking", cwVal);
+              }
+
+              // Designation
+              if (prof.designation) {
+                setFieldValue("designation", prof.designation);
+              }
+
+              // Current Employer
+              if (prof.currentEmployer) {
+                setFieldValue("currentEmployer", prof.currentEmployer);
+              }
+
+              // Salary
+              if (prof.currentSalary) {
+                setFieldValue("currentSalary", String(prof.currentSalary));
+              }
+              if (prof.expectedsalary) {
+                setFieldValue("expectedsalary", String(prof.expectedsalary));
+              }
+
+              // Skill
+              if (prof.skill) {
+                setFieldValue("skill", prof.skill);
+              }
+
+              // Preferred Job Location
+              if (prof.preferedJobLocation) {
+                setFieldValue("preferedJobLocation", prof.preferedJobLocation);
+              }
+            }
+          }, [candidate, jobCategoryOptions]);
+          // Professional required fields are optional (nullable) so auto-extract submit is not blocked
+          const Validations = async () => {
+            return false;
           };
           const onNextHandler = async () => {
             const err = await Validations();
             if (err === false) {
-              stepper?.next();
+              if (isFinalStep) {
+                CandidateHandler();
+              } else {
+                stepper?.next();
+              }
             }
           };
           useEffect(() => {
@@ -342,7 +454,7 @@ const Professional = ({
                     <div>
                       <Label>
                         Qualification Held
-                        <span style={{ color: "red" }}>*</span>
+                        
                       </Label>
                       <Select
                         style={{ cursor: "pointer" }}
@@ -365,7 +477,7 @@ const Professional = ({
                   <Col lg={6} xs={12} xl={4}>
                     <div>
                       <Label>
-                        Education<span style={{ color: "red" }}>*</span>
+                        Education
                       </Label>
                       <Select
                         style={{ cursor: "pointer" }}
@@ -422,7 +534,7 @@ const Professional = ({
                   <Col lg={6} xs={12} xl={4}>
                     <div>
                       <Label>
-                        Designation<span style={{ color: "red" }}>*</span>
+                        Designation
                       </Label>
                       <Input
                         id="designation"
@@ -449,7 +561,7 @@ const Professional = ({
                   <Col lg={6} xs={12} xl={4}>
                     <div>
                       <Label>
-                        Job Category<span style={{ color: "red" }}>*</span>
+                        Job Category
                       </Label>
                       <Select
                         style={{ cursor: "pointer" }}
@@ -463,7 +575,7 @@ const Professional = ({
                         theme={selectThemeColors}
                         onChange={(e) => {
                           setJobCat(e);
-                          setFieldValue("jobCategoryId", e.id);
+                          setFieldValue("jobCategoryId", e?.id || e?.value);
                         }}
                       />
                     </div>
@@ -617,7 +729,7 @@ const Professional = ({
                     <div>
                       <Label>
                         Enter Preferred Job Location
-                        <span style={{ color: "red" }}>*</span>
+                        
                       </Label>
                       <Input
                         id="preferedJobLocation"
@@ -643,7 +755,7 @@ const Professional = ({
                   <Col lg={6} xs={12} xl={4}>
                     <Label>
                       How About your English in Speaking ?
-                      <span style={{ color: "red" }}>*</span>
+                      
                     </Label>
                     <Select
                       style={{ cursor: "pointer" }}
@@ -682,19 +794,22 @@ const Professional = ({
                   </Col>
                   <Col style={{ textAlign: "right" }}>
                     <Button
-                      type="submit"
+                      type="button"
                       color="default"
                       onClick={() => onNextHandler()}
                       className="btn-next"
                       style={{ color: "white", backgroundColor: "#105996" }}
+                      disabled={loading}
                     >
                       <span className="align-middle d-sm-inline-block d-none">
-                        Next
+                        {loading ? "Loading..." : isFinalStep ? "Submit" : "Next"}
                       </span>
-                      <ArrowRight
-                        size={14}
-                        className="align-middle ms-sm-25 ms-0"
-                      ></ArrowRight>
+                      {!isFinalStep && !loading ? (
+                        <ArrowRight
+                          size={14}
+                          className="align-middle ms-sm-25 ms-0"
+                        ></ArrowRight>
+                      ) : null}
                     </Button>
                   </Col>
                 </Row>

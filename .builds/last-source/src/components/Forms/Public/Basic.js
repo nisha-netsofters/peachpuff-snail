@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Row, Col, Input, Label, Button } from "reactstrap";
 import Select from "react-select";
 import { selectThemeColors } from "@utils";
@@ -11,6 +11,8 @@ const Basic = ({
   setCandidate,
   gender,
   setGender,
+  email: emailProp = "",
+  mobile: mobileProp = "",
   handleChange = () => { },
 }) => {
   const [firstnameError, setFirstNameError] = useState(false);
@@ -24,46 +26,70 @@ const Basic = ({
     { value: "female", id: "gender", label: "Female" },
   ];
 
-  const onSubmit = async () => {
-    if (
-      candidate?.firstname === undefined ||
-      candidate?.firstname?.length === 0 ||
-      candidate?.lastname === undefined ||
-      candidate?.lastname?.length === 0 ||
-      candidate?.mobile === undefined ||
-      candidate?.mobile?.length !== 10 ||
-      candidate?.alternateMobile === undefined ||
-      candidate?.alternateMobile?.length !== 10 ||
-      candidate?.email === undefined ||
-      candidate?.email?.length === 0
-    ) {
-      if (
-        candidate?.firstname === undefined ||
-        candidate?.firstname?.length === 0
-      ) {
-        setFirstNameError(true);
-      }
-      if (
-        candidate?.lastname === undefined ||
-        candidate?.lastname?.length === 0
-      ) {
-        setlastNameError(true);
-      }
-      if (candidate?.mobile === undefined || candidate?.mobile?.length !== 10) {
-        setmobileError(true);
-      }
-      if (
-        candidate?.alternateMobile === undefined ||
-        candidate?.alternateMobile?.length !== 10
-      ) {
-        setAlternateMobileError(true);
-      }
-      if (candidate?.email === undefined || candidate?.email?.length === 0) {
-        setEmailError(true);
-      }
-    } else {
-      stepper?.next();
+  // Sync gender select from AI-extracted candidate.gender
+  useEffect(() => {
+    const g = String(candidate?.gender || "").trim().toLowerCase();
+    if (!g) return;
+    if (g === "female" || g === "f" || g.includes("female")) {
+      setGender({ value: "female", id: "gender", label: "Female" });
+    } else if (g === "male" || g === "m" || /\bmale\b/.test(g)) {
+      setGender({ value: "male", id: "gender", label: "Male" });
     }
+  }, [candidate?.gender, candidate?.resumeParsedAt]);
+
+  const resolvedEmail = String(
+    candidate?.email || emailProp || ""
+  ).trim();
+  const resolvedMobile = String(candidate?.mobile || mobileProp || "").replace(
+    /\D/g,
+    ""
+  );
+
+  const onSubmit = async () => {
+    const email = String(candidate?.email || emailProp || "").trim();
+    const mobile = String(candidate?.mobile || mobileProp || "").replace(
+      /\D/g,
+      ""
+    );
+    const alternateMobile = String(candidate?.alternateMobile || "").replace(
+      /\D/g,
+      ""
+    );
+    const firstname = String(candidate?.firstname || "").trim();
+    const lastname = String(candidate?.lastname || "").trim();
+
+    // Keep email/mobile on candidate before moving next
+    if (email || mobile) {
+      setCandidate((prev) => ({
+        ...(Array.isArray(prev) ? {} : prev || {}),
+        email: email || prev?.email,
+        mobile: mobile || prev?.mobile,
+      }));
+    }
+
+    const firstnameInvalid = !firstname;
+    const lastnameInvalid = !lastname;
+    const mobileInvalid = mobile.length !== 10;
+    const alternateMobileInvalid = alternateMobile.length !== 10;
+    const emailInvalid = !email;
+
+    setFirstNameError(firstnameInvalid);
+    setlastNameError(lastnameInvalid);
+    setmobileError(mobileInvalid);
+    setAlternateMobileError(alternateMobileInvalid);
+    setEmailError(emailInvalid);
+
+    if (
+      firstnameInvalid ||
+      lastnameInvalid ||
+      mobileInvalid ||
+      alternateMobileInvalid ||
+      emailInvalid
+    ) {
+      return;
+    }
+
+    stepper?.next();
   };
   const [focus, setIsfocus] = useState(null);
   return (
@@ -143,10 +169,13 @@ const Basic = ({
               type="email"
               invalid={emailError}
               placeholder={"Enter Email"}
-              value={candidate?.email}
+              value={resolvedEmail}
               onChange={(e) => {
-                e.target.value = e.target.value.toLowerCase();
-                handleChange(e);
+                const value = e.target.value.toLowerCase();
+                setCandidate((prev) => ({
+                  ...(Array.isArray(prev) ? {} : prev || {}),
+                  email: value,
+                }));
                 setEmailError(false);
               }}
             />
@@ -167,12 +196,17 @@ const Basic = ({
                 borderColor: focus === "mobile" && "#105996",
               }}
               className="w-100"
-              type="number"
+              type="text"
+              inputMode="numeric"
+              maxLength={10}
               invalid={mobileError}
               placeholder={"Enter Mobile"}
-              value={candidate?.mobile}
+              value={resolvedMobile}
               onChange={(e) => {
-                handleChange(e);
+                setCandidate((prev) => ({
+                  ...(Array.isArray(prev) ? {} : prev || {}),
+                  mobile: e.target.value.replace(/\D/g, "").slice(0, 10),
+                }));
                 setmobileError(false);
               }}
             />
@@ -199,10 +233,10 @@ const Basic = ({
               maxLength={10}
               value={candidate?.alternateMobile}
               onChange={(e) => {
-                setCandidate({
-                  ...candidate,
-                  [e.target.id]: e.target.value.replace(/\D/g, ""),
-                });
+                setCandidate((prev) => ({
+                  ...(Array.isArray(prev) ? {} : prev || {}),
+                  alternateMobile: e.target.value.replace(/\D/g, "").slice(0, 10),
+                }));
                 setAlternateMobileError(false);
               }}
             />

@@ -33,7 +33,14 @@ function CandidateCheck({
   const dispatch = useDispatch();
   useEffect(() => {
     if (candidate?.msg === "Already registered") {
-      setCandidate(candidate?.data);
+      const existing = candidate?.existingCandidate || candidate?.data || {};
+      setCandidate({
+        ...existing,
+        email: email || existing?.email,
+        mobile: mobile || existing?.mobile,
+      });
+      if (existing?.email) setEmail(String(existing.email).toLowerCase());
+      if (existing?.mobile) setMobile(String(existing.mobile).replace(/\D/g, ""));
       setUpdate(true);
       setLoading(false);
       setModalLoader(false);
@@ -41,6 +48,11 @@ function CandidateCheck({
       setDisabeled(true);
       stepper?.next();
     } else if (candidate?.msg == false) {
+      setCandidate((prev) => ({
+        ...(Array.isArray(prev) ? {} : prev || {}),
+        email,
+        mobile,
+      }));
       setUpdate(false);
       setVerified(true);
       setModalLoader(false);
@@ -122,7 +134,18 @@ function CandidateCheck({
         </Col>
       </Row>
       <Row>
-        <Col style={{ textAlign: "center", marginTop: "15px" }}>
+        <Col style={{ textAlign: "left", marginTop: "15px" }}>
+          <Button
+            type="button"
+            className="add-new-user"
+            color="defalt"
+            style={{ backgroundColor: "#105996", color: "white" }}
+            onClick={() => stepper?.previous()}
+          >
+            Previous
+          </Button>
+        </Col>
+        <Col style={{ textAlign: "right", marginTop: "15px" }}>
           <Button
             type="button"
             className="add-new-user"

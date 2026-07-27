@@ -140,55 +140,72 @@ const PublicCandidate = () => {
     }
   }, []);
   useEffect(() => {
-    setCandidate({ email, mobile, agencyId: agncyid });
+    setCandidate((prev) => ({
+      ...(Array.isArray(prev) ? {} : prev || {}),
+      email,
+      mobile,
+      agencyId: agncyid,
+    }));
   }, [email, mobile, agncyid]);
 
   const handleChange = (e) => {
+    const patch = (fields) =>
+      setCandidate((prev) => ({
+        ...(Array.isArray(prev) ? {} : prev || {}),
+        ...fields,
+      }));
+
     if (e?.key == "state") {
-      setCandidate({ ...candidate, state: e.value, stateId: e.isoCode });
+      patch({ state: e.value, stateId: e.isoCode });
     } else if (e?.key == "city") {
-      setCandidate({ ...candidate, city: e.value, cityId: e.value });
+      patch({ city: e.value, cityId: e.value });
+    } else if (e?.target?.id === undefined) {
+      patch({ [e.id]: e.value });
+    } else if (e.target.id === "street") {
+      patch({ [e.target.id]: e.target.value });
+    } else if (e.target.id === "email") {
+      patch({ email: e.target.value.toLowerCase() });
+    } else if (e.target.id === "mobile" || e.target.id === "alternateMobile") {
+      patch({
+        [e.target.id]: e.target.value.replace(/\D/g, "").slice(0, 10),
+      });
     } else {
-      if (e?.target?.id === undefined) {
-        setCandidate({ ...candidate, [e.id]: e.value });
-      } else {
-        if (e.target.id === "street")
-          setCandidate({ ...candidate, [e.target.id]: e.target.value });
-        else
-          setCandidate({
-            ...candidate,
-            [e.target.id]: e.target.value.replace(/[^a-z]/gi, ""),
-          });
-      }
+      patch({
+        [e.target.id]: e.target.value.replace(/[^a-z ]/gi, ""),
+      });
     }
   };
 
   const fileOnChangeHandler = () => {
     if (progress?.image) {
-      setCandidate({
-        ...candidate,
+      setCandidate((prev) => ({
+        ...(Array.isArray(prev) ? {} : prev || {}),
         image: progress?.uploadedLink,
-      });
+      }));
     }
-    if (progress?.resume)
-      setCandidate({
-        ...candidate,
+    if (progress?.resume) {
+      setCandidate((prev) => ({
+        ...(Array.isArray(prev) ? {} : prev || {}),
         resume: progress?.uploadedLink,
-      });
+      }));
+    }
     dispatch({
       type: fileUploadactions.CLEAR_PROGRESS,
     });
   };
 
   useEffect(() => {
+    // Any create/update response should unlock the UI (success or duplicate error)
+    if (
+      getCandidateRes == null ||
+      (typeof getCandidateRes === "object" &&
+        !Object.keys(getCandidateRes || {}).length)
+    ) {
+      return;
+    }
+
     setPointerEvents("fill");
     setLoading(false);
-    if (getCandidateRes?.id) {
-    } else if (getCandidateRes.constraint === "candidates_email_unique") {
-      toast.error("Email Already Exist");
-    } else if (getCandidateRes.constraint === "candidates_mobile_unique") {
-      toast.error("Mobile Number Already Exist");
-    }
   }, [getCandidateRes]);
 
   useEffect(() => {
@@ -199,7 +216,7 @@ const PublicCandidate = () => {
       setIsSuccess(true);
       setAnimation({});
     }
-  }, [getCandidateRes]);
+  }, [getCandidateRes?.createPublicCandidatePopup]);
 
   const CandidateHandler = async () => {
     setLoading(true);
@@ -271,6 +288,26 @@ const PublicCandidate = () => {
 
   const steps = [
     {
+      id: "attachment",
+      title: "Attachment",
+      subtitle: "Upload Resume & Auto Extract",
+      content: (
+        <Attachment_File
+          loading={loading || false}
+          candidate={candidate}
+          setCandidate={setCandidate}
+          setEmail={setEmail}
+          setMobile={setMobile}
+          setGender={setGender}
+          setProfessional={setProfessional}
+          CandidateHandler={CandidateHandler}
+          fileOnChangeHandler={fileOnChangeHandler}
+          stepper={stepper}
+          isFirstStep
+        />
+      ),
+    },
+    {
       id: "candidate-check",
       title: "Verify Candidate",
       subtitle: "Enter Your candidate Details.",
@@ -304,6 +341,8 @@ const PublicCandidate = () => {
           setCandidate={setCandidate}
           handleChange={handleChange}
           stepper={stepper}
+          email={email}
+          mobile={mobile}
         />
       ),
     },
@@ -342,20 +381,9 @@ const PublicCandidate = () => {
           handleChange={handleChange}
           stepper={stepper}
           candidate={candidate}
-        />
-      ),
-    },
-    {
-      id: "attachment",
-      title: "Attachment",
-      subtitle: "Add Attachment",
-      content: (
-        <Attachment_File
-          loading={loading}
-          candidate={candidate}
           CandidateHandler={CandidateHandler}
-          fileOnChangeHandler={fileOnChangeHandler}
-          stepper={stepper}
+          loading={loading}
+          isFinalStep
         />
       ),
     },

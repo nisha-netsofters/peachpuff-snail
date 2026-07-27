@@ -323,16 +323,21 @@ export function* WATCH_CANDIDATE_STATUS(action) {
 }
 export function* UPDATE_CANDIDATE_PUBLIC(action) {
   const data = yield updateCandidatePublicAPI(action.payload);
-  if (data?.error) {
-    tostifyError(data?.error);
+  // Always update Redux so UI can clear loading spinner
+  yield put({
+    type: actions.SET_CANDIDATE,
+    payload: data || { error: "Update failed" },
+  });
+  if (data?.error || data?.duplicate) {
+    tostifyError(data?.error || "Candidate already exists");
   }
-  if (data.constraint) {
+  if (data?.constraint) {
     yield put({
       type: actions.CREATE_ERROR,
       payload: data.constraint,
     });
   }
-  if (data.msg) {
+  if (data?.msg) {
     yield put({
       type: actions.CREATE_PUBLIC_CANDIDATE_POPUP,
       payload: true,
@@ -341,27 +346,22 @@ export function* UPDATE_CANDIDATE_PUBLIC(action) {
 }
 export function* WATCH_PUBLIC_CREATE_CANDIDATE(action) {
   const data = yield createCandidatePublicAPI(action.payload.data);
-  if (data.id) {
-    yield put({
-      type: actions.SET_CANDIDATE,
-      payload: data,
-    });
+  // Always update Redux so duplicate/error responses clear the loading state
+  yield put({
+    type: actions.SET_CANDIDATE,
+    payload: data || { error: "Create failed" },
+  });
+  if (data?.id) {
     yield put({
       type: actions.CREATE_PUBLIC_CANDIDATE_POPUP,
       payload: true,
     });
-  } else {
-    if (data.constraint === "candidates_email_unique") {
-      yield put({
-        type: actions.SET_CANDIDATE,
-        payload: data,
-      });
-    } else if (data.constraint === "candidates_mobile_unique") {
-      yield put({
-        type: actions.SET_CANDIDATE,
-        payload: data,
-      });
-    }
+  } else if (data?.error || data?.duplicate) {
+    tostifyError(data?.error || "Candidate already exists");
+  } else if (data?.constraint === "candidates_email_unique") {
+    tostifyError("Email Already Exist");
+  } else if (data?.constraint === "candidates_mobile_unique") {
+    tostifyError("Mobile Number Already Exist");
   }
 }
 export function* WATCH_CHECK_CANDIDATE(action) {

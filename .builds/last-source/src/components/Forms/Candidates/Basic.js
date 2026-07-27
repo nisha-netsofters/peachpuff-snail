@@ -240,6 +240,9 @@ const Basic = ({
             cityId: address.cityId,
             state: address.state,
             stateId: address.stateId,
+            zip: String(s.zip || curr.zip || "")
+              .replace(/\D/g, "")
+              .slice(0, 6),
             linkedinProfile: s.linkedinProfile || curr.linkedinProfile || "",
             portfolioWebsite: s.portfolioWebsite || curr.portfolioWebsite || "",
             languages: s.languages || curr.languages || "",

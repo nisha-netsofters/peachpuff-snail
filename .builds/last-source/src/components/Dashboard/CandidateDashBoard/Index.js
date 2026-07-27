@@ -26,6 +26,7 @@ import CandidateActions from "../../../redux/candidate/actions";
 import ComponentSpinner from "../../../@core/components/spinner/Loading-spinner";
 import CandidateJobChart from "./CandidateJobChart";
 import "@styles/react/libs/charts/apex-charts.scss";
+import { calculateProfileCompleteness } from "../../../utility/profileCompleteness";
 import {
   Briefcase,
   CheckCircle,
@@ -60,11 +61,15 @@ const CandidateDashboard = () => {
   const [selectedComment, setSelectedComment] = useState("");
 
   const themeColor = useSelector((state) => state?.agency?.agencyDetail?.themecolor);
-  // 📊 stats API
+  // 📊 stats API + profile (for accurate Profile Completeness)
   useEffect(() => {
     if (candidateUser?.id) {
       dispatch({
         type: CandidateActions.GET_CANDIDATE_STATISTICS,
+        payload: {}
+      });
+      dispatch({
+        type: CandidateActions.GET_CANDIDATE_PROFILE,
         payload: {}
       });
     }
@@ -115,8 +120,17 @@ const CandidateDashboard = () => {
       reviewPending: 0
     };
 
+    // Same calculator as /candidate list page — prefer full profile over stats API
+    const profileSource =
+      candidate?.candidateProfile ||
+      (candidate?.firstname ? candidate : null);
+    const fromProfile = profileSource
+      ? calculateProfileCompleteness(profileSource)
+      : null;
+
     return {
-      profileCompleteness: stats.profileCompleteness || 0,
+      profileCompleteness:
+        fromProfile?.profileCompleteness ?? stats.profileCompleteness ?? 0,
       totalInterviews: stats.totalInterviews || 0,
       interviewsScheduled: stats.interviewsScheduled || 0,
       interviewsAttended: stats.interviewsAttended || 0,
@@ -128,7 +142,7 @@ const CandidateDashboard = () => {
       rejected: stats.rejected || 0,
       reviewPending: stats.reviewPending || 0
     };
-  }, [candidate?.statistics]);
+  }, [candidate?.statistics, candidate?.candidateProfile, candidate?.firstname]);
 
   const getTruncatedComment = (text = "", wordLimit = 10) => {
     const words = text.split(/\s+/).filter(Boolean);
