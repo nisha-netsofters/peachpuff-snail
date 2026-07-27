@@ -17,6 +17,11 @@ import { resolveAssetUrl } from "../../../utility/resolveAssetUrl";
 import { tostify } from "../../Tostify";
 import { resolveIndianAddress } from "../../../utility/resolveIndianAddress";
 import apiCall from "../../../utility/axiosInterceptor";
+import {
+  normalizeExtractedResume,
+  genderSelectValue,
+} from "../../../utility/normalizeResumeExtract";
+import course from "../Course";
 
 const DEFAULT_API_CONFIG_ERROR =
   "Please ask Super Admin to enable and configure OCR & AI in OCR & API Configuration (API Key + Model required for AI).";
@@ -55,33 +60,6 @@ const getFriendlyExtractError = (result) => {
     return AI_VALIDATION_MESSAGES.AI_API_KEY_INVALID;
   }
   return raw || "Unable to parse resume. Please try again.";
-};
-
-const normalizeGender = (gender) => {
-  const raw = String(gender || "").trim().toLowerCase();
-  if (!raw) return "";
-  // Check female first — "female" contains "male"
-  if (
-    raw === "f" ||
-    raw === "female" ||
-    raw === "woman" ||
-    raw === "girl" ||
-    /\bfemale\b/.test(raw) ||
-    /\bwoman\b/.test(raw)
-  ) {
-    return "female";
-  }
-  if (
-    raw === "m" ||
-    raw === "male" ||
-    raw === "man" ||
-    raw === "boy" ||
-    /\bmale\b/.test(raw) ||
-    /\bman\b/.test(raw)
-  ) {
-    return "male";
-  }
-  return "";
 };
 
 const Attachment_File = ({
@@ -162,41 +140,43 @@ const Attachment_File = ({
   }, [candidate?.resumeParsedAt]);
 
   const applyExtractedData = (s, file) => {
-    const genderVal = normalizeGender(s.gender);
+    const normalized = normalizeExtractedResume(s, course);
+    const genderVal = normalized.gender;
     if (typeof setCandidate === "function") {
       setCandidate((prev) => {
         const curr = Array.isArray(prev) ? {} : prev || {};
         const edu =
           curr.education && curr.education.length
             ? curr.education
-            : s.education || [];
-        const prof = Object.assign({}, curr.professional || {}, s.professional || {});
+            : normalized.education || [];
+        const prof = Object.assign({}, curr.professional || {}, normalized.professional || {});
         const address = resolveIndianAddress({
-          state: s.state || curr.state || "",
-          city: s.city || curr.city || "",
+          state: normalized.state || curr.state || "",
+          city: normalized.city || curr.city || "",
           stateId: curr.stateId || "",
           cityId: curr.cityId || "",
         });
         return Object.assign({}, curr, {
-          firstname: s.firstname || curr.firstname || "",
-          lastname: s.lastname || curr.lastname || "",
-          mobile: s.mobile || curr.mobile || "",
-          alternateMobile: s.alternateMobile || curr.alternateMobile || "",
-          email: s.email || curr.email || "",
+          firstname: normalized.firstname || curr.firstname || "",
+          lastname: normalized.lastname || curr.lastname || "",
+          mobile: normalized.mobile || curr.mobile || "",
+          alternateMobile: normalized.alternateMobile || curr.alternateMobile || "",
+          email: normalized.email || curr.email || "",
           gender: genderVal || curr.gender || "",
-          dateOfBirth: s.dateOfBirth || curr.dateOfBirth || "",
-          street: s.street || curr.street || "",
+          dateOfBirth: normalized.dateOfBirth || curr.dateOfBirth || "",
+          street: normalized.street || curr.street || "",
           city: address.city,
           cityId: address.cityId,
           state: address.state,
           stateId: address.stateId,
-          zip: String(s.zip || curr.zip || "")
+          zip: String(normalized.zip || curr.zip || "")
             .replace(/\D/g, "")
             .slice(0, 6),
-          linkedinProfile: s.linkedinProfile || curr.linkedinProfile || "",
-          portfolioWebsite: s.portfolioWebsite || curr.portfolioWebsite || "",
-          languages: s.languages || curr.languages || "",
-          certifications: s.certifications || curr.certifications || "",
+          linkedinProfile: normalized.linkedinProfile || curr.linkedinProfile || "",
+          portfolioWebsite: normalized.portfolioWebsite || curr.portfolioWebsite || "",
+          languages: normalized.languages || curr.languages || "",
+          certifications: normalized.certifications || curr.certifications || "",
+          industry: normalized.industry || curr.industry || "",
           education: edu,
           professional: prof,
           resume: file,
@@ -204,27 +184,23 @@ const Attachment_File = ({
         });
       });
     }
-    if (s.professional && typeof setProfessional === "function") {
+    if (normalized.professional && typeof setProfessional === "function") {
       setProfessional((prev) => ({
         ...(Array.isArray(prev) ? {} : prev || {}),
-        ...s.professional,
+        ...normalized.professional,
       }));
     }
-    if (genderVal && typeof setGender === "function") {
-      setGender({
-        value: genderVal,
-        id: "gender",
-        label: genderVal === "female" ? "Female" : "Male",
-      });
+    const genderSelect = genderSelectValue(genderVal);
+    if (genderSelect && typeof setGender === "function") {
+      setGender(genderSelect);
     } else if (typeof setGender === "function" && !genderVal) {
-      // Do not force Male when gender unknown
       setGender(null);
     }
-    if (s.email && typeof setEmail === "function") {
-      setEmail(String(s.email).toLowerCase());
+    if (normalized.email && typeof setEmail === "function") {
+      setEmail(String(normalized.email).toLowerCase());
     }
-    if (s.mobile && typeof setMobile === "function") {
-      setMobile(String(s.mobile).replace(/\D/g, "").slice(0, 10));
+    if (normalized.mobile && typeof setMobile === "function") {
+      setMobile(String(normalized.mobile).replace(/\D/g, "").slice(0, 10));
     }
   };
 

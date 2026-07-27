@@ -14,6 +14,11 @@ import { FileText } from "react-feather";
 import { BsUpload } from "react-icons/bs";
 import { resolveAssetUrl } from "../../../utility/resolveAssetUrl";
 import { tostify } from "../../Tostify";
+import {
+  normalizeProfessional,
+  buildIndustriesRelation,
+  matchJobCategoryId,
+} from "../../../utility/normalizeResumeExtract";
 // import jobCategoryActions from "../../../redux/jobCategory/actions";
 
 const Professional = ({
@@ -75,6 +80,34 @@ const Professional = ({
       setIndustriesOptions(industries);
     }
   }, [industries]);
+
+  useEffect(() => {
+    const industryStr = candidate?.industry;
+    if (!industryStr || !industries?.length) return;
+    if (Array.isArray(candidate?.industries_relation) && candidate.industries_relation.length > 0) {
+      return;
+    }
+
+    const relations = buildIndustriesRelation(industryStr, industries);
+    if (!relations.length) return;
+
+    const selected = relations
+      .map((rel) => {
+        const ind = industries.find((i) => (i.id || i.value) === rel.industriesId);
+        if (!ind) return null;
+        return {
+          ...rel,
+          label: ind.industryCategory,
+          value: ind.id,
+        };
+      })
+      .filter(Boolean);
+
+    if (selected.length) {
+      setSelectIndustries(selected);
+      setCandidate((prev) => ({ ...prev, industries_relation: relations }));
+    }
+  }, [candidate?.resumeParsedAt, candidate?.industry, industries]);
   const Quelification = [
     {
       value: "under graduate",
@@ -154,7 +187,7 @@ const Professional = ({
       <Formik initialValues={{}}>
         {({ values, setFieldValue }) => {
           useEffect(() => {
-            const prof = candidate?.professional;
+            const prof = normalizeProfessional(candidate?.professional, course);
             if (!prof || typeof prof !== "object") return;
 
             for (const key in prof) {
@@ -162,24 +195,34 @@ const Professional = ({
                 setFieldValue(key, prof[key]);
               }
             }
-            if (prof?.experienceInyear?.length > 0) {
-              setExperienceInYear({
-                label: prof.experienceInyear,
-                value: prof.experienceInyear,
-              });
+
+            if (prof.experienceInyear) {
+              const expOpt =
+                experienceOptions.find((o) => o.value === prof.experienceInyear) || {
+                  label: prof.experienceInyear,
+                  value: prof.experienceInyear,
+                  id: "experienceInyear",
+                };
+              setExperienceInYear(expOpt);
+              setFieldValue("experienceInyear", prof.experienceInyear);
             }
-            if (prof?.highestQualification?.length > 0) {
-              let label = prof.highestQualification;
-              const value = prof.highestQualification;
-              if (value === "graduation") label = "Graduation";
-              if (value === "post graduate") label = "Post Graduate";
-              if (value === "under graduate") label = "Under Graduate";
-              setQuelification({ value, label, id: "highestQualification" });
+
+            if (prof.highestQualification) {
+              const qualOpt =
+                Quelification.find((o) => o.value === prof.highestQualification) || {
+                  value: prof.highestQualification,
+                  label: prof.highestQualification,
+                  id: "highestQualification",
+                };
+              setQuelification(qualOpt);
+              setFieldValue("highestQualification", prof.highestQualification);
             }
+
             const jobCategoryId =
               prof?.jobCategoryId ||
               prof?.jobCategory?._id ||
-              prof?.jobCategory?.id;
+              prof?.jobCategory?.id ||
+              matchJobCategoryId(prof?.jobCategory || prof?.jobCategoryName, jobCategory);
 
             if (jobCategoryId) {
               const label =
@@ -196,40 +239,70 @@ const Professional = ({
               });
               setFieldValue("jobCategoryId", jobCategoryId);
             }
-            if (prof?.noticePeriod?.length > 0) {
-              setNoticePeriod({
-                label: prof.noticePeriod,
-                value: prof.noticePeriod,
-              });
-            }
-            if (prof?.english?.length > 0) {
-              setEng({
-                label: prof.english,
-                value: prof.english,
-                id: "english",
-              });
+
+            if (prof.noticePeriod) {
+              const noticeOpt =
+                NoticePeriodOptions.find((o) => o.value === prof.noticePeriod) || {
+                  label: prof.noticePeriod,
+                  value: prof.noticePeriod,
+                  id: "noticePeriod",
+                };
+              setNoticePeriod(noticeOpt);
+              setFieldValue("noticePeriod", prof.noticePeriod);
             }
 
-            if (prof?.currentlyWorking?.length > 0) {
-              setCurrentlyWorking({
-                label: prof.currentlyWorking,
-                value: prof.currentlyWorking,
-              });
+            if (prof.english) {
+              const engOpt =
+                English.find((o) => o.value === prof.english) || {
+                  label: prof.english,
+                  value: prof.english,
+                  id: "english",
+                };
+              setEng(engOpt);
+              setFieldValue("english", prof.english);
             }
-            if (prof?.field?.length > 0) {
-              course.filter((ele) => {
-                if (ele.name === prof.field) {
-                  setField({ value: ele.sub, label: ele.name });
-                }
-              });
+
+            if (prof.currentlyWorking) {
+              const workOpt =
+                currentlyWorkingOptions.find((o) => o.value === prof.currentlyWorking) || {
+                  label: prof.currentlyWorking === "yes" ? "Yes" : "No",
+                  value: prof.currentlyWorking,
+                  id: "currentlyWorking",
+                };
+              setCurrentlyWorking(workOpt);
+              setFieldValue("currentlyWorking", prof.currentlyWorking);
             }
+
+            if (prof.field) {
+              const fieldMatch = course.find(
+                (ele) => String(ele.name).toLowerCase() === String(prof.field).toLowerCase()
+              ) || course.find((ele) => {
+                const name = String(ele.name).toLowerCase();
+                const raw = String(prof.field).toLowerCase();
+                return name.includes(raw) || raw.includes(name);
+              });
+              if (fieldMatch) {
+                setField({ value: fieldMatch.sub, label: fieldMatch.name });
+                setFieldValue("field", fieldMatch.name);
+              }
+            }
+
+            if (prof.course && prof.field) {
+              setSubCourse({
+                label: prof.course,
+                field: prof.field,
+                value: prof.course,
+              });
+              setFieldValue("course", prof.course);
+            }
+
             if (prof?.currentSalary && Number(prof.currentSalary) > 0) {
               const calculatedSalary = parseFloat(prof.currentSalary) * 1.2;
               if (!isNaN(calculatedSalary)) {
                 setCalculatedExpectedSalary(calculatedSalary.toFixed(0));
               }
             }
-          }, [candidate?.id, candidate?.resumeParsedAt]);
+          }, [candidate?.id, candidate?.resumeParsedAt, jobCategory]);
 
           function handleSalary() {
             setTimeout(() => {
@@ -697,7 +770,7 @@ const Professional = ({
                     </div>
                   </Col>
 
-                  <Col lg={6} xs={12} xl={4}>
+                  <Col lg={6} xs={12} xl={6}>
                     <div>
                       <Label>Skill Set</Label>
                       <Input
@@ -713,9 +786,38 @@ const Professional = ({
                         disabled={isDisabledAllFields}
                         maxLength={200}
                         type="textarea"
+                        rows={3}
                         placeholder={"HTML | CSS | React | Node"}
                         onChange={(e) => {
                           setFieldValue(e.target.name, e.target.value)
+                        }}
+                      />
+                    </div>
+                  </Col>
+
+                  <Col lg={6} xs={12} xl={6}>
+                    <div>
+                      <Label>Certifications</Label>
+                      <Input
+                        id="certifications"
+                        onFocus={() => setIsfocus("certifications")}
+                        onBlur={() => setIsfocus(null)}
+                        style={{
+                          borderColor: focus === "certifications" && themecolor,
+                        }}
+                        name="certifications"
+                        value={candidate?.certifications || ""}
+                        className="w-100"
+                        disabled={isDisabledAllFields}
+                        maxLength={500}
+                        type="textarea"
+                        rows={3}
+                        placeholder={"e.g. AWS Certified, PMP, Google Analytics"}
+                        onChange={(e) => {
+                          setCandidate((prev) => ({
+                            ...prev,
+                            certifications: e.target.value,
+                          }));
                         }}
                       />
                     </div>

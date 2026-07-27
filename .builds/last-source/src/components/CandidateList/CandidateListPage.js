@@ -75,6 +75,8 @@ import ComponentSpinner from "../../@core/components/spinner/Loading-spinner";
 import ReactCanvasConfetti from "react-canvas-confetti";
 import { calculateProfileCompleteness } from "../../utility/profileCompleteness";
 import { resolveIndianAddress } from "../../utility/resolveIndianAddress";
+import { normalizeExtractedResume } from "../../utility/normalizeResumeExtract";
+import course from "../Forms/Course";
 import { resolveAssetUrl } from "../../utility/resolveAssetUrl";
 import apiCall from "../../utility/axiosInterceptor";
 import clientactions from "../../redux/client/actions";
@@ -1345,12 +1347,13 @@ const SecondPage = ({
           if (i === 0 && candidate?.resumeParsedAt) {
             payloadData = { ...candidate, resume: file };
           } else {
-            const parsed = await parseResumeFile(file);
-            if (!parsed) {
+            const parsedRaw = await parseResumeFile(file);
+            if (!parsedRaw) {
               failCount += 1;
               failReasons.push(`${fileLabel}: could not extract data`);
               continue;
             }
+            const parsed = normalizeExtractedResume(parsedRaw, course);
             const address = resolveIndianAddress({
               state: parsed.state || "",
               city: parsed.city || "",
@@ -1374,6 +1377,7 @@ const SecondPage = ({
               portfolioWebsite: parsed.portfolioWebsite || "",
               languages: parsed.languages || "",
               certifications: parsed.certifications || "",
+              industry: parsed.industry || "",
               education: parsed.education || [],
               professional: parsed.professional || {},
               industries_relation: [],

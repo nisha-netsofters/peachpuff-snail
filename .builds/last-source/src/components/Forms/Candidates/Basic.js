@@ -7,7 +7,11 @@ import { useSelector } from "react-redux";
 import { tostify } from "../../Tostify";
 import { resolveIndianAddress } from "../../../utility/resolveIndianAddress";
 import apiCall from "../../../utility/axiosInterceptor";
-// import Repeater from '../Repeater/index'
+import {
+  normalizeExtractedResume,
+  genderSelectValue,
+} from "../../../utility/normalizeResumeExtract";
+import course from "../Course";
 
 const DEFAULT_API_CONFIG_ERROR =
   "Please ask Super Admin to enable and configure OCR & AI in OCR & API Configuration (API Key + Model required for AI).";
@@ -68,9 +72,8 @@ const Basic = ({
   ];
   useEffect(() => {
     if (candidate?.gender?.length > 0) {
-      let label = "Male";
-      if (candidate?.gender === "female") label = "Female";
-      setGender({ value: [candidate.gender], label });
+      const selectVal = genderSelectValue(candidate.gender);
+      if (selectVal) setGender(selectVal);
     }
   }, []);
 
@@ -214,7 +217,7 @@ const Basic = ({
           code: result?.code,
         });
       }
-      const s = result.data || {};
+      const s = normalizeExtractedResume(result.data || {}, course);
       console.log("ResumeUploadHelper parsed data s:", s);
       if (typeof setCandidate === 'function') {
         setCandidate((prev) => {
@@ -247,6 +250,7 @@ const Basic = ({
             portfolioWebsite: s.portfolioWebsite || curr.portfolioWebsite || "",
             languages: s.languages || curr.languages || "",
             certifications: s.certifications || curr.certifications || "",
+            industry: s.industry || curr.industry || "",
             education: edu,
             professional: prof,
             resume: file,
@@ -255,9 +259,9 @@ const Basic = ({
           });
         });
       }
-      if (s.gender && typeof setGender === 'function') {
-        const genLabel = s.gender === 'female' ? 'Female' : (s.gender === 'male' ? 'Male' : s.gender);
-        setGender({ value: s.gender, label: genLabel });
+      const genderSelect = genderSelectValue(s.gender);
+      if (genderSelect && typeof setGender === 'function') {
+        setGender(genderSelect);
       }
       if (s.email && typeof setEmail === 'function') {
         setEmail(s.email.toLowerCase());
