@@ -3,7 +3,6 @@ import { Nav, NavItem, NavLink } from "reactstrap";
 export const CANDIDATE_QUICK_TABS = [
   { id: "recentlyAdded", label: "Recently Added" },
   { id: "recentlyViewed", label: "Recently Viewed" },
-  { id: "recentlyActive", label: "Recently Active" },
   { id: "newCandidates", label: "New Candidates" },
   { id: "inProcess", label: "In Process" },
   { id: "interviewScheduled", label: "Interview Scheduled" },

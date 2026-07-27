@@ -16,6 +16,12 @@ export const getCandidateAPI = async (payload) => {
       return res;
     });
 };
+export const toggleFavoriteCandidateAPI = async (payload) => {
+  return await apiCall
+    .post("/candidate/toggle-favorite", payload)
+    .then((res) => res);
+};
+
 export const getSavedCandidateAPI = async (payload) => {
   return await apiCall
     .post(

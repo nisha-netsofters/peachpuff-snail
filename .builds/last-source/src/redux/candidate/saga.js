@@ -26,6 +26,7 @@ import {
 import { tostifyError, tostifySuccess } from "../../components/Tostify";
 import { candidateAPI } from "../../apis/dashBoard";
 import { store } from "../store";
+import jobApplyListActions from "../jobapplylist/actions";
 
 export function* WATCH_GET_CANDIDATE(action) {
   // const { agencyDetail } = yield select((state) => state?.agency);
@@ -200,15 +201,32 @@ export function* WATCH_CREATE_CANDIDATE(action) {
   if (data?.id) {
     tostifySuccess("Data Posted Successfully");
 
-    const resp = yield getCandidateAPI({
-      page: action.payload?.page,
-      perPage: action.payload?.perPage,
-      filterData: [],
-    });
-    yield put({
-      type: actions.SET_CANDIDATE,
-      payload: resp,
-    });
+    // Applied Candidates page: refresh applicants list for this job
+    if (action.payload?.jobId) {
+      yield put({
+        type: jobApplyListActions.GET_JOB_APPLY_LIST,
+        payload: { jobId: action.payload.jobId },
+      });
+      // Trigger create-modal close (clearStates watches candidates change)
+      yield put({
+        type: actions.SET_CANDIDATE,
+        payload: { lastCreatedCandidateId: data.id },
+      });
+    } else {
+      const resp = yield getCandidateAPI({
+        page: action.payload?.page,
+        perPage: action.payload?.perPage,
+        filterData: [],
+      });
+      yield put({
+        type: actions.SET_CANDIDATE,
+        payload: resp,
+      });
+    }
+
+    if (action?.payload?.setLoading) {
+      action.payload.setLoading(false);
+    }
   }
 }
 

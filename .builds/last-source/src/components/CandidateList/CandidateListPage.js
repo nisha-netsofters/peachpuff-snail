@@ -70,6 +70,7 @@ import { useHistory, useLocation } from "react-router-dom";
 import {
   createCandidateAPI,
   getCandidateAPI,
+  toggleFavoriteCandidateAPI,
 } from "../../apis/candidate";
 import ComponentSpinner from "../../@core/components/spinner/Loading-spinner";
 import ReactCanvasConfetti from "react-canvas-confetti";
@@ -305,32 +306,145 @@ const SecondPage = ({
           // Handle different possible data structures from API
           const formattedCandidate = {
             ...candidate,
-            // Basic info
-            id: candidate.id || candidate._id || applied.id || applied._id,
-            firstname: candidate.firstname || candidate.firstName || candidate.candidateName?.split(' ')[0] || "-",
-            lastname: candidate.lastname || candidate.lastName || candidate.candidateName?.split(' ').slice(1).join(' ') || "",
-            email: candidate.email || candidate.candidateEmail || applied.email || applied.candidateEmail || "-",
-            mobile: candidate.mobile || candidate.phone || candidate.candidateMobile || applied.mobile || applied.phone || "-",
+            // Prefer real candidate id (applicants API returns application id as `id`)
+            id:
+              applied.candidateId ||
+              candidate.candidateId ||
+              candidate.id ||
+              candidate._id ||
+              applied.id ||
+              applied._id,
+            firstname:
+              candidate.firstname ||
+              candidate.firstName ||
+              candidate.candidateName?.split(" ")[0] ||
+              applied.candidateName?.split(" ")[0] ||
+              "-",
+            lastname:
+              candidate.lastname ||
+              candidate.lastName ||
+              candidate.candidateName?.split(" ").slice(1).join(" ") ||
+              applied.candidateName?.split(" ").slice(1).join(" ") ||
+              "",
+            email:
+              candidate.email ||
+              candidate.candidateEmail ||
+              applied.email ||
+              applied.candidateEmail ||
+              "-",
+            mobile:
+              candidate.mobile ||
+              candidate.phone ||
+              candidate.candidateMobile ||
+              applied.mobile ||
+              applied.phone ||
+              "-",
             city: candidate.city || candidate.candidateCity || applied.city || "-",
-            gender: candidate.gender || applied.gender || "-",
+            gender:
+              candidate.gender ||
+              applied.gender ||
+              applied.candidateGender ||
+              "-",
             image: candidate.image || candidate.candidateImage || applied.image || null,
-            resume: candidate.resume || candidate.candidateResume || applied.resume || null,
+            resume:
+              candidate.resume ||
+              candidate.candidateResume ||
+              applied.resume ||
+              applied.candidateResume ||
+              null,
             status: candidate.status || applied.status || "Applied",
             // Professional info - handle nested structure
             professional: {
-              ...(candidate.professional || candidate.candidateProfessional || {}),
-              jobCategory: candidate.professional?.jobCategory || candidate.candidateProfessional?.jobCategory || (candidate.jobCategory || applied.jobCategory ? {
-                jobCategory: candidate.jobCategory?.jobCategory || applied.jobCategory?.jobCategory || candidate.jobCategory || applied.jobCategory || "-"
-              } : null),
-              highestQualification: candidate.professional?.highestQualification || candidate.candidateProfessional?.highestQualification || candidate.highestQualification || applied.highestQualification || candidate.qualification || applied.qualification || "-",
-              field: candidate.professional?.field || candidate.candidateProfessional?.field || candidate.field || applied.field || "-",
-              experienceInyear: candidate.professional?.experienceInyear || candidate.candidateProfessional?.experienceInyear || candidate.experienceInyear || candidate.experience || candidate.totalExperience || applied.experience || applied.totalExperience || "-",
-              currentSalary: candidate.professional?.currentSalary || candidate.candidateProfessional?.currentSalary || candidate.currentSalary || applied.currentSalary || "-",
-              expectedsalary: candidate.professional?.expectedsalary || candidate.candidateProfessional?.expectedsalary || candidate.expectedsalary || candidate.expectedSalary || applied.expectedSalary || "-",
-              currentlyWorking: candidate.professional?.currentlyWorking || candidate.candidateProfessional?.currentlyWorking || candidate.currentlyWorking || applied.currentlyWorking || "-",
-              noticePeriod: candidate.professional?.noticePeriod || candidate.candidateProfessional?.noticePeriod || candidate.noticePeriod || applied.noticePeriod || "-",
-              preferedJobLocation: candidate.professional?.preferedJobLocation || candidate.candidateProfessional?.preferedJobLocation || candidate.preferedJobLocation || candidate.preferredLocation || applied.preferredLocation || "-",
-              skill: candidate.professional?.skill || candidate.candidateProfessional?.skill || candidate.skill || candidate.skills || applied.skill || applied.skills || "-",
+              ...(candidate.professional ||
+                candidate.candidateProfessional ||
+                applied.candidateProfessional ||
+                {}),
+              jobCategory:
+                candidate.professional?.jobCategory ||
+                candidate.candidateProfessional?.jobCategory ||
+                applied.candidateProfessional?.jobCategory ||
+                (candidate.jobCategory || applied.jobCategory
+                  ? {
+                      jobCategory:
+                        candidate.jobCategory?.jobCategory ||
+                        applied.jobCategory?.jobCategory ||
+                        candidate.jobCategory ||
+                        applied.jobCategory ||
+                        "-",
+                    }
+                  : null),
+              highestQualification:
+                candidate.professional?.highestQualification ||
+                candidate.candidateProfessional?.highestQualification ||
+                applied.candidateProfessional?.highestQualification ||
+                candidate.highestQualification ||
+                applied.highestQualification ||
+                candidate.qualification ||
+                applied.qualification ||
+                "-",
+              field:
+                candidate.professional?.field ||
+                candidate.candidateProfessional?.field ||
+                applied.candidateProfessional?.field ||
+                candidate.field ||
+                applied.field ||
+                "-",
+              experienceInyear:
+                candidate.professional?.experienceInyear ||
+                candidate.candidateProfessional?.experienceInyear ||
+                applied.candidateProfessional?.experienceInyear ||
+                candidate.experienceInyear ||
+                candidate.experience ||
+                candidate.totalExperience ||
+                applied.experience ||
+                applied.totalExperience ||
+                "-",
+              currentSalary:
+                candidate.professional?.currentSalary ||
+                candidate.candidateProfessional?.currentSalary ||
+                applied.candidateProfessional?.currentSalary ||
+                candidate.currentSalary ||
+                applied.currentSalary ||
+                "-",
+              expectedsalary:
+                candidate.professional?.expectedsalary ||
+                candidate.candidateProfessional?.expectedsalary ||
+                applied.candidateProfessional?.expectedsalary ||
+                candidate.expectedsalary ||
+                candidate.expectedSalary ||
+                applied.expectedSalary ||
+                "-",
+              currentlyWorking:
+                candidate.professional?.currentlyWorking ||
+                candidate.candidateProfessional?.currentlyWorking ||
+                applied.candidateProfessional?.currentlyWorking ||
+                candidate.currentlyWorking ||
+                applied.currentlyWorking ||
+                "-",
+              noticePeriod:
+                candidate.professional?.noticePeriod ||
+                candidate.candidateProfessional?.noticePeriod ||
+                applied.candidateProfessional?.noticePeriod ||
+                candidate.noticePeriod ||
+                applied.noticePeriod ||
+                "-",
+              preferedJobLocation:
+                candidate.professional?.preferedJobLocation ||
+                candidate.candidateProfessional?.preferedJobLocation ||
+                applied.candidateProfessional?.preferedJobLocation ||
+                candidate.preferedJobLocation ||
+                candidate.preferredLocation ||
+                applied.preferredLocation ||
+                "-",
+              skill:
+                candidate.professional?.skill ||
+                candidate.candidateProfessional?.skill ||
+                applied.candidateProfessional?.skill ||
+                candidate.skill ||
+                candidate.skills ||
+                applied.skill ||
+                applied.skills ||
+                "-",
             },
 
             // Education and Experience arrays
@@ -656,6 +770,85 @@ const SecondPage = ({
     }
   };
 
+  const isCandidateFavorited = (row) =>
+    Boolean(
+      row?.savedCandidates?.id ||
+        row?.savedCandidates?.candidateId ||
+        row?.saved_Candidates?.id
+    );
+
+  const updateFavoriteInLists = (candidateId, savedRecord) => {
+    const patchRow = (row) =>
+      row?.id === candidateId
+        ? { ...row, savedCandidates: savedRecord || null }
+        : row;
+
+    setCandidateList((prev) =>
+      Array.isArray(prev) ? prev.map(patchRow) : prev
+    );
+
+    if (Array.isArray(candidates?.results)) {
+      dispatch({
+        type: CandidateActions.SET_CANDIDATE,
+        payload: {
+          ...candidates,
+          results: candidates.results.map(patchRow),
+        },
+      });
+    }
+  };
+
+  const handleToggleFavorite = async (row) => {
+    if (!row?.id || auth?.user?.clients) return;
+
+    try {
+      const resp = await toggleFavoriteCandidateAPI({ candidateId: row.id });
+      if (resp?.msg && resp?.isSaved === undefined) {
+        tostifyError(resp.msg);
+        return;
+      }
+
+      updateFavoriteInLists(
+        row.id,
+        resp?.isSaved ? resp?.savedCandidate || { candidateId: row.id } : null
+      );
+      tostifySuccess(
+        resp?.isSaved ? "Added to favorites" : "Removed from favorites"
+      );
+    } catch (error) {
+      const apiMsg =
+        error?.response?.data?.msg ||
+        error?.message ||
+        "Could not update favorites";
+      tostifyError(apiMsg);
+    }
+  };
+
+  const renderFavoriteStar = (row, size = 17) => {
+    if (auth?.user?.clients) return null;
+
+    const favorited = isCandidateFavorited(row);
+    const starColor = themecolor || "#323D76";
+
+    return (
+      <span
+        style={{ cursor: "pointer", display: "inline-flex", alignItems: "center" }}
+        onClick={(e) => {
+          e.stopPropagation();
+          handleToggleFavorite(row);
+        }}
+        title={favorited ? "Remove from favorites" : "Add to favorites"}
+      >
+        <Star
+          size={size}
+          className="mx-1"
+          fill={favorited ? starColor : "none"}
+          stroke={favorited ? starColor : "#babfc7"}
+        />
+      </span>
+    );
+  };
+
   const getProfileCompletionBarColor = (pct) => {
     if (pct >= 100) return "success";
     if (pct > 80) return "info";
@@ -700,6 +893,7 @@ const SecondPage = ({
       cell: (row) => {
         return (
           <div div className="column-action d-flex align-items-center">
+            {renderFavoriteStar(row)}
             <span
               style={{ cursor: "pointer" }}
               onClick={async () => {
@@ -1514,10 +1708,21 @@ const SecondPage = ({
     if (experience?.length > 0)
       fm.append("experience", JSON.stringify(experience));
 
+    // Applied Candidates page: attach job so backend creates JobApplication link
+    if (isAppliedCandidates && jobId) {
+      fm.append("jobOpeningId", jobId);
+    }
+
     setLoading(true);
     await dispatch({
       type: CandidateActions.CREATE_CANDIDATE,
-      payload: { data: fm, setLoading, page: currentPage, perPage: perPage },
+      payload: {
+        data: fm,
+        setLoading,
+        page: currentPage,
+        perPage: perPage,
+        ...(isAppliedCandidates && jobId ? { jobId } : {}),
+      },
     });
   };
 
@@ -2811,6 +3016,7 @@ const SecondPage = ({
                                 marginLeft: "auto",
                               }}
                             >
+                              {renderFavoriteStar(result, 17)}
                               {auth?.user?.clients ? (
                                 result?.interview_request?.isdisabled == true ||
                                   count?.plan?.planName === "free" ||
@@ -3462,7 +3668,43 @@ const SecondPage = ({
                           >
                             {auth?.user?.clients ? null : (
                               <>
-                                {" "}
+                                <div
+                                  style={{
+                                    cursor: "pointer",
+                                    borderRadius: "50%",
+                                    backgroundColor: "white",
+                                    padding: "10px",
+                                    display: "flex",
+                                    justifyContent: "center",
+                                    alignItems: "center",
+                                    width: "40px",
+                                    height: "40px",
+                                    marginTop: "10px",
+                                  }}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleToggleFavorite(candidate);
+                                  }}
+                                  title={
+                                    isCandidateFavorited(candidate)
+                                      ? "Remove from favorites"
+                                      : "Add to favorites"
+                                  }
+                                >
+                                  <Star
+                                    size={25}
+                                    fill={
+                                      isCandidateFavorited(candidate)
+                                        ? themecolor || "#323D76"
+                                        : "none"
+                                    }
+                                    stroke={
+                                      isCandidateFavorited(candidate)
+                                        ? themecolor || "#323D76"
+                                        : "#babfc7"
+                                    }
+                                  />
+                                </div>
                                 <div
                                   style={{
                                     color: "#007bff",
