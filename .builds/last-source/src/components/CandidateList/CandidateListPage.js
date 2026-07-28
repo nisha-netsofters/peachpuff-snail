@@ -98,6 +98,7 @@ import jobcategoryActions from "./../../redux/jobCategory/actions";
 import industriesActions from "./../../redux/industries/actions";
 import WhatsappDialog from "../../components/Dialog/WhatsappDialog";
 import CandidateQuickTabs from "./CandidateQuickTabs";
+import { formatCommentDateTime } from "../Forms/Candidates/RecruiterInternalComments";
 import _ from "lodash";
 
 const canvasStyles = {
@@ -2213,6 +2214,63 @@ const SecondPage = ({
     ));
   };
 
+  const getClientVisibleComments = (candidate) => {
+    if (Array.isArray(candidate?.clientVisibleComments)) {
+      return candidate.clientVisibleComments.filter((item) => item?.comment);
+    }
+    if (candidate?.latestInternalComment?.comment) {
+      return [candidate.latestInternalComment];
+    }
+    return [];
+  };
+
+  const renderClientVisibleComments = (candidate) => {
+    if (!auth?.user?.clients) return null;
+
+    const comments = getClientVisibleComments(candidate);
+    if (!comments.length) return null;
+
+    return (
+      <div
+        style={{
+          marginTop: "12px",
+          paddingTop: "10px",
+          borderTop: "1px solid #eee",
+        }}
+      >
+        <strong style={{ fontSize: "13px", color: "#323D76" }}>
+          Recruiter Notes
+        </strong>
+        {comments.map((item) => (
+          <div
+            key={item.id || `${item.createdAt}-${item.comment}`}
+            style={{
+              marginTop: "8px",
+              padding: "10px 12px",
+              backgroundColor: "#f8f8fc",
+              borderRadius: "6px",
+            }}
+          >
+            <p
+              style={{
+                marginBottom: "4px",
+                whiteSpace: "pre-wrap",
+                fontSize: "13px",
+              }}
+            >
+              {item.comment}
+            </p>
+            <span style={{ fontSize: "12px", color: "#6e6b7b" }}>
+              - {item.authorName || "Recruiter"}
+              {" · "}
+              {formatCommentDateTime(item.createdAt)}
+            </span>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   const renderStatesTable = (candidate) => {
     const industryCategories =
       candidate?.industries_relation
@@ -3189,6 +3247,7 @@ const SecondPage = ({
                             }}
                           >
                             {renderStates(result)}{" "}
+                            {renderClientVisibleComments(result)}
                             <div>
                               <Collapse isOpen={isOpen[index]}>
                                 {renderStatesMore(result)}{" "}
@@ -3640,6 +3699,7 @@ const SecondPage = ({
                                 }}
                               >
                                 {renderStatesTable(candidate)}{" "}
+                                {renderClientVisibleComments(candidate)}
                               </CardBody>
                             </Row>
                           </Col>

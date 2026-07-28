@@ -10,28 +10,46 @@ import { useSkin } from "@hooks/useSkin";
 // ** Styles
 import "@styles/base/pages/page-misc.scss";
 
-// import unique from "../assets/images/logo/unique.png";
 import { useSelector } from "react-redux";
 
 const Error = () => {
-  const { user } = useSelector((state) => state.user);
+  const { user } = useSelector((state) => state.auth);
 
   // ** Hooks
   const { skin } = useSkin();
-  const slugId = localStorage.getItem("slug");
+  const slugId = localStorage.getItem("slug") || "uniqueworld";
+  const token = localStorage.getItem("token");
   const illustration = skin === "dark" ? "error-dark.svg" : "error.svg",
     source = require(`@src/assets/images/pages/${illustration}`);
-  const themecolor = localStorage.getItem("themecolor");
+  const themecolor = localStorage.getItem("themecolor") || "#323D76";
+
+  const getHomePath = () => {
+    if (
+      !token ||
+      token === "null" ||
+      token === "undefined" ||
+      !user?.role?.name
+    ) {
+      return "/login";
+    }
+    if (user.role.name === "Client") {
+      return `/${slugId}/candidate`;
+    }
+    if (user.role.name === "SuperAdmin") {
+      return "/superadmin/dashboard";
+    }
+    return `/${slugId}/dashboard`;
+  };
+
+  const homePath = getHomePath();
+  const isClient = user?.role?.name === "Client";
+
   return (
     <div className="misc-wrapper">
-      <a className="brand-logo" href="/">
+      <a className="brand-logo" href={homePath}>
         <Link
           className="brand-logo"
-          to={
-            user?.role?.name === "Client"
-              ? `/${slugId}/candidate`
-              : `/${slugId}/dashboard`
-          }
+          to={homePath}
           onClick={(e) => e.preventDefault()}
         ></Link>
       </a>
@@ -42,19 +60,14 @@ const Error = () => {
             Oops! 😖 The requested URL was not found on this server.
           </p>
           <Button
-            // tag={Link}
-            // to="/login"
-            // to="/uniqueworld/dashboard"
-            onClick={() => window.location.href = "/uniqueworld/dashboard"}
-            color="defult" 
+            onClick={() => {
+              window.location.href = homePath;
+            }}
+            color="defult"
             className="btn-sm-block mb-2"
             style={{ backgroundColor: themecolor, color: "white" }}
           >
-            {user?.role?.name === "Client" ? (
-              <>Back To Candidate</>
-            ) : (
-              <>Back to home</>
-            )}
+            {isClient ? <>Back To Candidate</> : <>Back to home</>}
           </Button>
           <img className="img-fluid" src={source} alt="Not authorized page" />
         </div>

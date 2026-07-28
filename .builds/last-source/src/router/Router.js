@@ -67,9 +67,11 @@ const Router = () => {
           route.layout === layout ||
           (route.layout === undefined && DefaultLayout === layout)
         ) {
-          if (user !== null) {
+          // Only filter by role when we have a real role; otherwise keep
+          // routes registered so PrivateRoute can send users to /login.
+          if (user?.role?.name) {
             if (
-              route.permission.includes(user?.role?.name) === true ||
+              route.permission.includes(user.role.name) === true ||
               route.meta?.authRoute === true
             ) {
               LayoutRoutes.push(route);
@@ -280,8 +282,15 @@ const Router = () => {
         {ResolveRoutes()}
         <Route
           path="*"
-          exact
           render={() => {
+            const token = localStorage.getItem("token");
+            if (
+              !token ||
+              token === "null" ||
+              token === "undefined"
+            ) {
+              return <Redirect to="/login" />;
+            }
             return <Error />;
           }}
         />

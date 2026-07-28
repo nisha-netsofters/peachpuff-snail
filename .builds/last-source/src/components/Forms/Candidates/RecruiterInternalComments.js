@@ -199,7 +199,7 @@ const RecruiterInternalComments = ({
       <Row className="gy-1">
         <Col xs={12}>
           <Label style={{ fontWeight: 600 }}>
-            Internal Comments
+            {isClient ? "Recruiter Notes" : "Internal Comments"}
             {isStaff ? " (Recruiter)" : ""}
           </Label>
         </Col>

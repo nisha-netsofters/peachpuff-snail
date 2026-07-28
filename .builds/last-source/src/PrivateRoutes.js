@@ -19,13 +19,18 @@ const PrivateRoute = ({ component: Component, ...rest }) => {
     (async () => {
       setLoading(true);
       setAgencyError(false); // Reset error state on route change
-      
+
       if (user?.role?.name !== "SuperAdmin" && params?.slug) {
         try {
           const resp = await getAgencyDetailBySlug(params?.slug);
 
-          if (resp?.error === "Your slug is not present in agency") {
-            setAgencyError(true);
+          if (resp?.msg === "invalid token or expired token") {
+            localStorage.clear();
+            window.localStorage.removeItem("persist:root");
+            persistor.pause();
+            setAgencyError("auth");
+          } else if (resp?.error === "Your slug is not present in agency") {
+            setAgencyError("slug");
           } else {
             dispatch({
               type: agencyActions.SET_AGENCY_STATE,
@@ -36,13 +41,13 @@ const PrivateRoute = ({ component: Component, ...rest }) => {
           }
         } catch (error) {
           console.error("Error fetching agency details:", error);
-          setAgencyError(true);
+          setAgencyError("slug");
         }
       }
-      
+
       setLoading(false);
     })();
-  }, [params?.slug, user?.role?.name, location.pathname ,dispatch]); // Add dependencies
+  }, [params?.slug, user?.role?.name, location.pathname, dispatch]); // Add dependencies
 
   if (
     token === null ||
@@ -56,7 +61,12 @@ const PrivateRoute = ({ component: Component, ...rest }) => {
     return <Redirect to="/login" />;
   }
 
-  if (agencyError) {
+  // Expired/invalid session → login (not the 404 page)
+  if (agencyError === "auth") {
+    return <Redirect to="/login" />;
+  }
+
+  if (agencyError === "slug") {
     return <Redirect to="/error" />;
   }
 

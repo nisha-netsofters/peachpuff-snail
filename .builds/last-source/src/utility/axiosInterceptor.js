@@ -65,8 +65,15 @@ apiCall.interceptors.response.use(
   async (resp) => {
     if (resp?.data?.msg === "invalid token or expired token") {
       localStorage.clear();
-        window.localStorage.removeItem('persist:root');
-        persistor.pause()
+      window.localStorage.removeItem("persist:root");
+      persistor.pause();
+      if (
+        typeof window !== "undefined" &&
+        !window.location.pathname.includes("/login")
+      ) {
+        window.location.href = "/login";
+      }
+      return resp.data;
     }
     if (resp?.data?.token) {
       const token = resp?.data?.token;

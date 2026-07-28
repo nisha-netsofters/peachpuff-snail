@@ -13,7 +13,8 @@ const initialState = {
 export const authReducer = (state = initialState, action) => {
   switch (action.type) {
     case actions.SET_STATE:
-      return action.payload;
+      // Merge so partial updates (e.g. isOpenInactivePopup) don't wipe user/token
+      return { ...state, ...action.payload };
     case actions.SET_AUTH_LOADING:
       return { ...state, isLoading: action.payload };
     default:

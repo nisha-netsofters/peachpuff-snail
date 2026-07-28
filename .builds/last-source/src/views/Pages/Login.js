@@ -58,13 +58,13 @@ const LoginCover = (props) => {
 
   useEffect(() => {
     if (token) {
-      const slugId = localStorage.getItem("slug");
+      const slugId = localStorage.getItem("slug") || "uniqueworld";
       if (user?.role?.name === "Client") {
-        props.history.push(slugId + "/candidate");
+        props.history.push(`/${slugId}/candidate`);
       } else if (user?.role?.name === "SuperAdmin") {
         props.history.push("/superadmin/dashboard");
       } else {
-        props.history.push(slugId + "/dashboard");
+        props.history.push(`/${slugId}/dashboard`);
       }
     }
   }, [token, user]);
