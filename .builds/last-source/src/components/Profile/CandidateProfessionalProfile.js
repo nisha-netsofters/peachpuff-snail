@@ -176,10 +176,6 @@ const CandidateProfessionalProfile = () => {
       if (candidate.stateId) fm.append("stateId", candidate.stateId);
       if (candidate.alternateMobile) fm.append("alternateMobile", candidate.alternateMobile);
       if (candidate.gender) fm.append("gender", candidate.gender);
-      if (candidate.whatsappMsg !== undefined) {
-        fm.append("whatsappMsg", candidate.whatsappMsg);
-      }
-
       // Add resume URL if it exists or was uploaded
       if (resumeUrl) {
         fm.append("resume", resumeUrl);

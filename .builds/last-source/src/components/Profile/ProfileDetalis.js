@@ -204,10 +204,6 @@ const ProfileDetails = () => {
           if (email) candidateFm.append("email", email);
           if (candidateProfile?.gender)
             candidateFm.append("gender", candidateProfile.gender);
-          if (candidateProfile?.whatsappMsg !== undefined) {
-            candidateFm.append("whatsappMsg", candidateProfile.whatsappMsg);
-          }
-
           if (candidateProfile?.street)
             candidateFm.append("street", candidateProfile.street);
           if (candidateProfile?.city)
