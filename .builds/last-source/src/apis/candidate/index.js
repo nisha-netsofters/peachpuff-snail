@@ -110,6 +110,11 @@ export const checkCandidatePublicAPI = async (payload) => {
   return await apiCall.post("/candidate/check", payload);
 };
 
+export const getPublicCandidateForApplyAPI = async (id, slug) => {
+  const q = slug ? `?slug=${encodeURIComponent(slug)}` : "";
+  return await apiCall.get(`/candidate/public-apply/${id}${q}`);
+};
+
 export const hiredCandidateforClients = async (payload) => {
   return await apiCall
     .post(

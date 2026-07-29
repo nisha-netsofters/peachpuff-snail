@@ -28,6 +28,7 @@ import {
   DropdownItem,
 } from "reactstrap";
 import actions from "../../redux/resume/action";
+import { resolveAssetUrl } from "../../utility/resolveAssetUrl";
 
 
 const STATUS_FLOW = ["Requested", "In Review", "Completed", "Rejected"];
@@ -113,29 +114,14 @@ const ResumeList = () => {
     setOpenId(null);
   };
 
-  const API_BASE_URL = process.env.REACT_APP_LOCAL_API_BASE_URL || "https://8624a2717158.ngrok-free.app/api/";
-
   const handleDownload = (row) => {
-   
-    const resumePath = row?.candidate?.resume;
-  
-    if (!resumePath) {
+    const url = resolveAssetUrl(row?.candidate?.resume);
+    if (!url) {
       console.log("No resume found for row:", row);
       return;
     }
-  
-    const url = resumePath.startsWith("http")
-      ? resumePath
-      : `${API_BASE_URL}${resumePath.startsWith("/") ? "" : "/"}${resumePath}`;
-  
-    const link = document.createElement("a");
-    link.href = url;
-    link.target = "_blank";
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
+    window.open(url, "_blank", "noopener,noreferrer");
   };
-  
 
   return (
     <div>

@@ -32,6 +32,7 @@ import {
   useParams,
 } from "react-router-dom/cjs/react-router-dom.min";
 import { getAgencyDetailBySlugPublic } from "../../apis/agency";
+import { getPublicCandidateForApplyAPI } from "../../apis/candidate";
 // import awsUploadAssets from '../../helper/awsUploadAssets'
 
 const canvasStyles = {
@@ -50,6 +51,7 @@ const PublicCandidate = () => {
   const location = useLocation().search;
   const jobOpeningId = new URLSearchParams(location).get("id");
   const userId = new URLSearchParams(location).get("user");
+  const editCandidateId = new URLSearchParams(location).get("cid");
   const getCandidateRes = useSelector((state) => state.candidate);
   const ref = useRef(null);
   const [candidate, setCandidate] = useState([]);
@@ -85,9 +87,38 @@ const PublicCandidate = () => {
         setagncyid(resp?.id);
       } else {
         history.push("/*");
+        return;
       }
       if (resp?.logo) {
         setLogo(resp?.logo);
+      }
+
+      // WhatsApp registration/edit link: /{slug}/candidate/apply?cid=...
+      if (editCandidateId) {
+        try {
+          const loaded = await getPublicCandidateForApplyAPI(
+            editCandidateId,
+            params?.slug
+          );
+          const data = loaded?.data || loaded;
+          if (data?.id) {
+            setCandidate({
+              ...data,
+              agencyId: resp?.id || data.agencyId,
+            });
+            setUpdate(true);
+            setVerified(true);
+            setDisabeled(false);
+            if (data.mobile) setMobile(String(data.mobile));
+            if (data.email) setEmail(String(data.email));
+            if (data.professional) setProfessional(data.professional);
+            if (Array.isArray(data.industries_relation)) {
+              setIndustries_relation(data.industries_relation);
+            }
+          }
+        } catch (err) {
+          toast.error("Could not load candidate for edit");
+        }
       }
     })();
   }, []);

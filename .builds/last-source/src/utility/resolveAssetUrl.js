@@ -22,9 +22,24 @@ export const resolveAssetUrl = (src) => {
   }
   if (
     trimmed.startsWith("blob:") ||
-    /^https?:\/\//i.test(trimmed) ||
     trimmed.startsWith("data:")
   ) {
+    return trimmed;
+  }
+
+  // Rewrite stale ngrok / wrong-host absolute URLs to current API host
+  if (/^https?:\/\//i.test(trimmed)) {
+    if (/ngrok-free\.app|ngrok\.io|ngrok\.app/i.test(trimmed)) {
+      try {
+        const parsed = new URL(trimmed);
+        const path = `${parsed.pathname}${parsed.search || ""}`;
+        if (path.startsWith("/uploads") || path.includes("/uploads/")) {
+          return `${getAssetBaseUrl().replace(/\/$/, "")}${path}`;
+        }
+      } catch (e) {
+        /* keep original */
+      }
+    }
     return trimmed;
   }
 
