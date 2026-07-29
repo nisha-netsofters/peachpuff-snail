@@ -14,7 +14,7 @@ import awsUploadAssets from "./../../../helper/awsUploadAssets";
 import actions from "../../../redux/fileUploadProgress.js/actions";
 import { ReactComponent as Cancel } from "../../../assets/images/x.svg";
 import { resolveAssetUrl } from "../../../utility/resolveAssetUrl";
-import { tostify } from "../../Tostify";
+import { tostify, tostifySuccess } from "../../Tostify";
 import { resolveIndianAddress } from "../../../utility/resolveIndianAddress";
 import apiCall from "../../../utility/axiosInterceptor";
 import {
@@ -24,13 +24,13 @@ import {
 import course from "../Course";
 
 const DEFAULT_API_CONFIG_ERROR =
-  "Please ask Super Admin to enable and configure OCR & AI in OCR & API Configuration (API Key + Model required for AI).";
+  "Resume auto-extraction is unavailable. Please ask your Super Admin to enable and configure OCR & API Configuration (AI API key and model are required).";
 
 const AI_VALIDATION_MESSAGES = {
   AI_API_KEY_INVALID:
-    "Invalid AI API Key. Please enter a valid API Key in Super Admin → OCR & API Configuration, then Save and try again.",
+    "Invalid AI API key. Please ask your Super Admin to update the API key in OCR & API Configuration, then try again.",
   AI_MODEL_INVALID:
-    "Invalid AI Model. Please set a valid Model in Super Admin → OCR & API Configuration.",
+    "Invalid AI model. Please ask your Super Admin to set a valid model in OCR & API Configuration.",
   AI_RATE_LIMIT:
     "AI service rate limit reached. Please wait a moment and try again.",
   API_CONFIG_NOT_SET: DEFAULT_API_CONFIG_ERROR,
@@ -108,10 +108,21 @@ const Attachment_File = ({
 
   useEffect(() => {
     let cancelled = false;
+    const MIN_CHECK_MS = 2500;
+
     const checkResumeApiConfig = async () => {
       setApiConfigChecking(true);
+      const startedAt = Date.now();
       const status = await fetchResumeExtractionStatus();
       if (cancelled) return;
+
+      const elapsed = Date.now() - startedAt;
+      const waitMore = Math.max(0, MIN_CHECK_MS - elapsed);
+      if (waitMore > 0) {
+        await new Promise((resolve) => setTimeout(resolve, waitMore));
+      }
+      if (cancelled) return;
+
       if (status && status.ready === true) {
         setApiConfigReady(true);
         setApiConfigError("");
@@ -212,7 +223,12 @@ const Attachment_File = ({
     setIsShowFileName(true);
 
     setApiConfigChecking(true);
+    const startedAt = Date.now();
     const latestStatus = await fetchResumeExtractionStatus();
+    const waitMore = Math.max(0, 2500 - (Date.now() - startedAt));
+    if (waitMore > 0) {
+      await new Promise((resolve) => setTimeout(resolve, waitMore));
+    }
     setApiConfigChecking(false);
     const isReady = latestStatus && latestStatus.ready === true;
     setApiConfigReady(!!isReady);
@@ -274,7 +290,9 @@ const Attachment_File = ({
       applyExtractedData(result.data || {}, file);
       setExtracted(true);
       setExtractError("");
-      tostify("Resume data extracted. Please review fields in next steps.");
+      tostifySuccess(
+        "✓ Resume data extracted successfully. Please review fields in next steps."
+      );
 
       // Persist file URL for final submit
       await awsUploadAssets(file, "resume", dispatch);
@@ -380,7 +398,7 @@ const Attachment_File = ({
               Upload a resume (PDF / JPG / PNG) to auto-fill candidate details.
               Review all fields in the next steps before submitting.
             </p>
-            {apiConfigReady === false && (
+            {!apiConfigChecking && apiConfigReady === false && (
               <div
                 className="mt-2 p-2 rounded"
                 style={{
@@ -416,7 +434,7 @@ const Attachment_File = ({
             )}
             {!extracting && !apiConfigChecking && (candidate?.resumeParsedAt || extracted) && (
               <div
-                className="mt-2 p-2 rounded"
+                className="mt-2 p-2 rounded d-flex align-items-center gap-2"
                 style={{
                   backgroundColor: "#d4edda",
                   border: "1px solid #c3e6cb",
@@ -425,7 +443,25 @@ const Attachment_File = ({
                   fontWeight: 600,
                 }}
               >
-                Auto Data Extracted — continue to review details
+                <span
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: 22,
+                    height: 22,
+                    borderRadius: "50%",
+                    backgroundColor: "#28a745",
+                    color: "#fff",
+                    fontSize: 14,
+                    lineHeight: 1,
+                    flexShrink: 0,
+                  }}
+                  aria-hidden="true"
+                >
+                  ✓
+                </span>
+                <span>Auto Data Extracted — continue to review details</span>
               </div>
             )}
           </div>

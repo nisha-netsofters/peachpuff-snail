@@ -45,7 +45,7 @@ const JobOpeningMatches = () => {
   const { isLoading, jobOpeningMatchCandidate, jobOpeningRow } = useSelector(
     (state) => state?.jobOpeningMatches
   );
-  const { currentPlan, currentSubscription, resumeCountFinishError } =
+  const { currentSubscription, resumeCountFinishError } =
     useSelector((state) => state?.subscription);
 
   const [page, setPage] = useState(1);
@@ -391,19 +391,21 @@ const JobOpeningMatches = () => {
   };
 
   const handleOpenResume = (row) => {
-    if (row?.saved_Candidates?.id) {
-      window.open(row?.resume);
-    } else {
-      if (
-        currentPlan?.price == null ||
-        currentPlan?.planName == "free" ||
-        currentPlan?.planFeature?.resume_download_count != -1
-      ) {
-        decreaseResumeDownload(user?.id, currentSubscription?.id, row);
-      } else {
-        decreaseResumeDownload(user?.id, currentSubscription?.id, row);
-      }
+    if (!row?.resume) {
+      return;
     }
+    if (row?.saved_Candidates?.id || row?.savedCandidates?.id) {
+      const url = row?.resume?.startsWith("http")
+        ? row.resume
+        : row.resume;
+      window.open(url, "_blank", "noopener,noreferrer");
+      return;
+    }
+    decreaseResumeDownload(
+      user?.id,
+      currentSubscription?.id || user?.subscriptionId || user?.subscription?.id,
+      row
+    );
   };
 
   const handlePerRowsChange = async (newPerPage, page) => {

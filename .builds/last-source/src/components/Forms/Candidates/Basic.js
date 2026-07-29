@@ -14,13 +14,13 @@ import {
 import course from "../Course";
 
 const DEFAULT_API_CONFIG_ERROR =
-  "Please ask Super Admin to enable and configure OCR & AI in OCR & API Configuration (API Key + Model required for AI).";
+  "Resume auto-extraction is unavailable. Please ask your Super Admin to enable and configure OCR & API Configuration (AI API key and model are required).";
 
 const AI_VALIDATION_MESSAGES = {
   AI_API_KEY_INVALID:
-    "Invalid AI API Key. Please enter a valid API Key in Super Admin → OCR & API Configuration, then Save and try again.",
+    "Invalid AI API key. Please ask your Super Admin to update the API key in OCR & API Configuration, then try again.",
   AI_MODEL_INVALID:
-    "Invalid AI Model. Please set a valid Model (e.g. gemini-3.5-flash) in Super Admin → OCR & API Configuration.",
+    "Invalid AI model. Please ask your Super Admin to set a valid model in OCR & API Configuration.",
   AI_RATE_LIMIT:
     "AI service rate limit reached. Please wait a moment and try again.",
   API_CONFIG_NOT_SET: DEFAULT_API_CONFIG_ERROR,
@@ -117,10 +117,19 @@ const Basic = ({
 
   useEffect(() => {
     let cancelled = false;
+    const MIN_CHECK_MS = 2500;
 
     const checkResumeApiConfig = async () => {
       setApiConfigChecking(true);
+      const startedAt = Date.now();
       const status = await fetchResumeExtractionStatus();
+      if (cancelled) return;
+
+      const elapsed = Date.now() - startedAt;
+      const waitMore = Math.max(0, MIN_CHECK_MS - elapsed);
+      if (waitMore > 0) {
+        await new Promise((resolve) => setTimeout(resolve, waitMore));
+      }
       if (cancelled) return;
 
       if (status && status.ready === true) {
@@ -148,7 +157,12 @@ const Basic = ({
 
     // Always re-check Super Admin OCR/AI config before extraction
     setApiConfigChecking(true);
+    const startedAt = Date.now();
     const latestStatus = await fetchResumeExtractionStatus();
+    const waitMore = Math.max(0, 2500 - (Date.now() - startedAt));
+    if (waitMore > 0) {
+      await new Promise((resolve) => setTimeout(resolve, waitMore));
+    }
     setApiConfigChecking(false);
     const isReady = latestStatus && latestStatus.ready === true;
     setApiConfigReady(!!isReady);
@@ -293,7 +307,7 @@ const Basic = ({
           <Col xs={12} className="mb-2">
             <h4 style={{ color: themeColor, fontWeight: 600, marginBottom: "4px" }}>Resume Upload with Auto Data Extraction</h4>
             <p className="text-muted mb-1" style={{ fontSize: "13px" }}>Upload a resume (PDF / JPG / PNG) to auto-fill candidate details. Review all fields before saving.</p>
-            {apiConfigReady === false && (
+            {!apiConfigChecking && apiConfigReady === false && (
               <div
                 className="mt-2 p-2 rounded"
                 style={{

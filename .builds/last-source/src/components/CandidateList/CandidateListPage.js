@@ -756,19 +756,27 @@ const SecondPage = ({
   };
 
   const handleOpenResume = (row) => {
-    if (isSavedCandidates || row?.saved_Candidates?.id) {
-      openCandidateResume(row?.resume);
-    } else {
-      if (
-        currentPlan?.price == null ||
-        currentPlan?.planName == "free" ||
-        currentPlan?.planFeature?.resume_download_count != -1
-      ) {
-        decreaseResumeDownload(auth?.user?.id, currentSubscription?.id, row);
-      } else {
-        decreaseResumeDownload(auth?.user?.id, currentSubscription?.id, row);
-      }
+    if (!hasValidResume(row?.resume)) {
+      tostify("Resume file not available");
+      return;
     }
+
+    // Already saved/viewed → open directly
+    if (isSavedCandidates || row?.saved_Candidates?.id || row?.savedCandidates?.id) {
+      openCandidateResume(row?.resume);
+      return;
+    }
+
+    const userId = auth?.user?.id;
+    const subscriptionId =
+      currentSubscription?.id || auth?.user?.subscriptionId || auth?.user?.subscription?.id;
+
+    if (!userId) {
+      tostify("Please login again to view resume");
+      return;
+    }
+
+    decreaseResumeDownload(userId, subscriptionId, row);
   };
 
   const isCandidateFavorited = (row) =>

@@ -501,9 +501,12 @@ const TemplateEasyEditor = ({ api, onChangeBodyParams, onUploadImage }) => {
       const url = await onUploadImage(file);
       if (url) {
         updateImage({ matchType: "input", inputValue: url });
-        if (/^https:\/\//i.test(url) && !/localhost|127\.0\.0\.1/i.test(url)) {
-          tostifySuccess("Public image URL set");
+        const isPublicHttps =
+          /^https:\/\//i.test(url) && !/localhost|127\.0\.0\.1/i.test(url);
+        if (isPublicHttps) {
+          tostifySuccess("Image saved");
         } else {
+          // Only warn on local dev — live always rewrites to public API host
           tostify(
             "Local image saved — WhatsApp needs a public https URL. Paste CDN link above, or send will use a default public image."
           );
@@ -519,7 +522,7 @@ const TemplateEasyEditor = ({ api, onChangeBodyParams, onUploadImage }) => {
 
   const selectedImgName = (() => {
     const link = ui.image.inputValue || "";
-    if (!link || ui.image.matchType !== "input") return "";
+    if (!link) return "";
     try {
       return decodeURIComponent(link.substring(link.lastIndexOf("/") + 1));
     } catch (err) {
@@ -592,64 +595,43 @@ const TemplateEasyEditor = ({ api, onChangeBodyParams, onUploadImage }) => {
           <h5 className="mt-2 mb-1">Image</h5>
           <hr className="mt-0 mb-1" />
           <Row className="align-items-end">
-            <Col md="6">
+            <Col md="4">
               <FormGroup>
                 <Label>Header Image source</Label>
-                <Input
-                  type="select"
-                  value={ui.image.matchType}
-                  onChange={(e) => updateImage({ matchType: e.target.value })}
-                >
-                  <option value="input">Public URL / Select img</option>
-                  <option value="image">Candidate Image</option>
-                  <option value="resume">Resume URL</option>
+                <Input type="select" value="input" disabled>
+                  <option value="input">Select img</option>
                 </Input>
               </FormGroup>
             </Col>
-            <Col md="6">
-              {ui.image.matchType === "input" ? (
-                <FormGroup>
-                  <Label>Public https image URL</Label>
+            <Col md="8">
+              <FormGroup>
+                <Label>Image URL</Label>
+                <Input
+                  className="mb-50"
+                  value={ui.image.inputValue || ""}
+                  onChange={(e) =>
+                    updateImage({
+                      matchType: "input",
+                      inputValue: e.target.value,
+                    })
+                  }
+                  placeholder="https://… or choose file below"
+                />
+                <div className="d-flex align-items-center" style={{ gap: 8 }}>
                   <Input
-                    className="mb-50"
-                    value={ui.image.inputValue || ""}
-                    onChange={(e) =>
-                      updateImage({
-                        matchType: "input",
-                        inputValue: e.target.value,
-                      })
-                    }
-                    placeholder="https://cdn.example.com/banner.jpg"
+                    type="file"
+                    accept="image/png,image/jpeg,image/jpg,image/webp"
+                    disabled={uploadingImg}
+                    onChange={handleSelectImg}
                   />
-                  <div className="d-flex align-items-center" style={{ gap: 8 }}>
-                    <Input
-                      type="file"
-                      accept="image/png,image/jpeg,image/jpg,image/webp"
-                      disabled={uploadingImg}
-                      onChange={handleSelectImg}
-                    />
-                    {uploadingImg ? <Spinner size="sm" /> : null}
-                  </div>
-                  {selectedImgName ? (
-                    <small className="text-muted d-block mt-50">
-                      Selected: {selectedImgName}
-                    </small>
-                  ) : null}
-                 
-                </FormGroup>
-              ) : (
-                <FormGroup>
-                  <Label>Mapped to</Label>
-                  <Input
-                    disabled
-                    value={MATCH_TO_PLACEHOLDER[ui.image.matchType] || ""}
-                  />
+                  {uploadingImg ? <Spinner size="sm" /> : null}
+                </div>
+                {selectedImgName ? (
                   <small className="text-muted d-block mt-50">
-                    Candidate/resume URL pan public https hovi joiye; nahi to
-                    fallback image use thase.
+                    Selected: {selectedImgName}
                   </small>
-                </FormGroup>
-              )}
+                ) : null}
+              </FormGroup>
             </Col>
           </Row>
         </>
@@ -662,7 +644,6 @@ const Msg = () => {
   const [apis, setApis] = useState([createEmptyApi(0)]);
   const [openFaq, setOpenFaq] = useState({ config: true, logs: true });
   const [openApiIds, setOpenApiIds] = useState([]);
-  const [openAdvanced, setOpenAdvanced] = useState({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -739,17 +720,6 @@ const Msg = () => {
     );
   };
 
-  const updateApiPair = (apiId, listKey, index, field, value) => {
-    setApis((prev) =>
-      prev.map((api) => {
-        if (api.id !== apiId) return api;
-        const list = [...(api[listKey] || [])];
-        list[index] = { ...list[index], [field]: value };
-        return { ...api, [listKey]: list };
-      })
-    );
-  };
-
   const handleAddApi = () => {
     const next = createEmptyApi(apis.length);
     setApis((prev) => [...prev, next]);
@@ -823,11 +793,21 @@ const Msg = () => {
       throw new Error(resp?.error || "Upload failed");
     }
     // Prefer absolute URL for WhatsApp header image
-    const absolute =
+    let absolute =
       resolveAssetUrl(resp.url) ||
       (String(resp.url).startsWith("http")
         ? resp.url
         : `${String(SERVER_URL).replace(/\/api\/?$/, "")}${resp.url}`);
+    // Live site: rewrite accidental localhost URLs to public API host
+    const apiHost = String(SERVER_URL).replace(/\/api\/?$/, "");
+    if (
+      absolute &&
+      /localhost|127\.0\.0\.1/i.test(absolute) &&
+      !/localhost|127\.0\.0\.1/i.test(apiHost)
+    ) {
+      const path = absolute.replace(/^https?:\/\/[^/]+/i, "");
+      absolute = `${apiHost}${path.startsWith("/") ? path : `/${path}`}`;
+    }
     return absolute;
   };
 
@@ -1013,10 +993,6 @@ const Msg = () => {
           <CardBody className="pt-2 px-0">
             {apis.map((api, apiIndex) => {
               const isOpen = openApiIds.includes(api.id);
-              const securityHeader =
-                (api.headers || []).find((h) =>
-                  /security|authorization|api-?key/i.test(h.key || "")
-                ) || null;
 
               return (
                 <div key={api.id} className="mb-1" style={{ marginLeft: 4 }}>
@@ -1130,141 +1106,6 @@ const Msg = () => {
                         }
                         onUploadImage={handleUploadImage}
                       />
-
-                      {/* Advanced — technical fields hidden by default */}
-                      <div
-                        className="d-flex align-items-center mt-2 mb-1"
-                        style={{ cursor: "pointer" }}
-                        onClick={() =>
-                          setOpenAdvanced((prev) => ({
-                            ...prev,
-                            [api.id]: !prev[api.id],
-                          }))
-                        }
-                        role="button"
-                        tabIndex={0}
-                        onKeyDown={(e) =>
-                          e.key === "Enter" &&
-                          setOpenAdvanced((prev) => ({
-                            ...prev,
-                            [api.id]: !prev[api.id],
-                          }))
-                        }
-                      >
-                        {openAdvanced[api.id] ? (
-                          <ChevronDown size={16} className="mr-50" />
-                        ) : (
-                          <ChevronRight size={16} className="mr-50" />
-                        )}
-                        <strong>Advanced (API URL / Headers)</strong>
-                      </div>
-                      <Collapse isOpen={Boolean(openAdvanced[api.id])}>
-                        <Row>
-                          <Col md="8">
-                            <FormGroup>
-                              <Label>API URL</Label>
-                              <Input
-                                value={api.apiUrl}
-                                onChange={(e) =>
-                                  updateApi(api.id, "apiUrl", e.target.value)
-                                }
-                              />
-                            </FormGroup>
-                          </Col>
-                          <Col md="2">
-                            <FormGroup>
-                              <Label>Recipient key</Label>
-                              <Input
-                                value={api.recipientKey}
-                                onChange={(e) =>
-                                  updateApi(
-                                    api.id,
-                                    "recipientKey",
-                                    e.target.value
-                                  )
-                                }
-                              />
-                            </FormGroup>
-                          </Col>
-                          <Col md="2">
-                            <FormGroup>
-                              <Label>Country code</Label>
-                              <Input
-                                value={api.countryCodePrefix}
-                                onChange={(e) =>
-                                  updateApi(
-                                    api.id,
-                                    "countryCodePrefix",
-                                    e.target.value
-                                  )
-                                }
-                              />
-                            </FormGroup>
-                          </Col>
-                          <Col md="4">
-                            <FormGroup>
-                              <Label>WhatsApp param format</Label>
-                              <Input
-                                type="select"
-                                value={api.parameterMode || "auto"}
-                                onChange={(e) =>
-                                  updateApi(
-                                    api.id,
-                                    "parameterMode",
-                                    e.target.value
-                                  )
-                                }
-                              >
-                                <option value="auto">
-                                  Auto (recommended)
-                                </option>
-                                <option value="positional">
-                                  {"Positional ({1}, {2} — no names)"}
-                                </option>
-                                <option value="named">
-                                  Named (parameter_name)
-                                </option>
-                              </Input>
-                              <small className="text-muted">
-                                Auto = cURL jevu (body_1 names keep). Image
-                                localhost hoy to public fallback use thase.
-                              </small>
-                            </FormGroup>
-                          </Col>
-                        </Row>
-                        {securityHeader ? (
-                          <FormGroup>
-                            <Label>{securityHeader.key}</Label>
-                            <Input
-                              type="password"
-                              value={securityHeader.value}
-                              onChange={(e) => {
-                                const idx = (api.headers || []).findIndex(
-                                  (h) => h.key === securityHeader.key
-                                );
-                                if (idx >= 0) {
-                                  updateApiPair(
-                                    api.id,
-                                    "headers",
-                                    idx,
-                                    "value",
-                                    e.target.value
-                                  );
-                                }
-                              }}
-                            />
-                          </FormGroup>
-                        ) : null}
-                        <small className="text-muted d-block mb-1">
-                          Template:{" "}
-                          {getParamValue(api.bodyParams, "template.name") || "—"}{" "}
-                          /{" "}
-                          {getParamValue(
-                            api.bodyParams,
-                            "template.language.code"
-                          ) || "—"}
-                        </small>
-                      </Collapse>
                     </div>
                   </Collapse>
                 </div>
