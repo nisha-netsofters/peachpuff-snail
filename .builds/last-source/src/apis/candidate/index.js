@@ -17,9 +17,24 @@ export const getCandidateAPI = async (payload) => {
     });
 };
 export const toggleFavoriteCandidateAPI = async (payload) => {
-  return await apiCall
-    .post("/candidate/toggle-favorite", payload)
-    .then((res) => res);
+  // Try primary + aliases (live Hostinger sometimes misses one registered path)
+  const paths = [
+    "/candidate/toggle-favorite",
+    "/candidate/favorite",
+    "/candidates/toggle-favorite",
+    "/v2/candidate/toggle-favorite",
+  ];
+  let lastErr;
+  for (const path of paths) {
+    try {
+      return await apiCall.post(path, payload);
+    } catch (err) {
+      lastErr = err;
+      const status = err?.response?.status;
+      if (status !== 404) throw err;
+    }
+  }
+  throw lastErr;
 };
 
 export const getSavedCandidateAPI = async (payload) => {
