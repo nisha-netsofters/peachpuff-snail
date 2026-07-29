@@ -409,8 +409,8 @@ const JobMatches = () => {
       if (candidate.stateId) fm.append("stateId", candidate.stateId);
       if (candidate.alternateMobile) fm.append("alternateMobile", candidate.alternateMobile);
       if (candidate.gender) fm.append("gender", candidate.gender);
-      if (candidate.whatsappMsg !== undefined) {
-        fm.append("whatsappMsg", candidate.whatsappMsg);
+      if (candidate.certifications) {
+        fm.append("certifications", candidate.certifications);
       }
 
       // Handle resume upload if a new file is selected
