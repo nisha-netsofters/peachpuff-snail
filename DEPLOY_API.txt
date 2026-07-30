@@ -1,1 +1,7 @@
 production-api=steelblue-goshawk 2026-07-28T12:20:58.2787700+05:30
+
+Git-pull-only deploy flow:
+1) Build locally from `.builds/last-source`
+2) Run `powershell -ExecutionPolicy Bypass -File .\prepare-gitpull-deploy.ps1`
+3) Commit + push updated root build files
+4) Live server only runs `git pull`
