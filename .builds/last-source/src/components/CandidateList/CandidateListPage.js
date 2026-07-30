@@ -834,8 +834,6 @@ const SecondPage = ({
   };
 
   const renderFavoriteStar = (row, size = 17) => {
-    // Favorites star hidden from UI (backend still supported)
-    return null;
     if (auth?.user?.clients) return null;
 
     const favorited = isCandidateFavorited(row);
@@ -3738,6 +3736,43 @@ const SecondPage = ({
                           >
                             {auth?.user?.clients ? null : (
                               <>
+                                <div
+                                  style={{
+                                    cursor: "pointer",
+                                    borderRadius: "50%",
+                                    backgroundColor: "white",
+                                    padding: "10px",
+                                    display: "flex",
+                                    justifyContent: "center",
+                                    alignItems: "center",
+                                    width: "40px",
+                                    height: "40px",
+                                    marginTop: "10px",
+                                  }}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleToggleFavorite(candidate);
+                                  }}
+                                  title={
+                                    isCandidateFavorited(candidate)
+                                      ? "Remove from favorites"
+                                      : "Add to favorites"
+                                  }
+                                >
+                                  <Star
+                                    size={25}
+                                    fill={
+                                      isCandidateFavorited(candidate)
+                                        ? themecolor || "#323D76"
+                                        : "none"
+                                    }
+                                    stroke={
+                                      isCandidateFavorited(candidate)
+                                        ? themecolor || "#323D76"
+                                        : "#babfc7"
+                                    }
+                                  />
+                                </div>
                                 <div
                                   style={{
                                     color: "#007bff",
