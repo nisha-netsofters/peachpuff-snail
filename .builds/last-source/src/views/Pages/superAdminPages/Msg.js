@@ -51,8 +51,8 @@ const MATCH_OPTIONS = [
   { label: "City", value: "city" },
   { label: "Candidate Image", value: "image" },
   { label: "Resume URL", value: "resume" },
+  { label: "Candidate Profile Link", value: "profile_link" },
   { label: "Unfilled Fields", value: "unfilled_fields" },
-  { label: "Candidate Edit Link", value: "edit_link" },
   { label: "Registration Page Link", value: "registration_link" },
 ];
 
@@ -66,8 +66,9 @@ const MATCH_TO_PLACEHOLDER = {
   image: "{{image}}",
   resume: "{{resume}}",
   unfilled_fields: "{{unfilled_fields}}",
-  edit_link: "{{edit_link}}",
   profile_link: "{{profile_link}}",
+  candidate_profile_link: "{{candidate_profile_link}}",
+  edit_link: "{{edit_link}}",
   registration_link: "{{registration_link}}",
 };
 
