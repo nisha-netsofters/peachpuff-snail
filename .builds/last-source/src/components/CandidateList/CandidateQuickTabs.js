@@ -9,7 +9,8 @@ export const CANDIDATE_QUICK_TABS = [
   { id: "selected", label: "Selected" },
   { id: "rejected", label: "Rejected" },
   { id: "hold", label: "Hold" },
-  { id: "favorites", label: "Favorites" },
+  // Favorites tab hidden from UI (backend still supported)
+  // { id: "favorites", label: "Favorites" },
 ];
 
 const CandidateQuickTabs = ({
