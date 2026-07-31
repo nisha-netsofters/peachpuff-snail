@@ -752,9 +752,18 @@ const JobOpening = () => {
   const jobOpeningCreateHandler = async () => {
     setLoading(true);
     const fm = new FormData();
-    for (const key in jobOpening) {
-      if (jobOpening[key] !== undefined && jobOpening[key] !== null) {
-        fm.append(key, jobOpening[key]);
+    // Keep salary matching fields in sync with single Salary input
+    const salaryNum = Number(jobOpening?.salary || jobOpening?.salaryRangeStart || 0);
+    const payload = {
+      ...jobOpening,
+      salaryRangeStart:
+        jobOpening?.salaryRangeStart || (salaryNum > 0 ? salaryNum : 0),
+      salaryRangeEnd:
+        jobOpening?.salaryRangeEnd || (salaryNum > 0 ? salaryNum : 0),
+    };
+    for (const key in payload) {
+      if (payload[key] !== undefined && payload[key] !== null) {
+        fm.append(key, payload[key]);
       }
     }
     fm.append("userId", loginUser?.id);
@@ -774,8 +783,16 @@ const JobOpening = () => {
   const jobOpeningUpdateHandler = async () => {
     setLoading(true);
     const fm = new FormData();
-    for (const key in jobOpening) {
-      fm.append(key, jobOpening[key]);
+    const salaryNum = Number(jobOpening?.salary || jobOpening?.salaryRangeStart || 0);
+    const payload = {
+      ...jobOpening,
+      salaryRangeStart:
+        jobOpening?.salaryRangeStart || (salaryNum > 0 ? salaryNum : 0),
+      salaryRangeEnd:
+        jobOpening?.salaryRangeEnd || (salaryNum > 0 ? salaryNum : 0),
+    };
+    for (const key in payload) {
+      fm.append(key, payload[key]);
     }
     fm.delete("hotvacancy");
     await dispatch({
@@ -791,6 +808,8 @@ const JobOpening = () => {
     const error = false;
     if (!String(jobOpening?.designation || "").trim())
       return tostify("Please Enter Job Title", error);
+    if (!String(jobOpening?.jobCategoryId || "").trim())
+      return tostify("Please Select Job Category", error);
     return error;
   };
 

@@ -47,11 +47,13 @@ const JobOpening = ({
   canAssignRecruiter = false,
 }) => {
   const industries = useSelector((state) => state.industries);
+  const jobCategories = useSelector((state) => state?.jobCategory?.results);
   const authUser = useSelector((state) => state.auth.user);
   const themecolor = localStorage.getItem("themecolor");
 
   const [focus, setIsfocus] = useState(null);
   const [selectIndustries, setSelectIndustries] = useState(null);
+  const [selectJobCategory, setSelectJobCategory] = useState(null);
   const [experience, setExperience] = useState(null);
   const [employmentType, setEmploymentType] = useState(null);
   const [qualification, setQualification] = useState(null);
@@ -100,6 +102,22 @@ const JobOpening = ({
         });
       }
     }
+    if (jobOpening?.jobCategoryId && jobCategories?.length) {
+      const found = jobCategories.find(
+        (j) => j.id === jobOpening.jobCategoryId || j._id === jobOpening.jobCategoryId
+      );
+      if (found) {
+        setSelectJobCategory({
+          label: found.jobCategory,
+          value: found.id || found._id,
+        });
+      } else if (jobOpening?.jobCategory?.jobCategory) {
+        setSelectJobCategory({
+          label: jobOpening.jobCategory.jobCategory,
+          value: jobOpening.jobCategoryId,
+        });
+      }
+    }
     if (jobOpening?.minExperienceYears) {
       const found = experienceOptions.find(
         (o) => o.value === jobOpening.minExperienceYears
@@ -144,7 +162,7 @@ const JobOpening = ({
     } else {
       setStatus(statusOptions.find((o) => o.value === "open"));
     }
-  }, [jobOpening?.id, industries]);
+  }, [jobOpening?.id, industries, jobCategories]);
 
   useEffect(() => {
     if (jobOpening?.recruiterId && assignableUsers?.length) {
@@ -268,6 +286,29 @@ const JobOpening = ({
             onChange={(e) => {
               setSelectIndustries(e);
               setJobOpening({ ...jobOpening, industriesId: e.value });
+            }}
+          />
+        </Col>
+
+        <Col lg={6} xs={12} xl={4}>
+          <Label>
+            Job Category <span style={{ color: "red" }}>*</span>
+          </Label>
+          <Select
+            isDisabled={isRecruiter}
+            id="jobCategoryId"
+            value={selectJobCategory}
+            placeholder="Select Job Category"
+            options={(jobCategories || []).map((ele) => ({
+              label: ele?.jobCategory,
+              value: ele?.id || ele?._id,
+            }))}
+            className="react-select"
+            classNamePrefix="select"
+            theme={selectThemeColors}
+            onChange={(e) => {
+              setSelectJobCategory(e);
+              setJobOpening({ ...jobOpening, jobCategoryId: e?.value || "" });
             }}
           />
         </Col>
