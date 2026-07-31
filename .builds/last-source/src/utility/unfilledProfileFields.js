@@ -79,6 +79,16 @@ export const CANDIDATE_FIELD_CHECKS = [
     get: (c) => c?.professional?.designation || c?.designation,
   },
   {
+    key: "jobCategory",
+    label: "Job Category",
+    section: "Professional Information",
+    get: (c) =>
+      c?.professional?.jobCategoryId ||
+      c?.professional?.jobCategory ||
+      c?.jobCategoryId ||
+      c?.jobCategory,
+  },
+  {
     key: "noticePeriod",
     label: "Notice Period",
     section: "Professional Information",

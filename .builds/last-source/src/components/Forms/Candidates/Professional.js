@@ -564,6 +564,7 @@ const Professional = ({
                         className="react-select"
                         classNamePrefix="select"
                         theme={selectThemeColors}
+                        styles={getUnfilledSelectStyles(isUnfilled("jobCategory"))}
                         onChange={(e) => {
                           setJobCat(e);
                           setFieldValue("jobCategoryId", e.value);
