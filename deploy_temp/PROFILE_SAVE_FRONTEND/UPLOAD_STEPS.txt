@@ -1,0 +1,10 @@
+﻿LIVE SAVE FIX - FRONTEND
+
+1) Upload this folder contents into public_html/ (overwrite index.html + static/)
+   OR: after git push, on live: cd public_html && git pull
+
+2) Also upload BACKEND package PROFILE_SAVE_BACKEND into nodejs/
+   (models-v2/*.js + tmp/restart.txt) — REQUIRED for Current Company to persist
+
+3) Hard refresh Ctrl+Shift+R
+4) Fill Current Company -> Save -> refresh -> value should remain
