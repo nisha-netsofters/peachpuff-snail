@@ -1,6 +1,6 @@
 // Candidate self-profile: professional information section
 // Uses existing Candidates -> Professional form but scoped for logged-in candidate
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { CardBody, Row, Col, Button, Input, Label, Alert } from "reactstrap";
 import { useSelector, useDispatch } from "react-redux";
 import Professional from "../Forms/Candidates/Professional";
@@ -38,6 +38,8 @@ const CandidateProfessionalProfile = () => {
   const [resumeFile, setResumeFile] = useState(null);
   const [isResumeUploading, setIsResumeUploading] = useState(false);
   const [showResumeFileName, setShowResumeFileName] = useState(true);
+  // Latest Formik professional values (avoids save race with useEffect sync)
+  const latestProfessionalValuesRef = useRef({});
 
   // Fetch candidate profile data on mount
   useEffect(() => {
@@ -58,7 +60,7 @@ const CandidateProfessionalProfile = () => {
 
   // Populate candidate data when profile is loaded
   useEffect(() => {
-    if (candidateProfile && candidateProfile._id) {
+    if (candidateProfile && (candidateProfile.id || candidateProfile._id)) {
       const professionalData = candidateProfile?.professional || {};
       const industriesRelation = candidateProfile?.industries_relation || [];
 
@@ -82,11 +84,11 @@ const CandidateProfessionalProfile = () => {
       const ensureString = (val) => (val !== null && val !== undefined ? String(val) : "");
 
       // Set candidate data with professional information
-      // Ensure all professional fields are properly mapped and are strings where needed
+      // Prefer business `id` (update API uses Candidates.updateOne({ id }))
       setCandidate({
-        id: candidateProfile._id || candidateProfile.id,
-        _id: candidateProfile._id,
         ...candidateProfile,
+        id: candidateProfile.id || candidateProfile._id,
+        _id: candidateProfile._id,
         professional: {
           ...professionalData,
           // Ensure all fields are strings for form validation
@@ -95,6 +97,9 @@ const CandidateProfessionalProfile = () => {
           field: ensureString(professionalData.field),
           designation: ensureString(professionalData.designation),
           currentEmployer: ensureString(professionalData.currentEmployer),
+          currentCompany: ensureString(
+            professionalData.currentCompany || professionalData.currentEmployer
+          ),
           currentSalary: ensureString(professionalData.currentSalary),
           expectedsalary: ensureString(professionalData.expectedsalary || professionalData.expectedSalary),
           noticePeriod: ensureString(professionalData.noticePeriod),
@@ -114,6 +119,7 @@ const CandidateProfessionalProfile = () => {
           jobCategory: professionalData.jobCategory || {},
         },
       });
+      latestProfessionalValuesRef.current = {};
     }
   }, [candidateProfile]);
 
@@ -167,7 +173,9 @@ const CandidateProfessionalProfile = () => {
 
       // Prepare FormData similar to how it's done in CandidateListPage
       const fm = new FormData();
-      const candidateId = candidate.id || candidate._id;
+      // Always use business candidate id for update API (`Candidates.updateOne({ id })`)
+      const candidateId =
+        candidateProfile?.id || candidate.id || candidate._id;
 
       // Add basic candidate fields (preserve existing data)
       if (candidate.firstname) fm.append("firstname", candidate.firstname);
@@ -190,21 +198,47 @@ const CandidateProfessionalProfile = () => {
         fm.append("resume", resumeUrl);
       }
 
-      // Professional data should be sent as JSON string
-      if (candidate.professional) {
-        const professionalPayload = { ...candidate.professional };
-
-        // Backend likely expects 'jobCategory' to be the ID string, not 'jobCategoryId'
-        // If we have jobCategoryId, assign it to jobCategory for the payload
-        if (professionalPayload.jobCategoryId) {
-          professionalPayload.jobCategory = professionalPayload.jobCategoryId;
-        } else if (typeof professionalPayload.jobCategory === 'object') {
-          // If jobCategory is an object, try to extract the ID
-          professionalPayload.jobCategory = professionalPayload.jobCategory.id || professionalPayload.jobCategory._id;
+      // Merge latest Formik values so save is not missing the last typed fields.
+      // Skip empty Formik values so we never wipe already-saved fields.
+      const formikProfessional = latestProfessionalValuesRef.current || {};
+      const cleanedFormik = {};
+      Object.keys(formikProfessional).forEach((key) => {
+        const val = formikProfessional[key];
+        if (val === undefined || val === null) return;
+        if (val === "Current Monthly Salary + 20%") return;
+        if (key === "jobCategory") return;
+        if (typeof val === "string" && !val.trim()) return;
+        cleanedFormik[key] = val;
+      });
+      const professionalPayload = {
+        ...(candidate.professional || {}),
+        ...cleanedFormik,
+      };
+      // Drop UI-only placeholders
+      Object.keys(professionalPayload).forEach((key) => {
+        if (professionalPayload[key] === "Current Monthly Salary + 20%") {
+          delete professionalPayload[key];
         }
+      });
 
-        fm.append("professional", JSON.stringify(professionalPayload));
+      // Backend expects 'jobCategory' to be the ID string when possible
+      if (professionalPayload.jobCategoryId) {
+        professionalPayload.jobCategory = professionalPayload.jobCategoryId;
+      } else if (typeof professionalPayload.jobCategory === "object") {
+        professionalPayload.jobCategory =
+          professionalPayload.jobCategory?.id ||
+          professionalPayload.jobCategory?._id ||
+          professionalPayload.jobCategory;
       }
+
+      // Keep employer/company aliases in sync for older readers
+      if (professionalPayload.currentEmployer && !professionalPayload.currentCompany) {
+        professionalPayload.currentCompany = professionalPayload.currentEmployer;
+      } else if (professionalPayload.currentCompany && !professionalPayload.currentEmployer) {
+        professionalPayload.currentEmployer = professionalPayload.currentCompany;
+      }
+
+      fm.append("professional", JSON.stringify(professionalPayload));
 
       // Industries relation should be sent as JSON string
       if (candidate.industries_relation && candidate.industries_relation.length > 0) {
@@ -236,6 +270,16 @@ const CandidateProfessionalProfile = () => {
           refreshProfile: true, // Flag to refresh profile instead of candidate list
         },
       });
+
+      // Optimistically keep local form state with what we just saved
+      setCandidate((prev) => ({
+        ...prev,
+        id: candidateId,
+        professional: {
+          ...(prev.professional || {}),
+          ...professionalPayload,
+        },
+      }));
 
       // Reset resume file state after successful save
       setResumeFile(null);
@@ -467,6 +511,9 @@ const CandidateProfessionalProfile = () => {
             isDisabledAllFields={false}
             highlightUnfilled
             unfilledKeys={unfilledKeys}
+            onProfessionalValuesChange={(vals) => {
+              latestProfessionalValuesRef.current = vals || {};
+            }}
           />
 
           {/* Single Save button for both sections */}

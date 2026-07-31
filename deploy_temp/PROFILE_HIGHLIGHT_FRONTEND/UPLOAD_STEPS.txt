@@ -1,0 +1,12 @@
+﻿LIVE FIX: git pull of SOURCE only is not enough.
+
+Live site serves: public_html/index.html + public_html/static/
+NOT: .builds/last-source/src/
+
+Option A (git-pull deploy):
+1. Local: commit + push the built root files (index.html, static/, asset-manifest.json)
+2. Live: cd public_html && git pull
+3. Hard refresh browser (Ctrl+Shift+R)
+
+Option B (manual upload):
+Upload everything in this folder into public_html/ (overwrite index.html + static/)
