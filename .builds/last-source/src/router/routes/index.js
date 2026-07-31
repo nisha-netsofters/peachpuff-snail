@@ -237,6 +237,7 @@ const Routes = [
       "BDM",
       "Recruiter",
       "Client",
+      "Candidate",
     ],
   },
   {

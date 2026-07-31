@@ -49,6 +49,15 @@ const PrivateRoute = ({ component: Component, ...rest }) => {
     })();
   }, [params?.slug, user?.role?.name, location.pathname, dispatch]); // Add dependencies
 
+  const loginRedirectTo = () => {
+    const returnTo = `${location.pathname || ""}${location.search || ""}`;
+    const safe =
+      returnTo.startsWith("/") && !returnTo.startsWith("//") ? returnTo : "";
+    return safe
+      ? `/login?redirect=${encodeURIComponent(safe)}`
+      : "/login";
+  };
+
   if (
     token === null ||
     token === "null" ||
@@ -58,12 +67,12 @@ const PrivateRoute = ({ component: Component, ...rest }) => {
     localStorage.clear();
     window.localStorage.removeItem("persist:root");
     persistor.pause();
-    return <Redirect to="/login" />;
+    return <Redirect to={loginRedirectTo()} />;
   }
 
   // Expired/invalid session → login (not the 404 page)
   if (agencyError === "auth") {
-    return <Redirect to="/login" />;
+    return <Redirect to={loginRedirectTo()} />;
   }
 
   if (agencyError === "slug") {

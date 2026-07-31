@@ -282,14 +282,27 @@ const Router = () => {
         {ResolveRoutes()}
         <Route
           path="*"
-          render={() => {
+          render={({ location }) => {
             const token = localStorage.getItem("token");
             if (
               !token ||
               token === "null" ||
               token === "undefined"
             ) {
-              return <Redirect to="/login" />;
+              const returnTo = `${location.pathname || ""}${location.search || ""}`;
+              const safe =
+                returnTo.startsWith("/") && !returnTo.startsWith("//")
+                  ? returnTo
+                  : "";
+              return (
+                <Redirect
+                  to={
+                    safe
+                      ? `/login?redirect=${encodeURIComponent(safe)}`
+                      : "/login"
+                  }
+                />
+              );
             }
             return <Error />;
           }}

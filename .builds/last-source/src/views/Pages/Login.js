@@ -58,6 +58,30 @@ const LoginCover = (props) => {
 
   useEffect(() => {
     if (token) {
+      const params = new URLSearchParams(props.location?.search || "");
+      const redirectParam = params.get("redirect");
+      const fromState = props.location?.state?.from;
+      const rawRedirect =
+        redirectParam ||
+        (typeof fromState === "string"
+          ? fromState
+          : fromState?.pathname
+          ? `${fromState.pathname}${fromState.search || ""}`
+          : "");
+      // Only allow same-origin relative paths (block open redirects)
+      const safeRedirect =
+        rawRedirect &&
+        rawRedirect.startsWith("/") &&
+        !rawRedirect.startsWith("//") &&
+        !rawRedirect.includes("://")
+          ? rawRedirect
+          : null;
+
+      if (safeRedirect) {
+        props.history.push(safeRedirect);
+        return;
+      }
+
       const slugId = localStorage.getItem("slug") || "uniqueworld";
       if (user?.role?.name === "Client") {
         props.history.push(`/${slugId}/candidate`);
@@ -67,7 +91,7 @@ const LoginCover = (props) => {
         props.history.push(`/${slugId}/dashboard`);
       }
     }
-  }, [token, user]);
+  }, [token, user, props.history, props.location]);
   useEffect(() => {
     setLoading(isLoading);
   }, [isLoading]);
