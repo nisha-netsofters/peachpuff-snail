@@ -69,7 +69,7 @@ const LoginCover = (props) => {
           ? `${fromState.pathname}${fromState.search || ""}`
           : "");
       // Only allow same-origin relative paths (block open redirects)
-      const safeRedirect =
+      let safeRedirect =
         rawRedirect &&
         rawRedirect.startsWith("/") &&
         !rawRedirect.startsWith("//") &&
@@ -77,16 +77,29 @@ const LoginCover = (props) => {
           ? rawRedirect
           : null;
 
+      const slugId = localStorage.getItem("slug") || "uniqueworld";
+
+      // Candidates: old WhatsApp links (/slug/candidate?id=) → Profile page
+      if (user?.role?.name === "Candidate" && safeRedirect) {
+        const pathOnly = safeRedirect.split("?")[0];
+        const candMatch = pathOnly.match(/^\/([^/]+)\/candidate\/?$/);
+        if (candMatch) {
+          safeRedirect = `/${candMatch[1]}/profile`;
+        }
+      }
+
       if (safeRedirect) {
         props.history.push(safeRedirect);
         return;
       }
 
-      const slugId = localStorage.getItem("slug") || "uniqueworld";
       if (user?.role?.name === "Client") {
         props.history.push(`/${slugId}/candidate`);
       } else if (user?.role?.name === "SuperAdmin") {
         props.history.push("/superadmin/dashboard");
+      } else if (user?.role?.name === "Candidate") {
+        // Prefer profile when login was opened from a profile deep-link intent
+        props.history.push(`/${slugId}/dashboard`);
       } else {
         props.history.push(`/${slugId}/dashboard`);
       }

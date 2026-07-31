@@ -50,7 +50,17 @@ const PrivateRoute = ({ component: Component, ...rest }) => {
   }, [params?.slug, user?.role?.name, location.pathname, dispatch]); // Add dependencies
 
   const loginRedirectTo = () => {
-    const returnTo = `${location.pathname || ""}${location.search || ""}`;
+    let returnTo = `${location.pathname || ""}${location.search || ""}`;
+    // Old WhatsApp "profile" links used /{slug}/candidate?id=... — send candidates to Profile
+    const candidateMatch = (location.pathname || "").match(
+      /^\/([^/]+)\/candidate\/?$/
+    );
+    if (
+      candidateMatch &&
+      new URLSearchParams(location.search || "").has("id")
+    ) {
+      returnTo = `/${candidateMatch[1]}/profile`;
+    }
     const safe =
       returnTo.startsWith("/") && !returnTo.startsWith("//") ? returnTo : "";
     return safe

@@ -284,6 +284,39 @@ const Router = () => {
           path="*"
           render={({ location }) => {
             const token = localStorage.getItem("token");
+            let storedUser = null;
+            try {
+              storedUser = JSON.parse(localStorage.getItem("user") || "null");
+            } catch (e) {
+              storedUser = null;
+            }
+
+            // Old WhatsApp profile links: /{slug}/candidate?id=...
+            // Candidates cannot open the recruiter candidate page → send to Profile
+            const candidateDeepLink = (location.pathname || "").match(
+              /^\/([^/]+)\/candidate\/?$/
+            );
+            const hasCandidateId = new URLSearchParams(
+              location.search || ""
+            ).has("id");
+            if (candidateDeepLink && hasCandidateId) {
+              const profilePath = `/${candidateDeepLink[1]}/profile`;
+              if (
+                !token ||
+                token === "null" ||
+                token === "undefined"
+              ) {
+                return (
+                  <Redirect
+                    to={`/login?redirect=${encodeURIComponent(profilePath)}`}
+                  />
+                );
+              }
+              if (storedUser?.role?.name === "Candidate") {
+                return <Redirect to={profilePath} />;
+              }
+            }
+
             if (
               !token ||
               token === "null" ||
