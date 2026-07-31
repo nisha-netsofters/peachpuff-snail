@@ -229,3 +229,4 @@ export const calculateProfileCompleteness = (candidate = {}) => {
 };
 
 export default calculateProfileCompleteness;
+

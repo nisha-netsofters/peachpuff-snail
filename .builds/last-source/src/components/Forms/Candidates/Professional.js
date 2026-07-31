@@ -19,6 +19,10 @@ import {
   buildIndustriesRelation,
   matchJobCategoryId,
 } from "../../../utility/normalizeResumeExtract";
+import {
+  getUnfilledInputStyle,
+  getUnfilledSelectStyles,
+} from "../../../utility/unfilledProfileFields";
 // import jobCategoryActions from "../../../redux/jobCategory/actions";
 
 const Professional = ({
@@ -32,7 +36,11 @@ const Professional = ({
   handleResumeChange,
   update,
   isDisabledAllFields,
+  highlightUnfilled = false,
+  unfilledKeys = null,
 }) => {
+  const isUnfilled = (key) =>
+    highlightUnfilled && unfilledKeys instanceof Set && unfilledKeys.has(key);
   const jobCategory = useSelector((state) => state.jobCategory.results);
   const industries = useSelector((state) => state.industries);
 
@@ -385,6 +393,7 @@ const Professional = ({
                         className="react-select"
                         classNamePrefix="select"
                         theme={selectThemeColors}
+                        styles={getUnfilledSelectStyles(isUnfilled("industry"))}
                         onChange={(e) => {
                           if (e.length <= 3) {
                             setSelectIndustries(e);
@@ -411,6 +420,9 @@ const Professional = ({
                         className="react-select"
                         classNamePrefix="select"
                         theme={selectThemeColors}
+                        styles={getUnfilledSelectStyles(
+                          isUnfilled("totalExperience")
+                        )}
                         onChange={(e) => {
                           setExperienceInYear(e);
                           setFieldValue("experienceInyear", e.value);
@@ -435,6 +447,7 @@ const Professional = ({
                         className="react-select"
                         classNamePrefix="select"
                         theme={selectThemeColors}
+                        styles={getUnfilledSelectStyles(isUnfilled("education"))}
                         onChange={(e) => {
                           setQuelification(e);
                           setFieldValue(e.id, e.value);
@@ -465,6 +478,7 @@ const Professional = ({
                         className="react-select"
                         classNamePrefix="select"
                         theme={selectThemeColors}
+                        styles={getUnfilledSelectStyles(isUnfilled("education"))}
                         onChange={(e) => {
                           setField(e);
                           setFieldValue(e.id, e.label);
@@ -511,14 +525,16 @@ const Professional = ({
                         name="designation"
                         onFocus={() => setIsfocus("designation")}
                         onBlur={() => setIsfocus(null)}
-                        style={{
-                          borderColor: focus === "designation" && themecolor,
-                        }}
+                        style={getUnfilledInputStyle(
+                          isUnfilled("currentDesignation"),
+                          { borderColor: focus === "designation" && themecolor }
+                        )}
                         value={values?.designation}
                         maxLength={200}
                         className="w-100"
                         type="text"
                         disabled={isDisabledAllFields}
+                        invalid={isUnfilled("currentDesignation")}
                         placeholder={"Enter designation"}
                         // value={candidate?.professional?.expectedsalary}
                         // onChange={(e) => handleChangeProfessional(e)}
@@ -562,16 +578,20 @@ const Professional = ({
                         id="currentEmployer"
                         onFocus={() => setIsfocus("currentEmployer")}
                         onBlur={() => setIsfocus(null)}
-                        style={{
-                          borderColor:
-                            focus === "currentEmployer" && themecolor,
-                        }}
+                        style={getUnfilledInputStyle(
+                          isUnfilled("currentEmployer"),
+                          {
+                            borderColor:
+                              focus === "currentEmployer" && themecolor,
+                          }
+                        )}
                         name="currentEmployer"
                         className="w-100"
                         value={values?.currentEmployer}
                         type="text"
                         maxLength={200}
                         disabled={isDisabledAllFields}
+                        invalid={isUnfilled("currentEmployer")}
                         placeholder={"Current Employer"}
                         // value={candidate?.professional?.currentEmployer}
                         onChange={(e) => {
@@ -593,16 +613,20 @@ const Professional = ({
                         id="currentCompany"
                         onFocus={() => setIsfocus("currentCompany")}
                         onBlur={() => setIsfocus(null)}
-                        style={{
-                          borderColor:
-                            focus === "currentCompany" && themecolor,
-                        }}
+                        style={getUnfilledInputStyle(
+                          isUnfilled("currentCompany"),
+                          {
+                            borderColor:
+                              focus === "currentCompany" && themecolor,
+                          }
+                        )}
                         name="currentCompany"
                         className="w-100"
                         value={values?.currentCompany || ""}
                         type="text"
                         maxLength={200}
                         disabled={isDisabledAllFields}
+                        invalid={isUnfilled("currentCompany")}
                         placeholder={"Current Company"}
                         onChange={(e) => {
                           setFieldValue(
@@ -620,14 +644,18 @@ const Professional = ({
                         id="currentSalary"
                         onFocus={() => setIsfocus("currentSalary")}
                         onBlur={() => setIsfocus(null)}
-                        style={{
-                          borderColor: focus === "currentSalary" && themecolor,
-                        }}
+                        style={getUnfilledInputStyle(
+                          isUnfilled("currentSalary"),
+                          {
+                            borderColor: focus === "currentSalary" && themecolor,
+                          }
+                        )}
                         name="currentSalary"
                         className="w-100"
                         maxLength={10}
                         type="text"
                         disabled={isDisabledAllFields}
+                        invalid={isUnfilled("currentSalary")}
                         value={values?.currentSalary}
                         placeholder={"Enter Current Monthly Salary"}
                         onChange={(e) => {
@@ -649,14 +677,19 @@ const Professional = ({
                         id="expectedsalary"
                         onFocus={() => setIsfocus("expectedsalary")}
                         onBlur={() => setIsfocus(null)}
-                        style={{
-                          borderColor: focus === "expectedsalary" && themecolor,
-                        }}
+                        style={getUnfilledInputStyle(
+                          isUnfilled("expectedSalary"),
+                          {
+                            borderColor:
+                              focus === "expectedsalary" && themecolor,
+                          }
+                        )}
                         name="expectedsalary"
                         value={calculatedExpectedSalary}
                         className="w-100"
                         type="text"
                         maxLength={10}
+                        invalid={isUnfilled("expectedSalary")}
                         placeholder={"Current Monthly Salary + 20%"}
                         // value={candidate?.professional?.expectedsalary}
                         // onChange={(e) => handleChangeProfessional(e)}
@@ -688,6 +721,9 @@ const Professional = ({
                         className="react-select"
                         classNamePrefix="select"
                         theme={selectThemeColors}
+                        styles={getUnfilledSelectStyles(
+                          isUnfilled("noticePeriod")
+                        )}
                         onChange={(e) => {
                           setNoticePeriod(e);
                           setFieldValue(e.id, e.value);
@@ -709,6 +745,9 @@ const Professional = ({
                         className="react-select"
                         classNamePrefix="select"
                         theme={selectThemeColors}
+                        styles={getUnfilledSelectStyles(
+                          isUnfilled("currentlyWorking")
+                        )}
                         onChange={(e) => {
                           setCurrentlyWorking(e);
                           setFieldValue(e.id, e.value);
@@ -733,6 +772,7 @@ const Professional = ({
                         className="react-select"
                         classNamePrefix="select"
                         theme={selectThemeColors}
+                        styles={getUnfilledSelectStyles(isUnfilled("languages"))}
                         onChange={(e) => {
                           setEng(e);
                           setFieldValue(e.id, e.value);
@@ -750,16 +790,20 @@ const Professional = ({
                         id="preferedJobLocation"
                         onFocus={() => setIsfocus("preferedJobLocation")}
                         onBlur={() => setIsfocus(null)}
-                        style={{
-                          borderColor:
-                            focus === "preferedJobLocation" && themecolor,
-                        }}
+                        style={getUnfilledInputStyle(
+                          isUnfilled("preferedJobLocation"),
+                          {
+                            borderColor:
+                              focus === "preferedJobLocation" && themecolor,
+                          }
+                        )}
                         name="preferedJobLocation"
                         value={values?.preferedJobLocation}
                         disabled={isDisabledAllFields}
                         className="w-100"
                         maxLength={200}
                         type="text"
+                        invalid={isUnfilled("preferedJobLocation")}
                         placeholder={"Eg: Vesu, Adajan, Kamrej"}
                         onChange={(e) => {
 
@@ -777,9 +821,9 @@ const Professional = ({
                         id="skill"
                         onFocus={() => setIsfocus("skill")}
                         onBlur={() => setIsfocus(null)}
-                        style={{
+                        style={getUnfilledInputStyle(isUnfilled("skills"), {
                           borderColor: focus === "skill" && themecolor,
-                        }}
+                        })}
                         name="skill"
                         value={values?.skill || candidate?.professional?.skill || ""}
                         className="w-100"
@@ -787,6 +831,7 @@ const Professional = ({
                         maxLength={200}
                         type="textarea"
                         rows={3}
+                        invalid={isUnfilled("skills")}
                         placeholder={"HTML | CSS | React | Node"}
                         onChange={(e) => {
                           setFieldValue(e.target.name, e.target.value)
@@ -802,9 +847,13 @@ const Professional = ({
                         id="certifications"
                         onFocus={() => setIsfocus("certifications")}
                         onBlur={() => setIsfocus(null)}
-                        style={{
-                          borderColor: focus === "certifications" && themecolor,
-                        }}
+                        style={getUnfilledInputStyle(
+                          isUnfilled("certifications"),
+                          {
+                            borderColor:
+                              focus === "certifications" && themecolor,
+                          }
+                        )}
                         name="certifications"
                         value={candidate?.certifications || ""}
                         className="w-100"
@@ -812,6 +861,7 @@ const Professional = ({
                         maxLength={500}
                         type="textarea"
                         rows={3}
+                        invalid={isUnfilled("certifications")}
                         placeholder={"e.g. AWS Certified, PMP, Google Analytics"}
                         onChange={(e) => {
                           setCandidate((prev) => ({

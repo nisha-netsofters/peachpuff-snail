@@ -1,7 +1,7 @@
 // Candidate self-profile: professional information section
 // Uses existing Candidates -> Professional form but scoped for logged-in candidate
-import React, { useState, useEffect } from "react";
-import { CardBody, Row, Col, Button, Input, Label } from "reactstrap";
+import React, { useState, useEffect, useMemo } from "react";
+import { CardBody, Row, Col, Button, Input, Label, Alert } from "reactstrap";
 import { useSelector, useDispatch } from "react-redux";
 import Professional from "../Forms/Candidates/Professional";
 import candidateActions from "../../redux/candidate/actions";
@@ -9,6 +9,12 @@ import industriesActions from "../../redux/industries/actions";
 import jobCategoryActions from "../../redux/jobCategory/actions";
 import { tostify } from "../Tostify";
 import { awsUploadAssetsWithResp } from "../../helper/awsUploadAssets";
+import {
+  getUnfilledCandidateFields,
+  getUnfilledFieldKeySet,
+  getUnfilledInputStyle,
+  PROFILE_PAGE_EXCLUDED_KEYS,
+} from "../../utility/unfilledProfileFields";
 
 const CandidateProfessionalProfile = () => {
   const themecolor = useSelector(
@@ -252,6 +258,26 @@ const CandidateProfessionalProfile = () => {
   // don't render form until we have candidate data with id
   const hasCandidateData = candidate?.id || candidate?._id;
 
+  const unfilledFields = useMemo(
+    () =>
+      hasCandidateData
+        ? getUnfilledCandidateFields(candidate, {
+            excludeKeys: PROFILE_PAGE_EXCLUDED_KEYS,
+          })
+        : [],
+    [candidate, hasCandidateData]
+  );
+  const unfilledKeys = useMemo(
+    () =>
+      hasCandidateData
+        ? getUnfilledFieldKeySet(candidate, {
+            excludeKeys: PROFILE_PAGE_EXCLUDED_KEYS,
+          })
+        : new Set(),
+    [candidate, hasCandidateData]
+  );
+  const isUnfilled = (key) => unfilledKeys.has(key);
+
   return (
     <CardBody className="pt-0">
       <Row className="mt-3">
@@ -261,6 +287,12 @@ const CandidateProfessionalProfile = () => {
             View and update your contact, address and professional details. These
             details are used when recruiters/clients view your profile.
           </p>
+          {unfilledFields.length > 0 ? (
+            <Alert color="danger" className="mb-2">
+              <strong>Please complete the highlighted fields:</strong>{" "}
+              {unfilledFields.map((f) => f.label).join(", ")}
+            </Alert>
+          ) : null}
         </Col>
       </Row>
 
@@ -289,6 +321,8 @@ const CandidateProfessionalProfile = () => {
                 }
                 className="w-100"
                 maxLength={200}
+                invalid={isUnfilled("currentAddress")}
+                style={getUnfilledInputStyle(isUnfilled("currentAddress"))}
               />
             </Col>
 
@@ -305,6 +339,8 @@ const CandidateProfessionalProfile = () => {
                 }
                 className="w-100"
                 maxLength={100}
+                invalid={isUnfilled("city")}
+                style={getUnfilledInputStyle(isUnfilled("city"))}
               />
             </Col>
 
@@ -321,6 +357,8 @@ const CandidateProfessionalProfile = () => {
                 }
                 className="w-100"
                 maxLength={100}
+                invalid={isUnfilled("state")}
+                style={getUnfilledInputStyle(isUnfilled("state"))}
               />
             </Col>
 
@@ -385,17 +423,31 @@ const CandidateProfessionalProfile = () => {
                 }
                 className="w-100"
                 maxLength={10}
+                invalid={isUnfilled("alternateMobile")}
+                style={getUnfilledInputStyle(isUnfilled("alternateMobile"))}
               />
             </Col>
 
             <Col lg={6} xs={12} className="mb-1">
               <Label className="form-label">Gender</Label>
               <Input
-                type="text"
+                type="select"
                 value={candidate?.gender || ""}
-                disabled
+                onChange={(e) =>
+                  setCandidate((prev) => ({
+                    ...prev,
+                    gender: e.target.value,
+                  }))
+                }
                 className="w-100"
-              />
+                invalid={isUnfilled("gender")}
+                style={getUnfilledInputStyle(isUnfilled("gender"))}
+              >
+                <option value="">Select Gender</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Other">Other</option>
+              </Input>
             </Col>
           </Row>
 
@@ -413,6 +465,8 @@ const CandidateProfessionalProfile = () => {
             handleResumeChange={handleResumeChange}
             update={true}
             isDisabledAllFields={false}
+            highlightUnfilled
+            unfilledKeys={unfilledKeys}
           />
 
           {/* Single Save button for both sections */}

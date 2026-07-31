@@ -22,6 +22,11 @@ import { yupResolver } from "@hookform/resolvers/yup";
 import { useEffect, useState } from "react";
 import useBreakpoint from "../../utility/hooks/useBreakpoints";
 import { resolveAssetUrl } from "../../utility/resolveAssetUrl";
+import { isFilled } from "../../utility/profileCompleteness";
+import {
+  getUnfilledFieldKeySet,
+  getUnfilledInputStyle,
+} from "../../utility/unfilledProfileFields";
 
 const ProfileDetails = () => {
   const { progress } = useSelector((state) => state);
@@ -280,6 +285,30 @@ const ProfileDetails = () => {
   const displayImageSrc =
     profilePic || resolveAssetUrl(user?.image) || undefined;
 
+  // Highlight empty personal fields for candidates (WhatsApp unfilled checklist)
+  const unfilledKeys = isCandidate
+    ? getUnfilledFieldKeySet({
+        ...candidateProfile,
+        ...user,
+        firstname: (user?.name || "").trim().split(" ")[0],
+        lastname: (user?.name || "").trim().split(" ").slice(1).join(" "),
+        name: user?.name,
+        mobile: user?.mobile,
+        email: user?.email,
+      })
+    : new Set();
+  const highlightName =
+    isCandidate &&
+    (unfilledKeys.has("fullName") || !isFilled(user?.name));
+  const highlightMobile =
+    isCandidate &&
+    (unfilledKeys.has("mobile") || !isFilled(user?.mobile));
+  const highlightEmail =
+    isCandidate &&
+    (unfilledKeys.has("email") || !isFilled(user?.email));
+  const highlightImage =
+    isCandidate && !isFilled(user?.image) && !imageFile && !profilePic;
+
   return (
     <>
       <CardBody className="py-2 my-25">
@@ -314,6 +343,13 @@ const ProfileDetails = () => {
                 padding: "11px",
                 width: "100%",
                 objectFit: "cover",
+                ...(highlightImage
+                  ? {
+                      outline: "2px solid #ea5455",
+                      outlineOffset: "2px",
+                      borderRadius: "4px",
+                    }
+                  : {}),
               }}
             />
           </div>
@@ -346,10 +382,16 @@ const ProfileDetails = () => {
                         alignItems: "center",
                         alignSelf: "center",
                         width: "10rem",
+                        ...(highlightImage
+                          ? { boxShadow: "0 0 0 2px #ea5455" }
+                          : {}),
                       }
                     : {
                         backgroundColor: themecolor,
                         color: "white",
+                        ...(highlightImage
+                          ? { boxShadow: "0 0 0 2px #ea5455" }
+                          : {}),
                       }
                 }
               >
@@ -365,6 +407,11 @@ const ProfileDetails = () => {
                 />
               </Button>
               <p className="mb-0">Allowed JPG, GIF or PNG. Max size of 800kB</p>
+              {highlightImage ? (
+                <p className="mb-0 text-danger" style={{ fontSize: 12 }}>
+                  Please upload a profile photo
+                </p>
+              ) : null}
               {imageFile ? (
                 <p className="mb-0 text-muted" style={{ fontSize: 12 }}>
                   Selected: {imageFile.name} — click Save changes to upload
@@ -390,13 +437,14 @@ const ProfileDetails = () => {
                     id="name"
                     onFocus={() => setIsfocus("name")}
                     onBlur={() => setIsfocus(null)}
-                    style={{
-                      borderColor: focus === "name" && themecolor,
-                    }}
+                    style={getUnfilledInputStyle(
+                      highlightName && !errors.name,
+                      { borderColor: focus === "name" && themecolor }
+                    )}
                     htmlFor="name"
                     maxLength={200}
                     className="input-group-merge"
-                    invalid={errors.name ? true : false}
+                    invalid={errors.name || highlightName ? true : false}
                     {...field}
                     onChange={(e) => {
                       const value = e.target.value.replace(/[^a-z ]/gi, "");
@@ -443,7 +491,19 @@ const ProfileDetails = () => {
               <Label className="form-label" for="emailInput">
                 E-mail
               </Label>
-              <Input id="email" name="email" disabled value={user?.email} />
+              <Input
+                id="email"
+                name="email"
+                disabled
+                value={user?.email}
+                invalid={highlightEmail}
+                style={getUnfilledInputStyle(highlightEmail)}
+              />
+              {highlightEmail ? (
+                <FormFeedback className="d-block">
+                  Email is required
+                </FormFeedback>
+              ) : null}
             </Col>
 
             <Col sm="6" className="mb-1">
@@ -460,13 +520,14 @@ const ProfileDetails = () => {
                     id="mobile"
                     onFocus={() => setIsfocus("mobile")}
                     onBlur={() => setIsfocus(null)}
-                    style={{
-                      borderColor: focus === "mobile" && themecolor,
-                    }}
+                    style={getUnfilledInputStyle(
+                      highlightMobile && !errors.mobile,
+                      { borderColor: focus === "mobile" && themecolor }
+                    )}
                     htmlFor="mobile"
                     maxLength={10}
                     className="input-group-merge"
-                    invalid={errors.mobile ? true : false}
+                    invalid={errors.mobile || highlightMobile ? true : false}
                     {...field}
                     onChange={(e) => {
                       const value = e.target.value.replace(/\D/g, "");
