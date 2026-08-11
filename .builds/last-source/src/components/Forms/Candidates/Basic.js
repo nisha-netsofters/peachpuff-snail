@@ -64,6 +64,7 @@ const Basic = ({
   handleChange = () => {},
   allowMultipleResumeSelection = false,
   resumeUploadOnly = false,
+  onResumeBusyChange = () => {},
 }) => {
   const loginUser = useSelector((state) => state.auth.user);
   const genderOptions = [
@@ -96,6 +97,11 @@ const Basic = ({
   const [apiConfigError, setApiConfigError] = useState(DEFAULT_API_CONFIG_ERROR);
   const [apiConfigChecking, setApiConfigChecking] = useState(true);
   const [extractError, setExtractError] = useState("");
+
+  // Keep parent Submit button disabled while API check / extract is in progress
+  useEffect(() => {
+    onResumeBusyChange(Boolean(loading || apiConfigChecking));
+  }, [loading, apiConfigChecking]);
 
   // Use same SERVER_URL as job-description AI (axios apiCall) — not frontend host:7001
   const fetchResumeExtractionStatus = async () => {
@@ -179,11 +185,26 @@ const Basic = ({
     setApiConfigError("");
     setExtractError("");
 
-    const ext = file.name.split('.').pop().toLowerCase();
-    if (!['pdf','jpg','jpeg','png'].includes(ext) && !['application/pdf','image/jpeg','image/jpg','image/png'].includes(file.type)) {
-      const msg = "Please upload PDF, JPG, JPEG, or PNG file";
+    const allowedExt = ['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png'];
+    const allowedMime = [
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'image/jpeg',
+      'image/jpg',
+      'image/png',
+    ];
+    const isAllowedResumeFile = (f) => {
+      const ext = String(f?.name || "").split(".").pop().toLowerCase();
+      return allowedExt.includes(ext) || allowedMime.includes(f?.type);
+    };
+    // Validate every selected file (bulk import may include DOC/DOCX)
+    const invalidFile = files.find((f) => !isAllowedResumeFile(f));
+    if (invalidFile) {
+      const msg = "Please upload PDF, DOC, DOCX, JPG, JPEG, or PNG file";
       setExtractError(msg);
       tostify(msg);
+      if (evt.target) evt.target.value = "";
       return;
     }
     setLoading(true);
@@ -306,7 +327,7 @@ const Basic = ({
         <Row className="gy-1">
           <Col xs={12} className="mb-2">
             <h4 style={{ color: themeColor, fontWeight: 600, marginBottom: "4px" }}>Resume Upload with Auto Data Extraction</h4>
-            <p className="text-muted mb-1" style={{ fontSize: "13px" }}>Upload a resume (PDF / JPG / PNG) to auto-fill candidate details. Review all fields before saving.</p>
+            <p className="text-muted mb-1" style={{ fontSize: "13px" }}>Upload a resume (PDF / DOC / DOCX / JPG / PNG) to auto-fill candidate details. Review all fields before saving.</p>
             {!apiConfigChecking && apiConfigReady === false && (
               <div
                 className="mt-2 p-2 rounded"
@@ -339,7 +360,7 @@ const Basic = ({
             <Input
               type="file"
               className="form-control"
-              accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+              accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png"
               multiple={allowMultipleResumeSelection}
               disabled={isDisabledAllFields || loading || apiConfigChecking || apiConfigReady !== true}
               onChange={handleFileChange}

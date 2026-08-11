@@ -110,7 +110,7 @@ const Attachment_File = ({
             ) : (
               <Input
                 type="file"
-                accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png"
                 id="resume"
                 multiple={allowMultipleResumeSelection}
                 onFocus={() => setIsfocus("resume")}

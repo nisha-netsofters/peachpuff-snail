@@ -57,6 +57,8 @@ const Candidate = ({
   const [states, setStates] = useState([]);
   const [selectedState, setSelectedState] = useState();
   const [selectedCity, setSelectedCity] = useState();
+  // True while Basic is checking API config or extracting resume data
+  const [resumeBusy, setResumeBusy] = useState(false);
 
   // if (user.email !== "uniqueworldjobs@gmail.com") {
   //   if (candidate.agencyId != user.agencyId) {
@@ -241,6 +243,7 @@ const Candidate = ({
             isDisabledAllFields={isDisabledAllFields}
             allowMultipleResumeSelection={allowMultipleResumeSelection}
             resumeUploadOnly={resumeUploadOnly}
+            onResumeBusyChange={setResumeBusy}
           />
 
           {!resumeUploadOnly && (
@@ -337,8 +340,15 @@ const Candidate = ({
             <Button
               type="button"
               className="add-new-user"
+              disabled={
+                isDisabledAllFields === true ||
+                loading === true ||
+                resumeBusy === true
+              }
               style={
-                isDisabledAllFields == true
+                isDisabledAllFields === true ||
+                loading === true ||
+                resumeBusy === true
                   ? {
                     opacity: "0.6",
                     cursor: "not-allowed",
@@ -350,6 +360,7 @@ const Candidate = ({
               }
               color="default"
               onClick={(e) => {
+                if (isDisabledAllFields || loading || resumeBusy) return;
                 CandidateHandler(e);
               }}
             >

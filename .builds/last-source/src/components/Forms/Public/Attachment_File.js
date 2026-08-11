@@ -248,11 +248,17 @@ const Attachment_File = ({
     setExtractError("");
 
     const ext = file.name.split(".").pop().toLowerCase();
-    if (
-      !["pdf", "jpg", "jpeg", "png"].includes(ext) &&
-      !["application/pdf", "image/jpeg", "image/jpg", "image/png"].includes(file.type)
-    ) {
-      const msg = "Please upload PDF, JPG, JPEG, or PNG file";
+    const allowedExt = ["pdf", "doc", "docx", "jpg", "jpeg", "png"];
+    const allowedMime = [
+      "application/pdf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "image/jpeg",
+      "image/jpg",
+      "image/png",
+    ];
+    if (!allowedExt.includes(ext) && !allowedMime.includes(file.type)) {
+      const msg = "Please upload PDF, DOC, DOCX, JPG, JPEG, or PNG file";
       setExtractError(msg);
       tostify(msg);
       return;
@@ -395,7 +401,7 @@ const Attachment_File = ({
               Resume Upload with Auto Data Extraction
             </h5>
             <p className="text-muted mb-1" style={{ fontSize: 13 }}>
-              Upload a resume (PDF / JPG / PNG) to auto-fill candidate details.
+              Upload a resume (PDF / DOC / DOCX / JPG / PNG) to auto-fill candidate details.
               Review all fields in the next steps before submitting.
             </p>
             {!apiConfigChecking && apiConfigReady === false && (
@@ -483,7 +489,7 @@ const Attachment_File = ({
                   style={{
                     borderColor: focus === "Resume" && themeColor,
                   }}
-                  accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png"
                   id="resume"
                   name="customFile"
                   disabled={busy}
