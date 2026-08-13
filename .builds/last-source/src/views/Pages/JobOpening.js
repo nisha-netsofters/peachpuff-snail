@@ -6,8 +6,8 @@ import {
   Filter as FilterIcon,
   MoreVertical,
   ChevronDown,
-  Users,
   RotateCw,
+  Users,
   UserPlus,
   ChevronLeft,
   ChevronRight,
@@ -84,6 +84,9 @@ const JobOpening = () => {
   const [show, setShow] = useState(false);
   const JobOpenings = useSelector((state) => state.jobOpening);
   const loginUser = useSelector((state) => state.auth.user);
+  const themecolor = useSelector(
+    (state) => state?.agency?.agencyDetail?.themecolor
+  );
   const [animation, setAnimation] = useState(false);
   const [jobOpening, setJobOpening] = useState({});
   const [create, setCreate] = useState(false);
@@ -112,6 +115,8 @@ const JobOpening = () => {
   const [assignJobRow, setAssignJobRow] = useState(null);
   const [selectedRecruiter, setSelectedRecruiter] = useState(null);
   const [statusLoading, setStatusLoading] = useState(false);
+  const [filterData, setFilterData] = useState({});
+  const [recruiterFilter, setRecruiterFilter] = useState(null);
 
 
   const { currentPlan } = useSelector((state) => state.subscription);
@@ -163,7 +168,7 @@ const JobOpening = () => {
     }
   }, [copy]);
 
-  const getjobOpening = async (page) => {
+  const getjobOpening = async (page, filters = filterData) => {
     setLoading(true);
     await dispatch({
       type: actions.GET_JOBOPENING,
@@ -171,8 +176,19 @@ const JobOpening = () => {
         page,
         perPage,
         userId: loginUser?.id,
+        filterData: filters,
       },
     });
+  };
+
+  const handleRecruiterFilterChange = (option) => {
+    setRecruiterFilter(option);
+    const nextFilters = option?.value
+      ? { recruiterId: option.value }
+      : {};
+    setFilterData(nextFilters);
+    setCurrentPage(1);
+    getjobOpening(1, nextFilters);
   };
 
   useEffect(() => {
@@ -374,13 +390,31 @@ const JobOpening = () => {
   };
 
 
-  // 🔹 View Candidates - Navigate to applied candidates page
+  // Relevant candidates — existed in DB before job post and match this job
+  const handleViewRelevant = (job) => {
+    const jobId = job.id || job._id;
+    if (!jobId) return;
+
+    const slug = localStorage.getItem("slug");
+    history.push(`/${slug}/jobopening-match/${jobId}`);
+  };
+
+  // Formal job applications (apply form)
   const handleViewCandidates = (job) => {
     const jobId = job.id || job._id;
     if (!jobId) return;
 
     const slug = localStorage.getItem("slug");
     history.push(`/${slug}/applied-candidates/${jobId}`);
+  };
+
+  // New matches — post-job candidates scored like jobmatching
+  const handleViewNewMatches = (job) => {
+    const jobId = job.id || job._id;
+    if (!jobId) return;
+
+    const slug = localStorage.getItem("slug");
+    history.push(`/${slug}/job-new-matches/${jobId}`);
   };
 
   // 🔹 Export CSV - Download all candidates for this job
@@ -484,8 +518,8 @@ const JobOpening = () => {
           {(() => {
             const baseId =
               row?.id || row?._id || row?.createdAt || row?.jobCategory?.id;
-            const viewId = `job-opening-view-${baseId}`;
             const editId = `job-opening-edit-${baseId}`;
+            const viewId = `job-opening-applied-${baseId}`;
 
             return (
               <>
@@ -512,7 +546,7 @@ const JobOpening = () => {
                   <Users size={17} className="mx-1" />
                 </span>
                 <UncontrolledTooltip placement="top" target={viewId}>
-                  View candidates
+                  Applied
                 </UncontrolledTooltip>
 
                 <UncontrolledDropdown
@@ -592,6 +626,47 @@ const JobOpening = () => {
           })()}
         </div>
       ),
+    },
+
+    {
+      name: "Candidates",
+      minWidth: "140px",
+      cell: (row) => (
+        <div className="d-flex flex-column align-items-center gap-50">
+          <Button
+            size="sm"
+            color="info"
+            style={{
+              fontSize: "12px",
+              minWidth: "110px",
+              padding: "4px 10px",
+            }}
+            onClick={() => handleViewRelevant(row)}
+          >
+            Relevant
+          </Button>
+          <Button
+            size="sm"
+            color="warning"
+            style={{
+              fontSize: "12px",
+              minWidth: "110px",
+              padding: "4px 10px",
+            }}
+            onClick={() => handleViewNewMatches(row)}
+          >
+            New Matches
+          </Button>
+        </div>
+      ),
+      conditionalCellStyles: [
+        {
+          when: (row) => row.status == "Inactive",
+          style: {
+            opacity: "0.5",
+          },
+        },
+      ],
     },
 
     {
@@ -690,54 +765,6 @@ const JobOpening = () => {
     {
       name: "Gender",
       selector: (row) => row?.gender,
-      conditionalCellStyles: [
-        {
-          when: (row) => row.status == "Inactive",
-          style: {
-            opacity: "0.5",
-          },
-        },
-      ],
-    },
-    {
-      name: "Work",
-      selector: (row) => row?.workType,
-      conditionalCellStyles: [
-        {
-          when: (row) => row.status == "Inactive",
-          style: {
-            opacity: "0.5",
-          },
-        },
-      ],
-    },
-    {
-      name: "Qualification",
-      selector: (row) => row?.qualification,
-      conditionalCellStyles: [
-        {
-          when: (row) => row.status == "Inactive",
-          style: {
-            opacity: "0.5",
-          },
-        },
-      ],
-    },
-    {
-      name: "Salary Range Start",
-      selector: (row) => row?.salaryRangeStart,
-      conditionalCellStyles: [
-        {
-          when: (row) => row.status == "Inactive",
-          style: {
-            opacity: "0.5",
-          },
-        },
-      ],
-    },
-    {
-      name: "Salary Range End",
-      selector: (row) => row?.salaryRangeEnd,
       conditionalCellStyles: [
         {
           when: (row) => row.status == "Inactive",
@@ -951,9 +978,6 @@ const JobOpening = () => {
   const startPage = Math.max(1, currentPage - 2);
   const endPage = Math.min(totalPages, startPage + 4);
   const visiblePageNumbers = pageNumbers.slice(startPage - 1, endPage);
-  const themecolor = useSelector(
-    (state) => state?.agency?.agencyDetail?.themecolor
-  );
   const customStyles = {
     headCells: {
       style: {
@@ -1097,14 +1121,34 @@ const JobOpening = () => {
                             >
                               <Edit size={17} className="mx-1" />
                             </div>
+                            <Button
+                              size="sm"
+                              color="info"
+                              style={{
+                                fontSize: "11px",
+                                padding: "2px 8px",
+                              }}
+                              onClick={() => handleViewRelevant(result)}
+                            >
+                              Relevant
+                            </Button>
+                            <Button
+                              size="sm"
+                              color="warning"
+                              style={{
+                                fontSize: "11px",
+                                padding: "2px 8px",
+                              }}
+                              onClick={() => handleViewNewMatches(result)}
+                            >
+                              New Matches
+                            </Button>
                             <div
                               style={{
                                 color: "#7F8487",
                                 cursor: "pointer",
                               }}
-                              onClick={() => {
-                                handleViewCandidates(result);
-                              }}
+                              onClick={() => handleViewCandidates(result)}
                             >
                               <Users size={17} className="mx-1" />
                             </div>
@@ -1340,6 +1384,13 @@ const JobOpening = () => {
                       setCreate(val);
                     }}
                     store={JobOpenings?.results}
+                    showRecruiterFilter={canAssignRecruiter}
+                    recruiterFilter={recruiterFilter}
+                    recruiterOptions={(assignableUsers || []).map((u) => ({
+                      value: u.id,
+                      label: u.name,
+                    }))}
+                    onRecruiterFilterChange={handleRecruiterFilterChange}
                   />
                 }
               />

@@ -3,7 +3,8 @@ import jobOpeningMatchesActions from "./actions"
 const initialState = {
     isLoading: false,
     jobOpeningRow: {},
-    jobOpeningMatchCandidate: {}
+    jobOpeningMatchCandidate: {},
+    jobOpeningNewMatchCandidate: {},
 }
 
 export const jobOpeningMatchesReducer = (state = initialState, action) => {

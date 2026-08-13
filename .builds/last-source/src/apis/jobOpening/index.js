@@ -1,10 +1,14 @@
 import apiCall from "../../utility/axiosInterceptor";
 
 export const getjobOpeningAPI = async (payload) => {
+  const filterBody =
+    payload.filterData && Object.keys(payload.filterData).length > 0
+      ? payload.filterData
+      : {};
   return await apiCall
     .post(
       `/jobOpenings?page=${payload.page}&perPage=${payload.perPage}&userId=${payload.userId}`,
-      payload.filterData
+      filterBody
     )
     .then((res) => {
       return res;

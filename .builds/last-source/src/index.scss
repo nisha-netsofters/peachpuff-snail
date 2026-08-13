@@ -49,6 +49,86 @@
   }
 }
 
+.candidate-page-fixed-header {
+  flex-shrink: 0;
+}
+
+.candidate-page-search-row,
+.candidate-page-list-container .react-dataTable {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.candidate-page-content-width {
+  width: 74%;
+}
+
+.candidate-page-search-row .invoice-list-table-header {
+  margin-top: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.candidate-page-row {
+  margin-top: 0 !important;
+}
+
+.candidate-page-list-container {
+  margin-top: 0;
+  padding-top: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+}
+
+.candidate-page-no-page-scroll {
+  overflow: hidden !important;
+}
+
+.candidate-selection-bar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: #e8f0fe;
+  border-radius: 8px;
+  padding: 10px 16px;
+  margin-bottom: 0.75rem;
+  min-height: 48px;
+}
+
+.candidate-selection-count {
+  font-weight: 500;
+  color: #1a1a1a;
+  font-size: 14px;
+}
+
+.candidate-selection-clear {
+  color: #323d76 !important;
+  font-weight: 500;
+  font-size: 14px;
+  text-decoration: none !important;
+
+  &:hover {
+    color: #1a2454 !important;
+  }
+}
+
+.candidate-card-selected {
+  background-color: #e8f0fe !important;
+  border-color: #c2d7f7 !important;
+  box-shadow: none !important;
+}
+
 .react-selectformails {
   .css-3w2yfm-ValueContainer {
     height: 100px;

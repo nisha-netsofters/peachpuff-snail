@@ -4,6 +4,7 @@ import jobApplyListActions from "./actions";
 const initialState = {
   jobApplyListLoader: false,
   jobApplyList: [],
+  jobApplyListTotal: 0,
   jobApplyListError: null,
 };
 
@@ -35,6 +36,10 @@ const jobApplyListReducer = (state = initialState, action) => {
       return {
         ...state,
         jobApplyList: list,
+        jobApplyListTotal:
+          typeof action.payload?.total === "number"
+            ? action.payload.total
+            : list.length,
         jobApplyListError: null,
       };
 
@@ -49,6 +54,7 @@ const jobApplyListReducer = (state = initialState, action) => {
         ...state,
         jobApplyListLoader: false,
         jobApplyList: [],
+        jobApplyListTotal: 0,
         jobApplyListError: null,
       };
 

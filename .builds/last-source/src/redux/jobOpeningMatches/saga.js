@@ -1,7 +1,7 @@
 import { all, takeEvery, put } from "redux-saga/effects"
 // import { tostifySuccess } from "../../components/Tostify"
 import jobOpeningMatchesActions from "./actions"
-import { getJobOpeningMatchCandidate, getJobOpeningRow } from "../../apis/jobOpeningMatches";
+import { getJobOpeningMatchCandidate, getJobOpeningRow, getNewJobMatchCandidate } from "../../apis/jobOpeningMatches";
 
 // const user = JSON.parse(localStorage.getItem("user"))
 export function* loading(state) {
@@ -47,9 +47,23 @@ export function* WATCH_GET_JOB_OPENING_MATCH_CANDIDATE(action) {
 }
 
 
+export function* WATCH_GET_JOB_OPENING_NEW_MATCH_CANDIDATE(action) {
+    const resp = yield getNewJobMatchCandidate(action?.payload)
+    if (resp) {
+        yield put({
+            type: jobOpeningMatchesActions.SET_JOB_MATCHES_STATE,
+            payload: {
+                jobOpeningNewMatchCandidate: resp
+            }
+        })
+    }
+}
+
+
 export default function* rootSaga() {
     yield all([
         takeEvery(jobOpeningMatchesActions.GET_JOB_OPENING_ROW, WATCH_GET_JOB_OPENING_ROW),
         takeEvery(jobOpeningMatchesActions.GET_JOB_OPENING_MATCH_CANDIDATE, WATCH_GET_JOB_OPENING_MATCH_CANDIDATE),
+        takeEvery(jobOpeningMatchesActions.GET_JOB_OPENING_NEW_MATCH_CANDIDATE, WATCH_GET_JOB_OPENING_NEW_MATCH_CANDIDATE),
     ])
 }

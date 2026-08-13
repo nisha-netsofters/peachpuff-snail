@@ -139,6 +139,12 @@ const Routes = [
     permission: ["Admin", "Team Leader", "BDM", "Recruiter", "Staff", "Client"],
   },
   {
+    path: "/:slug/job-new-matches/:id",
+    exact: true,
+    component: lazy(() => import("../../views/Pages/NewJobMatches.js")),
+    permission: ["Admin", "Team Leader", "BDM", "Recruiter", "Staff", "Client"],
+  },
+  {
     path: "/:slug/applied-candidates/:jobId",
     exact: true,
     component: lazy(() => import("../../views/Pages/AppliedCandidates")),
@@ -168,24 +174,24 @@ const Routes = [
     component: lazy(() => import("../../views/Pages/FeedBack")),
     permission: ["Admin", "Team Leader", "BDM"],
   },
-  {
-    path: "/:slug/lead",
-    exact: true,
-    component: lazy(() => import("../../views/Pages/Lead")),
-    permission: ["Admin", "BDM"],
-  },
+  // {
+  //   path: "/:slug/lead",
+  //   exact: true,
+  //   component: lazy(() => import("../../views/Pages/Lead")),
+  //   permission: ["Admin", "BDM"],
+  // },
   {
     path: "/:slug/users",
     exact: true,
     component: lazy(() => import("../../views/Pages/user")),
     permission: ["Admin"],
   },
-  {
-    path: "/:slug/hot-vacancy",
-    exact: true,
-    component: lazy(() => import("../../views/Pages/HotVacancy.js")),
-    permission: ["Admin"],
-  },
+  // {
+  //   path: "/:slug/hot-vacancy",
+  //   exact: true,
+  //   component: lazy(() => import("../../views/Pages/HotVacancy.js")),
+  //   permission: ["Admin"],
+  // },
   {
     path: "/forgotpassword",
     exact: true,

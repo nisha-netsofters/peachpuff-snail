@@ -123,6 +123,7 @@ const SecondPage = ({
   bestMatchesCandidate = false,
   isAppliedCandidates = false,
   appliedCandidatesList = null,
+  appliedCandidatesTotal = 0,
   jobId = null,
   isAppliedCandidatesLoading = false,
   appliedCandidatesError = null,
@@ -673,42 +674,90 @@ const SecondPage = ({
     });
   };
   const selectedCandidatesRef = useRef([]);
+  const [selectedCandidateIds, setSelectedCandidateIds] = useState([]);
+  const candidateHeaderRef = useRef(null);
+  const candidateListContainerRef = useRef(null);
+
+  useLayoutEffect(() => {
+    const updateListHeight = () => {
+      const header = candidateHeaderRef.current;
+      const listContainer = candidateListContainerRef.current;
+      if (!header || !listContainer) return;
+
+      const headerBottom = header.getBoundingClientRect().bottom;
+      const availableHeight = window.innerHeight - headerBottom;
+      listContainer.style.maxHeight = `${Math.max(availableHeight, 320)}px`;
+    };
+
+    updateListHeight();
+    window.addEventListener("resize", updateListHeight);
+
+    const resizeObserver =
+      typeof ResizeObserver !== "undefined"
+        ? new ResizeObserver(updateListHeight)
+        : null;
+    if (resizeObserver && candidateHeaderRef.current) {
+      resizeObserver.observe(candidateHeaderRef.current);
+    }
+
+    return () => {
+      window.removeEventListener("resize", updateListHeight);
+      resizeObserver?.disconnect();
+    };
+  }, [width, filterToggleMode, activeQuickFilter, filterData]);
+
+  useEffect(() => {
+    const html = document.documentElement;
+    const body = document.body;
+    const appContent = document.querySelector(".app-content");
+
+    html.classList.add("candidate-page-no-page-scroll");
+    body.classList.add("candidate-page-no-page-scroll");
+    appContent?.classList.add("candidate-page-no-page-scroll");
+
+    return () => {
+      html.classList.remove("candidate-page-no-page-scroll");
+      body.classList.remove("candidate-page-no-page-scroll");
+      appContent?.classList.remove("candidate-page-no-page-scroll");
+    };
+  }, []);
 
   const handleSelectedCard = (candidate, isChecked) => {
     if (isChecked) {
       selectedCandidatesRef.current = [
-        ...selectedCandidatesRef.current,
+        ...selectedCandidatesRef.current.filter((item) => item.id !== candidate.id),
         candidate,
       ];
     } else {
       selectedCandidatesRef.current = selectedCandidatesRef.current.filter(
-        (item) => item !== candidate
+        (item) => item.id !== candidate.id
       );
     }
-
+    setSelectedCandidateIds(selectedCandidatesRef.current.map((item) => item.id));
     handleselected(selectedCandidatesRef.current);
   };
+
+  const clearAllSelectedCandidates = () => {
+    selectedCandidatesRef.current = [];
+    setSelectedCandidateIds([]);
+    handleselected([]);
+  };
+
+  const isCandidateSelected = (candidateId) =>
+    selectedCandidateIds.includes(candidateId);
+
   const handleselected = (rows) => {
-    let mails = [];
-    new Promise(() => {
-      setTimeout(() => {
-        mails = rows?.map((ele) => {
-          const obj = {};
-          obj.label = `${ele?.firstname} ${ele?.lastname}`;
-          obj.email = ele.email;
-          return obj;
-        }, 3000);
-      });
+    const mails =
+      rows?.map((ele) => ({
+        label: `${ele?.firstname} ${ele?.lastname}`,
+        email: ele.email,
+      })) || [];
+
+    dispatch({
+      type: CandidateActions.SET_SELECTED_FOR_EMAIL_CANDIDATE,
+      payload: { mails, totalRows: rows?.length },
     });
-    new Promise(() => {
-      setTimeout(() => {
-        dispatch({
-          type: CandidateActions.SET_SELECTED_FOR_EMAIL_CANDIDATE,
-          payload: { mails, totalRows: rows?.length },
-        });
-        setPromiseLoading(false);
-      }, 3000);
-    });
+    setPromiseLoading(false);
   };
 
   const paginationComponentOptions = {
@@ -2353,7 +2402,7 @@ const SecondPage = ({
   const resolvedTotal = bestMatchesCandidate
     ? bestMatchesCandidates?.total
     : isAppliedCandidates
-      ? appliedCandidatesList?.length
+      ? appliedCandidatesTotal || appliedCandidatesList?.length
       : candidates?.total;
   const fallbackTotal =
     bestMatchesCandidate || isAppliedCandidates
@@ -2600,14 +2649,7 @@ const SecondPage = ({
 
   return (
     <>
-      <div
-        className="filterDataButton"
-        style={{
-          display: "flex",
-          alignItems: "end",
-        }}
-      >
-        <Modal
+      <Modal
           className="modal-dialog-centered"
           isOpen={whatsappOpen}
           toggle={() => setWhatsappOpen(!whatsappOpen)}
@@ -2737,6 +2779,14 @@ const SecondPage = ({
           width={window.innerWidth}
           style={canvasStyles}
         />
+      <div ref={candidateHeaderRef} className="candidate-page-fixed-header">
+        <div
+          className="filterDataButton"
+          style={{
+            display: "flex",
+            alignItems: "end",
+          }}
+        >
         <h3 style={{ color: themecolor }}>
           <b>
             {isSavedCandidates
@@ -2848,45 +2898,6 @@ const SecondPage = ({
             themecolor={themecolor}
           />
         )}
-      {/* {user?.role?.name != "Admin" && width > 769 && (
-        <div
-          style={{
-            alignItems: "center",
-            justifyContent: "center",
-            display: "flex",
-          }}
-        >
-          <img
-            src={img}
-            alt="Your Image Alt Text"
-            style={{ maxWidth: "50px", marginRight: "10px" }}
-          />
-          <ul
-            style={{
-              listStyleType: "none",
-              padding: "0",
-              margin: "0",
-            }}
-          >
-            <li style={{ justifyContent: "center", display: "flex" }}>
-              {" "}
-              <p className="text-primary">Unlimited Resume Database Access </p>
-            </li>
-            <li>
-              <p className="text-primary">
-                Automate your hiring process with a matchmaking tool to the next
-                level{" "}
-                <a
-                  href={`/${slug}/pricing`}
-                  style={{ color: "red", textDecoration: "underline" }}
-                >
-                  Know More
-                </a>
-              </p>
-            </li>
-          </ul>
-        </div>
-      )} */}
       <div style={width > 768 ? { display: "none" } : {}}>
         {auth?.user?.clients ? (
           (clientUser?.clients?.id && count?.plan?.planName == "free") ||
@@ -2929,9 +2940,60 @@ const SecondPage = ({
           />
         )}
       </div>
+      {width > 768 ? (
+        <div className="candidate-page-search-row">
+          <div className="candidate-page-content-width">
+            {auth?.user?.clients ? (
+              (clientUser?.clients?.id && count?.plan?.planName == "free") ||
+                count?.plan?.planName == "Trial" ? (
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    marginBottom: "20px",
+                  }}
+                >
+                  <div>
+                    Free Resume Download Remain :{" "}
+                    {5 - count?.resume_download_count}
+                  </div>
+                  <Rating
+                    readonly
+                    initialRating={5 - count?.resume_download_count}
+                    emptySymbol={
+                      <Star size={20} fill="#babfc7" stroke="#babfc7" />
+                    }
+                    fullSymbol={
+                      <Star size={20} fill={"#323D76"} stroke={"#323D76"} />
+                    }
+                  />
+                </div>
+              ) : null
+            ) : (
+              <CustomHeader
+                filterData={filterData}
+                setFilterData={setFilterData}
+                setShow={setShow}
+                setCreate={setCreate}
+                store={candidates?.results}
+                onAddNew={() => {
+                  setCandidate({});
+                  setIndustriesData([]);
+                  setCreate(true);
+                  setUpdate(false);
+                  setShow(true);
+                }}
+              />
+            )}
+          </div>
+        </div>
+      ) : null}
+      </div>
 
+      <div ref={candidateListContainerRef} className="candidate-page-list-container">
       <Row
-        className="mt-1"
+        className="candidate-page-row"
         style={{ height: "100%", transition: "all 0.5s ease-in-out" }}
       >
         {!isAppliedCandidates && (
@@ -2975,8 +3037,6 @@ const SecondPage = ({
               ? {
                 paddingLeft: 0,
                 paddingRight: 0,
-                overflow: "auto",
-                maxHeight: "600px",
               }
               : { paddingLeft: 0, paddingRight: 0 }
           }
@@ -3388,53 +3448,29 @@ const SecondPage = ({
               flexDirection: "column",
             }}
           >
-            <div style={{ width: "74%" }}>
-              {auth?.user?.clients ? (
-                (clientUser?.clients?.id && count?.plan?.planName == "free") ||
-                  count?.plan?.planName == "Trial" ? (
-                  //  && user?.email == 'gunjan@growworkinfotech.com'
-                  <div
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      marginBottom: "20px",
-                    }}
-                  >
-                    <div>
-                      Free Resume Download Remain :{" "}
-                      {5 - count?.resume_download_count}
-                    </div>
-                    <Rating
-                      readonly
-                      initialRating={5 - count?.resume_download_count}
-                      emptySymbol={
-                        <Star size={20} fill="#babfc7" stroke="#babfc7" />
-                      }
-                      fullSymbol={
-                        <Star size={20} fill={"#323D76"} stroke={"#323D76"} />
-                      }
-                    />
-                  </div>
-                ) : null
-              ) : (
-                <CustomHeader
-                  filterData={filterData}
-                  setFilterData={setFilterData}
-                  setShow={setShow}
-                  setCreate={setCreate}
-                  store={candidates?.results}
-                  onAddNew={() => {
-                    setCandidate({});
-                    setIndustriesData([]);
-                    setCreate(true);
-                    setUpdate(false);
-                    setShow(true);
-                  }}
-                />
-              )}
-            </div>
-
+            <div className="candidate-page-content-width">
+            {width > 768 && selectedCandidateIds.length > 0 && (
+              <div className="candidate-selection-bar">
+                <div className="d-flex align-items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked
+                    onChange={clearAllSelectedCandidates}
+                    style={{ cursor: "pointer", width: 18, height: 18 }}
+                  />
+                  <span className="candidate-selection-count">
+                    {selectedCandidateIds.length} selected
+                  </span>
+                </div>
+                <Button
+                  color="link"
+                  className="candidate-selection-clear p-0"
+                  onClick={clearAllSelectedCandidates}
+                >
+                  Clear selection
+                </Button>
+              </div>
+            )}
             {/* Desktop message when there are no applied candidates */}
             {width > 768 &&
               isAppliedCandidates &&
@@ -3584,7 +3620,15 @@ const SecondPage = ({
                   else if (candidate?.interviewStatus === "reschedule")
                     color = "warning";
                   return (
-                    <Card className="mb-3" key={index} style={{ width: "75%" }}>
+                    <Card
+                      className={`mb-3 ${
+                        isCandidateSelected(candidate.id)
+                          ? "candidate-card-selected"
+                          : ""
+                      }`}
+                      key={index}
+                      style={{ width: "100%" }}
+                    >
                       <CardBody>
                         <Row>
                           <Col
@@ -3608,11 +3652,9 @@ const SecondPage = ({
                                   {" "}
                                   <input
                                     type="checkbox"
-                                    style={{ marginRight: "10px" }}
+                                    checked={isCandidateSelected(candidate.id)}
+                                    style={{ marginRight: "10px", cursor: "pointer" }}
                                     onChange={(e) => {
-                                      setTimeout(() => {
-                                        setPromiseLoading(true);
-                                      }, 10);
                                       handleSelectedCard(
                                         candidate,
                                         e.target.checked
@@ -3997,10 +4039,12 @@ const SecondPage = ({
                 </Pagination>
               </>
             )}
+            </div>
           </div>
           {/* </Card> */}
         </Col>
       </Row>
+      </div>
       {show === true ? (
         <>
           <Candidate

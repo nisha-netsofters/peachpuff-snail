@@ -32,6 +32,8 @@ import ComposeEmail from "../ComposeEmail/ComposeEmail";
 import useBreakpoint from "../../utility/hooks/useBreakpoints";
 import useDebounce from "../../utility/hooks/useDebounce";
 import ComposeClientEmail from "../ComposeEmail/ComposeClientEmail";
+import Select from "react-select";
+import { selectThemeColors } from "@utils";
 const CustomHeader = ({
   store,
   setCreate,
@@ -40,6 +42,10 @@ const CustomHeader = ({
   loading,
   isCandidate = false,
   onAddNew = null,
+  showRecruiterFilter = false,
+  recruiterFilter = null,
+  recruiterOptions = [],
+  onRecruiterFilterChange = () => {},
 }) => {
   const { CSVReader } = useCSVReader();
   const { width } = useBreakpoint();
@@ -576,6 +582,21 @@ const CustomHeader = ({
                 )}
               </>
             )}
+
+            {showRecruiterFilter && location === `/${slug}/jobopening` ? (
+              <div className="me-1" style={{ minWidth: "180px" }}>
+                <Select
+                  className="react-select"
+                  classNamePrefix="select"
+                  theme={selectThemeColors}
+                  isClearable
+                  placeholder="Filter by Recruiter"
+                  value={recruiterFilter}
+                  options={recruiterOptions}
+                  onChange={(option) => onRecruiterFilterChange(option)}
+                />
+              </div>
+            ) : null}
 
             <Button
               style={{

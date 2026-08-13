@@ -34,7 +34,7 @@ import { MdOutlineAttachMoney } from "react-icons/md";
 import WhatsappDialog from "../../components/Dialog/WhatsappDialog";
 import JobOpeningMatchFilters from "../../components/JobOpening/JobOpeningMatchFilters";
 
-const JobOpeningMatches = () => {
+const NewJobMatches = () => {
   const history = useHistory();
   const dispatch = useDispatch();
   const params = useParams();
@@ -43,7 +43,7 @@ const JobOpeningMatches = () => {
     (state) => state?.agency?.agencyDetail?.themecolor
   );
   const user = useSelector((state) => state?.auth?.user);
-  const { isLoading, jobOpeningMatchCandidate, jobOpeningRow } = useSelector(
+  const { isLoading, jobOpeningNewMatchCandidate, jobOpeningRow } = useSelector(
     (state) => state?.jobOpeningMatches
   );
   const { resumeCountFinishError } = useSelector(
@@ -61,7 +61,7 @@ const JobOpeningMatches = () => {
   const [clientData, setClientData] = useState([]);
 
   console.info("--------------------");
-  console.info("jobOpeningMatchCandidate => ", jobOpeningMatchCandidate);
+  console.info("jobOpeningNewMatchCandidate => ", jobOpeningNewMatchCandidate);
   console.info("jobOpeningRow => ", jobOpeningRow);
   console.info("--------------------");
 
@@ -72,14 +72,14 @@ const JobOpeningMatches = () => {
     });
   };
 
-  const getJobOpeningMatchCandidate = async (
+  const getNewJobMatchCandidate = async (
     pageNum,
     perPageNum,
     sort = sortBy,
     profile = profileCompletion
   ) => {
     await dispatch({
-      type: jobOpeningMatchesActions.GET_JOB_OPENING_MATCH_CANDIDATE,
+      type: jobOpeningMatchesActions.GET_JOB_OPENING_NEW_MATCH_CANDIDATE,
       payload: {
         id: params?.id,
         page: pageNum,
@@ -93,20 +93,20 @@ const JobOpeningMatches = () => {
   const handleSortChange = (value) => {
     setSortBy(value);
     setPage(1);
-    getJobOpeningMatchCandidate(1, perPage, value, profileCompletion);
+    getNewJobMatchCandidate(1, perPage, value, profileCompletion);
   };
 
   const handleProfileChange = (value) => {
     setProfileCompletion(value);
     setPage(1);
-    getJobOpeningMatchCandidate(1, perPage, sortBy, value);
+    getNewJobMatchCandidate(1, perPage, sortBy, value);
   };
 
   useEffect(() => {
     (async () => {
       if (params?.id) {
         await getJobOpeningRow();
-        await getJobOpeningMatchCandidate(page, perPage);
+        await getNewJobMatchCandidate(page, perPage);
       }
     })();
   }, []);
@@ -119,7 +119,7 @@ const JobOpeningMatches = () => {
     };
     const resp = await interviewRequest(payload);
     if (resp?.msg == "success") {
-      await getJobOpeningMatchCandidate(page, perPage);
+      await getNewJobMatchCandidate(page, perPage);
       setPageLoader(false);
     } else {
       await setPageLoader(false);
@@ -388,12 +388,12 @@ const JobOpeningMatches = () => {
 
   const handlePerRowsChange = async (newPerPage, page) => {
     setPerPage(newPerPage);
-    getJobOpeningMatchCandidate(page, newPerPage);
+    getNewJobMatchCandidate(page, newPerPage);
   };
 
   const handlePageChange = (page) => {
     setPage(page);
-    getJobOpeningMatchCandidate(page, perPage);
+    getNewJobMatchCandidate(page, perPage);
   };
 
   return (
@@ -423,7 +423,7 @@ const JobOpeningMatches = () => {
                   className="fw-bolder border-bottom pb-50 mb-1"
                   style={{ color: themeColor }}
                 >
-                  Job Description — Relevant
+                  New Matches
                   <div
                     style={{
                       color: "#5e5873",
@@ -431,7 +431,7 @@ const JobOpeningMatches = () => {
                       fontSize: "12px",
                       marginTop: "1rem",
                     }}
-                  >{`${jobOpeningMatchCandidate?.total} Matches Found`}</div>
+                  >{`${jobOpeningNewMatchCandidate?.total} Matches Found`}</div>
                 </h5>
                 <div
                   style={{
@@ -589,7 +589,7 @@ const JobOpeningMatches = () => {
                           margin: "0 0 8px 0",
                         }}
                       >
-                        Best Matches Candidates
+                        New Matches Candidates
                       </h5>
                       <JobOpeningMatchFilters
                         sortBy={sortBy}
@@ -606,7 +606,7 @@ const JobOpeningMatches = () => {
                   // progressPending={getClientCandidateLoader}
                   onChangeRowsPerPage={handlePerRowsChange}
                   onChangePage={handlePageChange}
-                  paginationTotalRows={jobOpeningMatchCandidate?.total || 0}
+                  paginationTotalRows={jobOpeningNewMatchCandidate?.total || 0}
                   paginationServer
                   allowRowEvents
                   customStyles={customStyles}
@@ -620,7 +620,7 @@ const JobOpeningMatches = () => {
                       : columnsClients
                   }
                   className="react-dataTable"
-                  data={jobOpeningMatchCandidate?.results || []}
+                  data={jobOpeningNewMatchCandidate?.results || []}
                 />
               </div>
             </Card>
@@ -699,4 +699,4 @@ const JobOpeningMatches = () => {
   );
 };
 
-export default JobOpeningMatches;
+export default NewJobMatches;
