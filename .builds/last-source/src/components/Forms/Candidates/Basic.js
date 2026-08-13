@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Plus, X } from "react-feather";
-import { Row, Col, Input, Label, Button } from "reactstrap";
+import { Row, Col, Input, Label, Button, Progress } from "reactstrap";
 import Select from "react-select";
 import { selectThemeColors } from "@utils";
 import { useSelector } from "react-redux";
@@ -65,6 +65,7 @@ const Basic = ({
   allowMultipleResumeSelection = false,
   resumeUploadOnly = false,
   onResumeBusyChange = () => {},
+  bulkUploadProgress = null,
 }) => {
   const loginUser = useSelector((state) => state.auth.user);
   const genderOptions = [
@@ -97,11 +98,51 @@ const Basic = ({
   const [apiConfigError, setApiConfigError] = useState(DEFAULT_API_CONFIG_ERROR);
   const [apiConfigChecking, setApiConfigChecking] = useState(true);
   const [extractError, setExtractError] = useState("");
+  const [preparingResumes, setPreparingResumes] = useState({
+    active: false,
+    done: 0,
+    total: 0,
+  });
 
-  // Keep parent Submit button disabled while API check / extract is in progress
+  const resumeCacheKey = (f) => `${f?.name || "resume"}_${f?.size || 0}`;
+
+  const parseResumeFileToData = async (resumeFile) => {
+    const formData = new FormData();
+    formData.append("resume", resumeFile);
+    try {
+      const result = await apiCall.post("/candidate/parse-resume", formData);
+      if (result?.success) return result.data || {};
+    } catch (err1) {
+      try {
+        const pubRes = await apiCall.post("/candidate/publicParseResume", formData);
+        if (pubRes?.success) return pubRes.data || {};
+      } catch (ePub) {}
+    }
+    return null;
+  };
+
+  const preparseRemainingResumes = async (files, initialCache) => {
+    if (!files || files.length <= 1) return;
+    const cache = { ...initialCache };
+    setPreparingResumes({ active: true, done: 1, total: files.length });
+    for (let j = 1; j < files.length; j++) {
+      const f = files[j];
+      const data = await parseResumeFileToData(f);
+      if (data) cache[resumeCacheKey(f)] = data;
+      setPreparingResumes({ active: true, done: j + 1, total: files.length });
+      setCandidate((prev) => {
+        const base = Array.isArray(prev) ? {} : prev || {};
+        return { ...base, resumeParseCache: { ...cache } };
+      });
+    }
+    setPreparingResumes({ active: false, done: 0, total: 0 });
+  };
+
+  // Keep parent Submit button disabled while API check / extract is in progress (resume-only page)
   useEffect(() => {
-    onResumeBusyChange(Boolean(loading || apiConfigChecking));
-  }, [loading, apiConfigChecking]);
+    if (!resumeUploadOnly) return;
+    onResumeBusyChange(Boolean(loading || apiConfigChecking || preparingResumes.active));
+  }, [loading, apiConfigChecking, preparingResumes.active, resumeUploadOnly, onResumeBusyChange]);
 
   // Use same SERVER_URL as job-description AI (axios apiCall) — not frontend host:7001
   const fetchResumeExtractionStatus = async () => {
@@ -122,8 +163,9 @@ const Basic = ({
   };
 
   useEffect(() => {
+    if (!resumeUploadOnly) return;
     let cancelled = false;
-    const MIN_CHECK_MS = 2500;
+    const MIN_CHECK_MS = 400;
 
     const checkResumeApiConfig = async () => {
       setApiConfigChecking(true);
@@ -154,7 +196,7 @@ const Basic = ({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [resumeUploadOnly]);
 
   const handleFileChange = async (evt) => {
     const files = Array.from((evt.target && evt.target.files) || []);
@@ -165,7 +207,7 @@ const Basic = ({
     setApiConfigChecking(true);
     const startedAt = Date.now();
     const latestStatus = await fetchResumeExtractionStatus();
-    const waitMore = Math.max(0, 2500 - (Date.now() - startedAt));
+    const waitMore = Math.max(0, 400 - (Date.now() - startedAt));
     if (waitMore > 0) {
       await new Promise((resolve) => setTimeout(resolve, waitMore));
     }
@@ -291,9 +333,19 @@ const Basic = ({
             professional: prof,
             resume: file,
             ...(allowMultipleResumeSelection ? { resumeFiles: files } : {}),
-            resumeParsedAt: new Date().toISOString()
+            resumeParsedAt: new Date().toISOString(),
+            resumeParseCache: {
+              ...(curr.resumeParseCache || {}),
+              [resumeCacheKey(file)]: result.data || {},
+            },
           });
         });
+      }
+      if (allowMultipleResumeSelection && files.length > 1) {
+        const initialCache = {
+          [resumeCacheKey(file)]: result.data || {},
+        };
+        preparseRemainingResumes(files, initialCache);
       }
       const genderSelect = genderSelectValue(s.gender);
       if (genderSelect && typeof setGender === 'function') {
@@ -321,9 +373,52 @@ const Basic = ({
 
   const themeColor = localStorage.getItem('themecolor') || '#105996';
 
+  const selectedResumeFiles =
+    Array.isArray(candidate?.resumeFiles) && candidate.resumeFiles.length > 0
+      ? candidate.resumeFiles
+      : candidate?.resume
+        ? [candidate.resume]
+        : [];
+
+  const bulkActive = bulkUploadProgress?.active === true;
+  const bulkTotal = bulkUploadProgress?.total || 0;
+  const bulkCurrent = bulkUploadProgress?.current || 0;
+  const bulkPhase = bulkUploadProgress?.phase || "";
+  const bulkPhaseText =
+    bulkPhase === "parsing"
+      ? "Extracting data from resume (AI)..."
+      : bulkPhase === "uploading"
+        ? "Saving candidate..."
+        : "Processing";
+  const bulkPercent =
+    bulkTotal > 0 ? Math.min(100, Math.round((bulkCurrent / bulkTotal) * 100)) : 0;
+
+  const removeResumeFile = (index) => {
+    if (bulkActive || isDisabledAllFields) return;
+    setCandidate((prev) => {
+      const base = Array.isArray(prev) ? {} : prev || {};
+      const files = [...(base.resumeFiles || selectedResumeFiles)];
+      files.splice(index, 1);
+      const next = {
+        ...base,
+        resumeFiles: files,
+        resume: files[0] || null,
+      };
+      if (files.length === 0) {
+        delete next.resumeParsedAt;
+        setExtracted(false);
+      } else if (index === 0) {
+        delete next.resumeParsedAt;
+        setExtracted(false);
+      }
+      return next;
+    });
+  };
+
   return (
     <div>
-      {/* Resume Upload Helper */}
+      {/* Resume Upload Helper — only on /candidate bulk upload page */}
+      {resumeUploadOnly && (
       <div className="mb-3 p-3 border rounded" style={{ backgroundColor: "#f8f9fa", borderColor: "#e9ecef" }}>
         <Row className="gy-1">
           <Col xs={12} className="mb-2">
@@ -363,18 +458,33 @@ const Basic = ({
               className="form-control"
               accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png"
               multiple={allowMultipleResumeSelection}
-              disabled={isDisabledAllFields || loading || apiConfigChecking || apiConfigReady !== true}
+              disabled={
+                isDisabledAllFields ||
+                loading ||
+                apiConfigChecking ||
+                apiConfigReady !== true ||
+                bulkActive
+              }
               onChange={handleFileChange}
             />
           </Col>
           <Col lg={4} xs={12} className="d-flex align-items-end mt-2 mt-lg-0">
             {loading || apiConfigChecking ? (
-              <div className="d-flex align-items-center gap-2 text-primary fw-bold">
+              <div className="d-flex align-items-center gap-2 text-primary fw-bold w-100" style={{ paddingBottom: "6px" }}>
                 <div className="spinner-border spinner-border-sm" role="status"></div>
-                <span>{loading ? "Extracting data..." : "Checking API config..."}</span>
+                <span style={{ fontSize: "12px" }}>
+                  {loading ? "Extracting data..." : "Checking API config..."}
+                </span>
+              </div>
+            ) : preparingResumes.active ? (
+              <div className="d-flex align-items-center gap-2 text-primary fw-bold w-100" style={{ paddingBottom: "6px" }}>
+                <div className="spinner-border spinner-border-sm" role="status"></div>
+                <span style={{ fontSize: "12px" }}>
+                  Preparing {preparingResumes.done} of {preparingResumes.total} resumes...
+                </span>
               </div>
             ) : apiConfigReady !== true ? (
-              <span className="text-danger" style={{ fontSize: "12px", fontWeight: 600 }}>
+              <span className="text-danger w-100" style={{ fontSize: "12px", fontWeight: 600, paddingBottom: "6px" }}>
                 Resume upload blocked until API is configured
               </span>
             ) : (candidate?.resumeParsedAt || extracted) ? (
@@ -382,20 +492,128 @@ const Basic = ({
                 type="button"
                 className="btn btn-sm w-100 fw-bold"
                 disabled
-                style={{ backgroundColor: "#d4edda", color: "#155724", border: "1px solid #c3e6cb", padding: "8px" }}
+                style={{
+                  backgroundColor: "#d4edda",
+                  color: "#155724",
+                  border: "1px solid #c3e6cb",
+                  padding: "8px 10px",
+                }}
               >
                 ✓ Auto Data Extracted
               </Button>
-            ) : allowMultipleResumeSelection && candidate?.resumeFiles?.length > 0 ? (
-              <span className="text-muted" style={{ fontSize: "12px" }}>
-                {candidate.resumeFiles.length} files selected. First file will be used for auto-extraction.
+            ) : allowMultipleResumeSelection && selectedResumeFiles.length > 0 ? (
+              <span className="text-muted w-100" style={{ fontSize: "12px", paddingBottom: "6px" }}>
+                First file preview — all files upload on Submit
               </span>
             ) : (
-              <span className="text-muted" style={{ fontSize: "12px" }}>Select file to extract info automatically</span>
+              <span className="text-muted w-100" style={{ fontSize: "12px", paddingBottom: "6px" }}>
+                Select file to extract info automatically
+              </span>
             )}
           </Col>
+
+          {allowMultipleResumeSelection && selectedResumeFiles.length > 0 && (
+            <Col xs={12} className="mt-2">
+              <div
+                className="d-flex justify-content-between align-items-center mb-50 px-1"
+                style={{ fontSize: "12px", color: "#5e5873" }}
+              >
+                <strong>
+                  {selectedResumeFiles.length} resume
+                  {selectedResumeFiles.length > 1 ? "s" : ""} selected
+                </strong>
+                {!bulkActive && (
+                  <span className="text-muted">Tap ✕ to remove before Submit</span>
+                )}
+              </div>
+              <div
+                style={{
+                  maxHeight: "140px",
+                  overflowY: "auto",
+                  border: "1px solid #dce3ed",
+                  borderRadius: "8px",
+                  backgroundColor: "#fff",
+                }}
+              >
+                {selectedResumeFiles.map((file, index) => {
+                  const name = file?.name || `Resume ${index + 1}`;
+                  return (
+                    <div
+                      key={`${name}-${index}`}
+                      className="d-flex align-items-center justify-content-between"
+                      style={{
+                        padding: "8px 12px",
+                        borderBottom:
+                          index < selectedResumeFiles.length - 1
+                            ? "1px solid #f0f2f5"
+                            : "none",
+                        gap: "10px",
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontSize: "12px",
+                          color: "#4b4b4b",
+                          flex: 1,
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {index === 0 && candidate?.resumeParsedAt ? (
+                          <span style={{ color: themeColor, fontWeight: 600 }}>★ </span>
+                        ) : null}
+                        {name}
+                      </span>
+                      {!bulkActive && (
+                        <Button
+                          type="button"
+                          color="link"
+                          className="p-0 d-flex align-items-center"
+                          style={{ color: "#ea5455", minWidth: "22px" }}
+                          onClick={() => removeResumeFile(index)}
+                          title="Remove resume"
+                        >
+                          <X size={15} />
+                        </Button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </Col>
+          )}
+
+          {bulkActive && bulkTotal > 0 && (
+            <Col xs={12} className="mt-2">
+              <div
+                className="p-2 rounded"
+                style={{
+                  backgroundColor: "#f0f4ff",
+                  border: `1px solid ${themeColor}33`,
+                }}
+              >
+                <div className="mb-50">
+                  <strong style={{ fontSize: "13px", color: themeColor }}>
+                    Uploading {bulkCurrent} of {bulkTotal}
+                  </strong>
+                </div>
+                <Progress
+                  value={bulkPercent}
+                  style={{ height: "10px", borderRadius: "6px" }}
+                  color="primary"
+                />
+                <small className="text-muted d-block mt-50" style={{ fontSize: "11px" }}>
+                  {bulkUploadProgress?.label
+                    ? `${bulkPhaseText}: ${bulkUploadProgress.label}`
+                    : bulkPhaseText}
+                </small>
+              </div>
+            </Col>
+          )}
         </Row>
       </div>
+      )}
 
       {!resumeUploadOnly && (
       <>

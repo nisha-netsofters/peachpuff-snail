@@ -2,11 +2,13 @@ import React from "react";
 import { Modal, ModalBody } from "reactstrap";
 import ComponentSpinner from "../../@core/components/spinner/Loading-spinner";
 
-const Loader = ({ loading, theamcolour }) => {
+const Loader = ({ loading, theamcolour, noBackdrop = false }) => {
   return (
     <Modal
       className="modal-dialog-centered modal-xl modal-loader"
       isOpen={loading}
+      backdrop={noBackdrop ? false : true}
+      keyboard={!noBackdrop}
     >
       <ModalBody>
         <div

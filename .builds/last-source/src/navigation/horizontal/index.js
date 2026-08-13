@@ -83,7 +83,7 @@ export default [
     title: "On Boarding",
     icon: <BookOpen size={20} />,
     navLink: `/onboarding`,
-    permission: ["Admin", "Team Leader", "BDM", "Recruiter", "Staff"],
+    permission: ["Admin", "Team Leader", "BDM", "Recruiter", "Staff", "Client"],
   },
   {
     id: "JobCategory",

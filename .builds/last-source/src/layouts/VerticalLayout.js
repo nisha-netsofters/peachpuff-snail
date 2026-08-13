@@ -6,6 +6,7 @@ import Layout from "@layouts/VerticalLayout";
 import verticalNavigation from "@src/navigation/vertical";
 import { useSelector } from "react-redux";
 import { useEffect, useState } from "react";
+import { canAccessOnBoarding } from "@src/utility/canAccessOnBoarding";
 
 const VerticalLayout = (props) => {
   const { user } = useSelector((state) => state.user);
@@ -16,6 +17,9 @@ const VerticalLayout = (props) => {
     verticalNavigation?.filter((ele) => {
       ele?.permission?.filter((element) => {
         if (element == user?.role?.name) {
+          if (ele.navLink === "/onboarding" && !canAccessOnBoarding(user)) {
+            return;
+          }
      
           ele.navLink.startsWith("/superadmin/")
             ? temp.push({ ...ele })

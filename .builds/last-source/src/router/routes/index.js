@@ -124,7 +124,7 @@ const Routes = [
     path: "/:slug/onboarding",
     exact: true,
     component: lazy(() => import("../../views/Pages/OnBoarding")),
-    permission: ["Admin", "Team Leader", "BDM", "Recruiter", "Staff"],
+    permission: ["Admin", "Team Leader", "BDM", "Recruiter", "Staff", "Client"],
   },
   {
     path: "/:slug/jobopening",

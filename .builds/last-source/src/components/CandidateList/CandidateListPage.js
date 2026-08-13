@@ -71,6 +71,7 @@ import {
   createCandidateAPI,
   getCandidateAPI,
   toggleFavoriteCandidateAPI,
+  updateCandidateAPI,
 } from "../../apis/candidate";
 import ComponentSpinner from "../../@core/components/spinner/Loading-spinner";
 import ReactCanvasConfetti from "react-canvas-confetti";
@@ -187,6 +188,20 @@ const SecondPage = ({
   );
   const [gender, setGender] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [bulkUploadProgress, setBulkUploadProgress] = useState({
+    active: false,
+    current: 0,
+    total: 0,
+    label: "",
+    phase: "",
+  });
+  const duplicateResolveRef = useRef(null);
+  const [duplicateResumeModal, setDuplicateResumeModal] = useState({
+    open: false,
+    fileLabel: "",
+    candidateName: "",
+    mobile: "",
+  });
   const [totalRows, setTotalRows] = useState(1);
   const [perPage, setPerPage] = useState(10);
   const [perPageSelect, setPerPageSelect] = useState(pageOptions[0]);
@@ -1510,6 +1525,43 @@ const SecondPage = ({
     },
   ];
 
+  const resumeCacheKey = (file) =>
+    `${file?.name || "resume"}_${file?.size || 0}`;
+
+  const buildPayloadFromParsed = (parsed, file) => {
+    const address = resolveIndianAddress({
+      state: parsed.state || "",
+      city: parsed.city || "",
+      stateId: "",
+      cityId: "",
+    });
+    return {
+      firstname: parsed.firstname || "",
+      lastname: parsed.lastname || "",
+      mobile: parsed.mobile || "",
+      alternateMobile: parsed.alternateMobile || "",
+      email: parsed.email || "",
+      gender: parsed.gender || "",
+      dateOfBirth: parsed.dateOfBirth || "",
+      street: parsed.street || "",
+      area: parsed.area || "",
+      city: address.city,
+      cityId: address.cityId,
+      state: address.state,
+      stateId: address.stateId,
+      linkedinProfile: parsed.linkedinProfile || "",
+      portfolioWebsite: parsed.portfolioWebsite || "",
+      languages: parsed.languages || "",
+      certifications: parsed.certifications || "",
+      industry: parsed.industry || "",
+      education: parsed.education || [],
+      professional: parsed.professional || {},
+      industries_relation: [],
+      resume: file,
+      userId: candidate?.userId,
+    };
+  };
+
   const parseResumeFile = async (file) => {
     const formData = new FormData();
     formData.append("resume", file);
@@ -1531,6 +1583,7 @@ const SecondPage = ({
     const skipKeys = [
       "resumeFiles",
       "resumeParsedAt",
+      "resumeParseCache",
       "userId",
       "education",
       "experience",
@@ -1574,8 +1627,40 @@ const SecondPage = ({
     return fm;
   };
 
+  const buildCandidateUpdateFormData = (data, resumeFile, candidateId) => {
+    const fm = buildCandidateFormData(data, resumeFile);
+    fm.append("id", candidateId);
+    fm.append("status", "view");
+    return fm;
+  };
+
+  const askDuplicateResumeAction = (fileLabel, existingCandidate) => {
+    const name = `${existingCandidate?.firstname || ""} ${existingCandidate?.lastname || ""}`.trim();
+    return new Promise((resolve) => {
+      duplicateResolveRef.current = resolve;
+      setDuplicateResumeModal({
+        open: true,
+        fileLabel,
+        candidateName: name || "Existing candidate",
+        mobile: existingCandidate?.mobile || "",
+      });
+    });
+  };
+
+  const closeDuplicateResumeModal = (action) => {
+    setDuplicateResumeModal({
+      open: false,
+      fileLabel: "",
+      candidateName: "",
+      mobile: "",
+    });
+    if (duplicateResolveRef.current) {
+      duplicateResolveRef.current(action);
+      duplicateResolveRef.current = null;
+    }
+  };
+
   const CandidateCreateHandler = async () => {
-    setLoading(true);
     const isResumeUploadPage = params?.pathname === `/${slug}/candidate`;
     const resumeFiles =
       Array.isArray(candidate?.resumeFiles) && candidate.resumeFiles.length > 0
@@ -1587,18 +1672,44 @@ const SecondPage = ({
     // Resume upload page: create one candidate per file; skip duplicates
     if (isResumeUploadPage && resumeFiles.length > 0) {
       let successCount = 0;
+      let updateCount = 0;
       let skipCount = 0;
       let failCount = 0;
       const failReasons = [];
+      setBulkUploadProgress({
+        active: true,
+        current: 0,
+        total: resumeFiles.length,
+        label: "",
+        phase: "",
+      });
 
       for (let i = 0; i < resumeFiles.length; i++) {
         const file = resumeFiles[i];
         const fileLabel = file?.name || `Resume ${i + 1}`;
+        setBulkUploadProgress({
+          active: true,
+          current: i + 1,
+          total: resumeFiles.length,
+          label: fileLabel,
+          phase: "processing",
+        });
         try {
           let payloadData;
+          const cachedRaw = candidate?.resumeParseCache?.[resumeCacheKey(file)];
           if (i === 0 && candidate?.resumeParsedAt) {
             payloadData = { ...candidate, resume: file };
+          } else if (cachedRaw) {
+            const parsed = normalizeExtractedResume(cachedRaw, course);
+            payloadData = buildPayloadFromParsed(parsed, file);
           } else {
+            setBulkUploadProgress({
+              active: true,
+              current: i + 1,
+              total: resumeFiles.length,
+              label: fileLabel,
+              phase: "parsing",
+            });
             const parsedRaw = await parseResumeFile(file);
             if (!parsedRaw) {
               failCount += 1;
@@ -1606,37 +1717,7 @@ const SecondPage = ({
               continue;
             }
             const parsed = normalizeExtractedResume(parsedRaw, course);
-            const address = resolveIndianAddress({
-              state: parsed.state || "",
-              city: parsed.city || "",
-              stateId: "",
-              cityId: "",
-            });
-            payloadData = {
-              firstname: parsed.firstname || "",
-              lastname: parsed.lastname || "",
-              mobile: parsed.mobile || "",
-              alternateMobile: parsed.alternateMobile || "",
-              email: parsed.email || "",
-              gender: parsed.gender || "",
-              dateOfBirth: parsed.dateOfBirth || "",
-              street: parsed.street || "",
-              area: parsed.area || "",
-              city: address.city,
-              cityId: address.cityId,
-              state: address.state,
-              stateId: address.stateId,
-              linkedinProfile: parsed.linkedinProfile || "",
-              portfolioWebsite: parsed.portfolioWebsite || "",
-              languages: parsed.languages || "",
-              certifications: parsed.certifications || "",
-              industry: parsed.industry || "",
-              education: parsed.education || [],
-              professional: parsed.professional || {},
-              industries_relation: [],
-              resume: file,
-              userId: candidate?.userId,
-            };
+            payloadData = buildPayloadFromParsed(parsed, file);
           }
 
           // Without mobile, backend rejects — treat as failed extract, not duplicate
@@ -1647,12 +1728,42 @@ const SecondPage = ({
           }
 
           const fm = buildCandidateFormData(payloadData, file);
+          setBulkUploadProgress({
+            active: true,
+            current: i + 1,
+            total: resumeFiles.length,
+            label: fileLabel,
+            phase: "uploading",
+          });
           const result = await createCandidateAPI(fm);
           if (result?.id) {
             successCount += 1;
           } else if (result?.duplicate) {
-            // Already exists by email/mobile — skip and continue with remaining
-            skipCount += 1;
+            const existing = result?.existingCandidate || {};
+            const existingId = existing?.id;
+            if (!existingId) {
+              skipCount += 1;
+              continue;
+            }
+            const action = await askDuplicateResumeAction(fileLabel, existing);
+            if (action === "update") {
+              const updateFm = buildCandidateUpdateFormData(
+                payloadData,
+                file,
+                existingId
+              );
+              const updateResult = await updateCandidateAPI({ data: updateFm });
+              if (updateResult?.msg && !updateResult?.error) {
+                updateCount += 1;
+              } else {
+                failCount += 1;
+                failReasons.push(
+                  `${fileLabel}: ${updateResult?.error || "update failed"}`
+                );
+              }
+            } else {
+              skipCount += 1;
+            }
           } else {
             failCount += 1;
             failReasons.push(
@@ -1665,12 +1776,34 @@ const SecondPage = ({
             `${fileLabel}: ${e?.response?.data?.error || e?.message || "create failed"}`
           );
         }
+        setBulkUploadProgress({
+          active: true,
+          current: i + 1,
+          total: resumeFiles.length,
+          label: fileLabel,
+          phase: "processing",
+        });
       }
 
-      if (successCount > 0) {
-        tostifySuccess(
-          `${successCount} candidate${successCount > 1 ? "s" : ""} added — welcome msg API called for each mobile`
-        );
+      setBulkUploadProgress({
+        active: false,
+        current: 0,
+        total: 0,
+        label: "",
+        phase: "",
+      });
+
+      if (successCount > 0 || updateCount > 0) {
+        if (successCount > 0) {
+          tostifySuccess(
+            `${successCount} candidate${successCount > 1 ? "s" : ""} added — welcome msg API called for each mobile`
+          );
+        }
+        if (updateCount > 0) {
+          tostifySuccess(
+            `${updateCount} candidate resume${updateCount > 1 ? "s" : ""} updated`
+          );
+        }
         const resp = await getCandidateAPI({
           page: currentPage,
           perPage: perPage,
@@ -1686,7 +1819,7 @@ const SecondPage = ({
       }
       if (skipCount > 0) {
         tostifyInfo(
-          `${skipCount} resume${skipCount > 1 ? "s" : ""} already exist — skipped`
+          `${skipCount} resume${skipCount > 1 ? "s" : ""} skipped`
         );
       }
       if (failCount > 0) {
@@ -1697,15 +1830,15 @@ const SecondPage = ({
         );
       }
       // All skipped / none created — still close popup after feedback
-      if (successCount === 0) {
+      if (successCount === 0 && updateCount === 0) {
         setShow(false);
         setCreate(false);
         setUpdate(false);
       }
-      setLoading(false);
       return;
     }
 
+    setLoading(true);
     let education = [];
     if (candidate?.education) {
       education = candidate?.education?.filter((items) => {
@@ -3500,7 +3633,11 @@ const SecondPage = ({
                   // }, 10);
                 }}
                 fixedHeader={true}
-                progressPending={isAppliedCandidates ? isAppliedCandidatesLoading : (loading || getSavedCandidateLoader)}
+                progressPending={
+                  isAppliedCandidates
+                    ? isAppliedCandidatesLoading
+                    : (loading && !bulkUploadProgress.active) || getSavedCandidateLoader
+                }
                 progressComponent={
                   <ComponentSpinner
                     isClientCandidate={true}
@@ -3577,7 +3714,7 @@ const SecondPage = ({
                   )
                 }
               /> */}
-            {loading == true ? (
+            {loading === true && !bulkUploadProgress.active ? (
               <ComponentSpinner
                 isClientCandidate={true}
                 theamcolour={themecolor}
@@ -4075,6 +4212,7 @@ const SecondPage = ({
             resumeUploadOnly={
               params?.pathname === `/${slug}/candidate` && create && !update
             }
+            bulkUploadProgress={bulkUploadProgress}
           />
         </>
       ) : null}
@@ -4088,6 +4226,48 @@ const SecondPage = ({
           setClientData={setClientData}
         />
       ) : null}
+      <Modal
+        className="modal-dialog-centered"
+        isOpen={duplicateResumeModal.open}
+        toggle={() => closeDuplicateResumeModal("cancel")}
+        backdrop={false}
+        zIndex={1060}
+      >
+        <ModalHeader toggle={() => closeDuplicateResumeModal("cancel")}>
+          Resume Already Exists
+        </ModalHeader>
+        <ModalBody>
+          <p className="mb-1">
+            <strong>{duplicateResumeModal.fileLabel}</strong>
+          </p>
+          <p className="mb-0">
+            Candidate already exists
+            {duplicateResumeModal.candidateName
+              ? ` (${duplicateResumeModal.candidateName})`
+              : ""}
+            {duplicateResumeModal.mobile
+              ? ` — Mobile: ${duplicateResumeModal.mobile}`
+              : ""}
+            .
+          </p>
+          <p className="mt-1 mb-0">Do you want to update the resume?</p>
+        </ModalBody>
+        <ModalFooter>
+          <Button
+            color="default"
+            style={{ backgroundColor: themecolor, color: "white" }}
+            onClick={() => closeDuplicateResumeModal("update")}
+          >
+            Update
+          </Button>
+          <Button
+            color="secondary"
+            onClick={() => closeDuplicateResumeModal("cancel")}
+          >
+            Cancel
+          </Button>
+        </ModalFooter>
+      </Modal>
       <Modal
         className="modal-dialog-centered"
         isOpen={showDeleteModal}

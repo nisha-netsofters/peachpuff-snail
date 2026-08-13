@@ -29,6 +29,7 @@ import SuperAdminLogin from "../views/Pages/superAdminPages/Login";
 import Pricing from "../views/Pages/LandingPage/Pricing/Pricing";
 import ClientRegistration from "../views/Pages/ClientRegistration";
 import ForgotPassword from "../components/Forms/Login/ForgotPassword";
+import { canAccessOnBoarding } from "../utility/canAccessOnBoarding";
 
 const Router = () => {
   const { layout, setLayout, setLastLayout } = useLayout();
@@ -70,8 +71,11 @@ const Router = () => {
           // Only filter by role when we have a real role; otherwise keep
           // routes registered so PrivateRoute can send users to /login.
           if (user?.role?.name) {
+            const roleAllowed = route.permission.includes(user.role.name) === true;
+            const onboardingAllowed =
+              route.path !== "/:slug/onboarding" || canAccessOnBoarding(user);
             if (
-              route.permission.includes(user.role.name) === true ||
+              (roleAllowed && onboardingAllowed) ||
               route.meta?.authRoute === true
             ) {
               LayoutRoutes.push(route);

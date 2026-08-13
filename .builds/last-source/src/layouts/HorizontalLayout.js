@@ -6,6 +6,7 @@ import Layout from "@layouts/HorizontalLayout";
 import horizontalNavigation from "@src/navigation/horizontal";
 import { useSelector } from "react-redux";
 import { useEffect, useState } from "react";
+import { canAccessOnBoarding } from "@src/utility/canAccessOnBoarding";
 
 const HorizontalLayout = (props) => {
   const { user } = useSelector((state) => state.user);
@@ -16,6 +17,9 @@ const HorizontalLayout = (props) => {
     horizontalNavigation?.filter((ele) => {
       ele?.permission?.filter((element) => {
         if (element == user?.role?.name) {
+          if (ele.navLink === "/onboarding" && !canAccessOnBoarding(user)) {
+            return;
+          }
 
           ele.navLink.startsWith("/superadmin/")
             ? temp.push({ ...ele })

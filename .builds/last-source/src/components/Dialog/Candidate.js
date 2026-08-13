@@ -51,6 +51,7 @@ const Candidate = ({
   hideProfileCompletion = false,
   allowMultipleResumeSelection = false,
   resumeUploadOnly = false,
+  bulkUploadProgress = null,
 }) => {
   // const { user } = useSelector((state) => state.auth);
   const [cities, setCities] = useState([]);
@@ -180,8 +181,8 @@ const Candidate = ({
           }}
         ></ModalHeader>
 
-        {loading == true ? (
-          <Loader loading={loading} theamcolour={themecolor} />
+        {loading === true && !bulkUploadProgress?.active ? (
+          <Loader loading={loading} theamcolour={themecolor} noBackdrop />
         ) : null}
         <ModalBody className="px-sm-5 pt-50 pb-5">
           {!hideProfileCompletion && !resumeUploadOnly && (
@@ -244,6 +245,7 @@ const Candidate = ({
             allowMultipleResumeSelection={allowMultipleResumeSelection}
             resumeUploadOnly={resumeUploadOnly}
             onResumeBusyChange={setResumeBusy}
+            bulkUploadProgress={bulkUploadProgress}
           />
 
           {!resumeUploadOnly && (
@@ -292,6 +294,10 @@ const Candidate = ({
             update={update}
             isDisabledAllFields={isDisabledAllFields}
             allowMultipleResumeSelection={allowMultipleResumeSelection}
+            setCandidate={setCandidate}
+            setEmail={setEmail}
+            setGender={setGender}
+            onResumeBusyChange={setResumeBusy}
           />
           <Row className="gy-1 pt-75" style={{ marginTop: "10px" }}>
             <Col lg={12} xs={12} xl={12}>
@@ -342,12 +348,12 @@ const Candidate = ({
               className="add-new-user"
               disabled={
                 isDisabledAllFields === true ||
-                loading === true ||
+                (loading === true && !bulkUploadProgress?.active) ||
                 resumeBusy === true
               }
               style={
                 isDisabledAllFields === true ||
-                loading === true ||
+                (loading === true && !bulkUploadProgress?.active) ||
                 resumeBusy === true
                   ? {
                     opacity: "0.6",
@@ -360,14 +366,16 @@ const Candidate = ({
               }
               color="default"
               onClick={(e) => {
-                if (isDisabledAllFields || loading || resumeBusy) return;
+                if (isDisabledAllFields || (loading && !bulkUploadProgress?.active) || resumeBusy) return;
                 CandidateHandler(e);
               }}
             >
               {resumeUploadOnly
-                ? candidate?.resumeFiles?.length > 1
-                  ? `Submit ${candidate.resumeFiles.length} Resumes`
-                  : "Submit Resume"
+                ? bulkUploadProgress?.active
+                  ? `Uploading ${bulkUploadProgress.current}/${bulkUploadProgress.total}...`
+                  : candidate?.resumeFiles?.length > 1
+                    ? `Submit ${candidate.resumeFiles.length} Resumes`
+                    : "Submit Resume"
                 : "Submit"}
             </Button>
           </div>
