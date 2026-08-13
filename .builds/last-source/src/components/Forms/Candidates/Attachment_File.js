@@ -299,14 +299,21 @@ const Attachment_File = ({
     const allowedMime = [
       "application/pdf",
       "application/msword",
+      "application/vnd.ms-word",
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "application/octet-stream",
       "image/jpeg",
       "image/jpg",
       "image/png",
     ];
     const isAllowedResumeFile = (f) => {
       const ext = String(f?.name || "").split(".").pop().toLowerCase();
-      return allowedExt.includes(ext) || allowedMime.includes(f?.type);
+      if (allowedExt.includes(ext)) return true;
+      if (!f?.type) return false;
+      if (f.type === "application/octet-stream") {
+        return allowedExt.includes(ext);
+      }
+      return allowedMime.includes(f.type);
     };
     const invalidFile = files.find((f) => !isAllowedResumeFile(f));
     if (invalidFile) {

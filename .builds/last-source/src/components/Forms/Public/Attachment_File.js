@@ -252,12 +252,19 @@ const Attachment_File = ({
     const allowedMime = [
       "application/pdf",
       "application/msword",
+      "application/vnd.ms-word",
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "application/octet-stream",
       "image/jpeg",
       "image/jpg",
       "image/png",
     ];
-    if (!allowedExt.includes(ext) && !allowedMime.includes(file.type)) {
+    const extAllowed = allowedExt.includes(ext);
+    const mimeAllowed =
+      file.type &&
+      (allowedMime.includes(file.type) ||
+        (file.type === "application/octet-stream" && extAllowed));
+    if (!extAllowed && !mimeAllowed) {
       const msg = "Please upload PDF, DOC, DOCX, JPG, JPEG, or PNG file";
       setExtractError(msg);
       tostify(msg);
