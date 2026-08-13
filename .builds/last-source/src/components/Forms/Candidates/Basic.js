@@ -274,6 +274,7 @@ const Basic = ({
             gender: s.gender || curr.gender || "",
             dateOfBirth: s.dateOfBirth || curr.dateOfBirth || "",
             street: s.street || curr.street || "",
+            area: s.area || curr.area || "",
             city: address.city,
             cityId: address.cityId,
             state: address.state,

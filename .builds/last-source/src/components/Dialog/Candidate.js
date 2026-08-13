@@ -128,7 +128,7 @@ const Candidate = ({
       if (e?.target?.id === undefined) {
         setCandidate({ ...candidate, [e.id]: e.value });
       } else {
-        if (e.target.id === "street")
+        if (e.target.id === "street" || e.target.id === "area")
           setCandidate({ ...candidate, [e.target.id]: e.target.value });
         else
           setCandidate({

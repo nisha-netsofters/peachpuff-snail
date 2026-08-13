@@ -1621,6 +1621,7 @@ const SecondPage = ({
               gender: parsed.gender || "",
               dateOfBirth: parsed.dateOfBirth || "",
               street: parsed.street || "",
+              area: parsed.area || "",
               city: address.city,
               cityId: address.cityId,
               state: address.state,

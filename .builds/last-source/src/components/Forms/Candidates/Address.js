@@ -147,6 +147,26 @@ export const Address = ({
         </Col>
         <Col lg={6} xs={12} xl={4}>
           <div>
+            <Label>Area</Label>
+            <Input
+              maxLength={100}
+              id="area"
+              onFocus={() => setIsfocus("area")}
+              onBlur={() => setIsfocus(null)}
+              style={{
+                borderColor: focus === "area" && themecolor,
+              }}
+              className="w-100"
+              type="text"
+              placeholder="Enter Area"
+              value={candidate?.area || ""}
+              disabled={isDisabledAllFields}
+              onChange={(e) => handleChange(e)}
+            />
+          </div>
+        </Col>
+        <Col lg={6} xs={12} xl={4}>
+          <div>
             <Label>State</Label>
             <Select
               id="state"

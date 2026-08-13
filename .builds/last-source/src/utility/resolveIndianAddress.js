@@ -35,11 +35,13 @@ export const resolveIndianAddress = ({
     if (cityMatch) {
       nextCity = cityMatch.name;
       nextCityId = cityMatch.name;
-    } else if (!nextCityId) {
-      nextCityId = nextCity;
+    } else {
+      nextCity = "";
+      nextCityId = "";
     }
-  } else if (nextCity && !nextCityId) {
-    nextCityId = nextCity;
+  } else if (nextCity) {
+    nextCity = "";
+    nextCityId = "";
   }
 
   return {
