@@ -21,7 +21,6 @@ const JobOpeningMatchFilters = ({
   profileCompletion,
   onSortChange,
   onProfileChange,
-  themecolor,
 }) => {
   const sortValue =
     JOB_MATCH_SORT_OPTIONS.find((o) => o.value === sortBy) ||
