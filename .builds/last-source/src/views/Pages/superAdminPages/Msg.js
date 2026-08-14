@@ -86,7 +86,7 @@ const MSG_CONFIG_SLOTS = [
     audience: "client",
     section: "client",
     title: "Welcome",
-    subtitle: "welcome_msg2 — client add par",
+    subtitle: "welcome_msg2 — on client add",
     badge: "Client",
     badgeColor: "warning",
   },
@@ -95,7 +95,7 @@ const MSG_CONFIG_SLOTS = [
     audience: "candidate",
     section: "customer",
     title: "Customer Welcome",
-    subtitle: "welcome_msg2 — candidate create par",
+    subtitle: "welcome_msg2 — on candidate create",
     badge: "Customer",
     badgeColor: "info",
   },
@@ -104,7 +104,7 @@ const MSG_CONFIG_SLOTS = [
     audience: "candidate",
     section: "customer",
     title: "Unfilled Fields",
-    subtitle: "unfilled_fields template — candidate create par (body_1, body_2, body_3)",
+    subtitle: "unfilled_fields template — on candidate create (body_1, body_2, body_3)",
     badge: "Customer",
     badgeColor: "info",
   },
@@ -114,7 +114,7 @@ const MSG_SECTIONS = [
   {
     key: "client",
     title: "1. Client",
-    subtitle: "Client add thay tyare 1 welcome message",
+    subtitle: "1 welcome message when a client is added",
     badge: "Client",
     badgeColor: "warning",
     slotIds: ["msg-client-welcome"],
@@ -122,7 +122,7 @@ const MSG_SECTIONS = [
   {
     key: "customer",
     title: "2. Customer (Candidate)",
-    subtitle: "Candidate add thay tyare 2 messages — welcome + unfilled fields",
+    subtitle: "2 messages when a candidate is added — welcome + unfilled fields",
     badge: "Customer",
     badgeColor: "info",
     slotIds: ["msg-customer-welcome", "msg-customer-unfilled"],
@@ -678,8 +678,8 @@ const TemplateEasyEditor = ({ api, onChangeBodyParams, onUploadImage }) => {
       <hr className="mt-0 mb-1" />
       {ui.bodyVars.length === 0 ? (
         <p className="text-muted small">
-          cURL parse pachi <code>body_1</code>, <code>body_2</code>… ahiya auto
-          dekhase. Pehla upar cURL paste kari Parse karo.
+          After parsing cURL, <code>body_1</code>, <code>body_2</code>… will
+          appear here automatically. Paste cURL above and click Parse first.
         </p>
       ) : (
         ui.bodyVars.map((v, index) => (
@@ -1076,8 +1076,8 @@ const Msg = () => {
         </h3>
       </div>
       <p className="text-muted mb-2">
-        2 sections: <b>Client</b> (welcome_msg2) ane <b>Customer</b> (welcome +
-        unfilled_fields). Candidate add par customer ne 2 message jase.
+        2 sections: <b>Client</b> (welcome_msg2) and <b>Customer</b> (welcome +
+        unfilled_fields). When a candidate is added, 2 messages are sent.
       </p>
 
       <Card className="mb-1 border-0 shadow-none">
