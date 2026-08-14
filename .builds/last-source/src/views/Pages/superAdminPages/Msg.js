@@ -79,6 +79,78 @@ const MATCH_TO_PLACEHOLDER = {
 const newApiId = () =>
   `api_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
+/** Fixed API slots — 2 sections: Client (1) + Customer (2 templates). */
+const MSG_CONFIG_SLOTS = [
+  {
+    id: "msg-client-welcome",
+    audience: "client",
+    section: "client",
+    title: "Welcome",
+    subtitle: "welcome_msg2 — client add par",
+    badge: "Client",
+    badgeColor: "warning",
+  },
+  {
+    id: "msg-customer-welcome",
+    audience: "candidate",
+    section: "customer",
+    title: "Customer Welcome",
+    subtitle: "welcome_msg2 — candidate create par",
+    badge: "Customer",
+    badgeColor: "info",
+  },
+  {
+    id: "msg-customer-unfilled",
+    audience: "candidate",
+    section: "customer",
+    title: "Unfilled Fields",
+    subtitle: "unfilled_fields template — candidate create par (body_1, body_2, body_3)",
+    badge: "Customer",
+    badgeColor: "info",
+  },
+];
+
+const MSG_SECTIONS = [
+  {
+    key: "client",
+    title: "1. Client",
+    subtitle: "Client add thay tyare 1 welcome message",
+    badge: "Client",
+    badgeColor: "warning",
+    slotIds: ["msg-client-welcome"],
+  },
+  {
+    key: "customer",
+    title: "2. Customer (Candidate)",
+    subtitle: "Candidate add thay tyare 2 messages — welcome + unfilled fields",
+    badge: "Customer",
+    badgeColor: "info",
+    slotIds: ["msg-customer-welcome", "msg-customer-unfilled"],
+  },
+];
+
+const UNFILLED_CURL_PLACEHOLDER = `curl -s -X POST 'https://wa2.netsofters.com/api/external-api-bridge/send-template-v2' \\
+  -H 'Accept: application/json' \\
+  -H 'Content-Type: application/json' \\
+  -H 'x-security-key: YOUR_KEY' \\
+  -d '{"messaging_product":"whatsapp","recipient_type":"individual","to":"919999999999","type":"template","template":{"name":"unfilled_fields","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","parameter_name":"body_1","text":"BODY_1_VALUE"},{"type":"text","parameter_name":"body_2","text":"BODY_2_VALUE"},{"type":"text","parameter_name":"body_3","text":"BODY_3_VALUE"}]}]}}'`;
+
+const getSlotById = (id) =>
+  MSG_CONFIG_SLOTS.find((s) => s.id === id) || MSG_CONFIG_SLOTS[0];
+
+const remapLegacySavedApi = (api) => {
+  if (!api) return api;
+  const next = { ...api };
+  if (next.id === "msg-welcome-both" || next.audience === "both") {
+    next.id = "msg-candidate-welcome";
+    next.audience = "candidate";
+  }
+  if (next.id === "msg-candidate-welcome") {
+    next.id = "msg-customer-welcome";
+  }
+  return next;
+};
+
 const createEmptyApi = (index = 0) => ({
   id: newApiId(),
   name: `API Config ${index + 1}`,
@@ -90,8 +162,21 @@ const createEmptyApi = (index = 0) => ({
   bodyParams: DEFAULT_BODY_PARAMS.map((p) => ({ ...p })),
   countryCodePrefix: "91",
   recipientKey: "to",
+  audience: "candidate",
   // auto strips body_1 style names (fixes WhatsApp #132012 on positional templates)
   parameterMode: "auto",
+});
+
+const createSlotApi = (slot) => ({
+  ...createEmptyApi(0),
+  id: slot.id,
+  audience: slot.audience,
+  name: slot.title,
+  apiUrl: "",
+  curlText: "",
+  isEnabled: false,
+  bodyParams: [],
+  headers: DEFAULT_HEADERS.map((h) => ({ ...h })),
 });
 
 const flattenObject = (obj, prefix = "") => {
@@ -420,52 +505,85 @@ const rebuildComponents = (bodyParams, bodyVars, imageCfg) => {
   );
 };
 
-const normalizeApis = (data) => {
-  if (Array.isArray(data?.apis) && data.apis.length > 0) {
-    return data.apis.map((api, idx) => {
-      const base = {
-        ...createEmptyApi(idx),
-        ...api,
-        id: api.id || newApiId(),
-        name: api.name || `API Config ${idx + 1}`,
-        headers:
-          Array.isArray(api.headers) && api.headers.length
-            ? api.headers
-            : DEFAULT_HEADERS.map((h) => ({ ...h })),
-        bodyParams:
-          Array.isArray(api.bodyParams) && api.bodyParams.length
-            ? api.bodyParams
-            : DEFAULT_BODY_PARAMS.map((p) => ({ ...p })),
-      };
-      // Always keep URL visible in Paste full cURL box
-      if (!String(base.curlText || "").trim() && base.apiUrl) {
-        base.curlText = `curl -s -X ${base.method || "POST"} '${base.apiUrl}'`;
-      }
-      return base;
-    });
+const mergeSavedApi = (slot, saved) => {
+  const base = createSlotApi(slot);
+  if (!saved) return base;
+  const merged = {
+    ...base,
+    ...saved,
+    id: slot.id,
+    audience: slot.audience,
+    name: saved.name || slot.title,
+    headers:
+      Array.isArray(saved.headers) && saved.headers.length
+        ? saved.headers
+        : DEFAULT_HEADERS.map((h) => ({ ...h })),
+    bodyParams:
+      Array.isArray(saved.bodyParams) && saved.bodyParams.length
+        ? saved.bodyParams
+        : DEFAULT_BODY_PARAMS.map((p) => ({ ...p })),
+  };
+  if (!String(merged.curlText || "").trim() && merged.apiUrl) {
+    merged.curlText = `curl -s -X ${merged.method || "POST"} '${merged.apiUrl}'`;
   }
-  if (data?.apiUrl) {
-    return [
+  return merged;
+};
+
+const normalizeApis = (data) => {
+  let saved = Array.isArray(data?.apis)
+    ? data.apis.map(remapLegacySavedApi)
+    : [];
+
+  if (!saved.length && data?.apiUrl) {
+    saved = [
       {
         ...createEmptyApi(0),
         isEnabled: data.isEnabled ?? false,
         apiUrl: data.apiUrl,
         method: data.method || "POST",
-        headers:
-          Array.isArray(data.headers) && data.headers.length
-            ? data.headers
-            : DEFAULT_HEADERS.map((h) => ({ ...h })),
-        bodyParams:
-          Array.isArray(data.bodyParams) && data.bodyParams.length
-            ? data.bodyParams
-            : DEFAULT_BODY_PARAMS.map((p) => ({ ...p })),
+        headers: data.headers,
+        bodyParams: data.bodyParams,
         countryCodePrefix: data.countryCodePrefix || "91",
         recipientKey: data.recipientKey || "to",
+        audience: "candidate",
       },
     ];
   }
-  return [createEmptyApi(0)];
+
+  const usedIndexes = new Set();
+  const pickUnused = () => {
+    const idx = saved.findIndex((_, i) => !usedIndexes.has(i));
+    if (idx < 0) return null;
+    usedIndexes.add(idx);
+    return saved[idx];
+  };
+
+  return MSG_CONFIG_SLOTS.map((slot) => {
+    let matchIdx = saved.findIndex(
+      (a, i) => !usedIndexes.has(i) && a.id === slot.id
+    );
+    if (matchIdx >= 0) {
+      usedIndexes.add(matchIdx);
+      return mergeSavedApi(slot, saved[matchIdx]);
+    }
+
+    matchIdx = saved.findIndex(
+      (a, i) =>
+        !usedIndexes.has(i) && a.audience === slot.audience
+    );
+    if (matchIdx >= 0) {
+      usedIndexes.add(matchIdx);
+      return mergeSavedApi(slot, saved[matchIdx]);
+    }
+
+    const match = pickUnused();
+    return mergeSavedApi(slot, match);
+  });
 };
+
+const getSlotMeta = (api) =>
+  MSG_CONFIG_SLOTS.find((s) => s.id === api.id || s.audience === api.audience) ||
+  MSG_CONFIG_SLOTS[0];
 
 const faqHeaderStyle = {
   display: "flex",
@@ -478,6 +596,19 @@ const faqHeaderStyle = {
   borderRadius: "8px",
   cursor: "pointer",
   userSelect: "none",
+};
+
+const getMatchOptions = (audience) => {
+  const base = MATCH_OPTIONS.filter((o) => o.value !== "image");
+  if (audience === "client") {
+    return base.filter(
+      (o) =>
+        o.value !== "profile_link" &&
+        o.value !== "resume" &&
+        o.value !== "unfilled_fields"
+    );
+  }
+  return base;
 };
 
 const TemplateEasyEditor = ({ api, onChangeBodyParams, onUploadImage }) => {
@@ -563,13 +694,11 @@ const TemplateEasyEditor = ({ api, onChangeBodyParams, onUploadImage }) => {
                     updateBodyVar(index, { matchType: e.target.value })
                   }
                 >
-                  {MATCH_OPTIONS.filter((o) => o.value !== "image").map(
-                    (opt) => (
+                  {getMatchOptions(api.audience).map((opt) => (
                       <option key={opt.value} value={opt.value}>
                         {opt.label}
                       </option>
-                    )
-                  )}
+                    ))}
                 </Input>
               </FormGroup>
             </Col>
@@ -651,7 +780,7 @@ const TemplateEasyEditor = ({ api, onChangeBodyParams, onUploadImage }) => {
 };
 
 const Msg = () => {
-  const [apis, setApis] = useState([createEmptyApi(0)]);
+  const [apis, setApis] = useState(MSG_CONFIG_SLOTS.map(createSlotApi));
   const [openFaq, setOpenFaq] = useState({ config: true, logs: true });
   const [openApiIds, setOpenApiIds] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -795,35 +924,40 @@ const Msg = () => {
 
   const handleSave = async () => {
     for (const api of apis) {
+      if (!api.isEnabled) continue;
       if (!api.apiUrl?.trim()) {
-        return tostify(`"${api.name}" — API URL is required`);
+        return tostify(`"${getSlotMeta(api).title}" — API URL is required (Parse cURL)`);
       }
       const validBody = (api.bodyParams || []).filter((p) => p.key?.trim());
       if (!validBody.length) {
-        return tostify(`"${api.name}" — parse a cURL first`);
+        return tostify(`"${getSlotMeta(api).title}" — parse a cURL first`);
       }
     }
 
     setSaving(true);
     try {
       const payload = {
-        apis: apis.map((api, idx) => ({
-          id: api.id,
-          name: api.name || `API Config ${idx + 1}`,
-          isEnabled: Boolean(api.isEnabled),
-          apiUrl: api.apiUrl.trim(),
-          method: api.method || "POST",
-          curlText: api.curlText || "",
-          headers: (api.headers || [])
-            .filter((h) => h.key?.trim())
-            .map((h) => ({ key: h.key.trim(), value: h.value ?? "" })),
-          bodyParams: (api.bodyParams || [])
-            .filter((p) => p.key?.trim())
-            .map((p) => ({ key: p.key.trim(), value: p.value ?? "" })),
-          countryCodePrefix: api.countryCodePrefix || "91",
-          recipientKey: api.recipientKey || "to",
-          parameterMode: api.parameterMode || "auto",
-        })),
+        apis: apis.map((api) => {
+          const slot = getSlotMeta(api);
+          return {
+            id: slot.id,
+            audience: slot.audience,
+            name: api.name || slot.title,
+            isEnabled: Boolean(api.isEnabled),
+            apiUrl: api.apiUrl.trim(),
+            method: api.method || "POST",
+            curlText: api.curlText || "",
+            headers: (api.headers || [])
+              .filter((h) => h.key?.trim())
+              .map((h) => ({ key: h.key.trim(), value: h.value ?? "" })),
+            bodyParams: (api.bodyParams || [])
+              .filter((p) => p.key?.trim())
+              .map((p) => ({ key: p.key.trim(), value: p.value ?? "" })),
+            countryCodePrefix: api.countryCodePrefix || "91",
+            recipientKey: api.recipientKey || "to",
+            parameterMode: api.parameterMode || "auto",
+          };
+        }),
       };
 
       const resp = await saveWelcomeWhatsappConfig(payload);
@@ -942,8 +1076,8 @@ const Msg = () => {
         </h3>
       </div>
       <p className="text-muted mb-2">
-        cURL paste karo → Body / Image easy mapping. Technical fields Advanced
-        ma chhe.
+        2 sections: <b>Client</b> (welcome_msg2) ane <b>Customer</b> (welcome +
+        unfilled_fields). Candidate add par customer ne 2 message jase.
       </p>
 
       <Card className="mb-1 border-0 shadow-none">
@@ -957,120 +1091,135 @@ const Msg = () => {
           {openFaq.config ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
           <strong className="flex-grow-1">1. API Configuration (cURL)</strong>
           <Badge color="primary" pill>
-            {apis.length} config{apis.length > 1 ? "s" : ""}
+            2 sections
           </Badge>
         </div>
         <Collapse isOpen={openFaq.config}>
           <CardBody className="pt-2 px-0">
-            {apis.map((api, apiIndex) => {
-              const isOpen = openApiIds.includes(api.id);
-
-              return (
-                <div key={api.id} className="mb-1" style={{ marginLeft: 4 }}>
-                  <div
-                    style={{
-                      ...faqHeaderStyle,
-                      background: isOpen ? "#eef3ff" : "#fff",
-                      borderColor: isOpen ? "#c5d4f7" : "#e9ecef",
-                    }}
-                    onClick={() => toggleApi(api.id)}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => e.key === "Enter" && toggleApi(api.id)}
-                  >
-                    {isOpen ? (
-                      <ChevronDown size={16} />
-                    ) : (
-                      <ChevronRight size={16} />
-                    )}
-                    <span className="flex-grow-1">
-                      <strong>
-                        {apiIndex + 1}. {api.name || "Untitled API"}
-                      </strong>
-                      <small className="text-muted d-block text-truncate">
-                        {getParamValue(api.bodyParams, "template.name") ||
-                          api.apiUrl ||
-                          "No URL yet"}
-                      </small>
-                    </span>
-                    <div
-                      className="form-switch form-check-primary"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <Input
-                        type="switch"
-                        id={`api-enabled-${api.id}`}
-                        checked={api.isEnabled}
-                        onChange={(e) =>
-                          updateApi(api.id, "isEnabled", e.target.checked)
-                        }
-                      />
-                    </div>
-                  </div>
-
-                  <Collapse isOpen={isOpen}>
-                    <div
-                      className="p-2"
-                      style={{
-                        border: "1px solid #e9ecef",
-                        borderTop: "none",
-                        borderRadius: "0 0 8px 8px",
-                      }}
-                    >
-                      <Row>
-                        <Col md="12">
-                          <FormGroup>
-                            <Label>Config name</Label>
-                            <Input
-                              value={api.name}
-                              onChange={(e) =>
-                                updateApi(api.id, "name", e.target.value)
-                              }
-                              placeholder="e.g. Welcome Template"
-                            />
-                          </FormGroup>
-                        </Col>
-                      </Row>
-
-                      <FormGroup>
-                        <Label>Paste full cURL</Label>
-                        <Input
-                          type="textarea"
-                          rows={6}
-                          value={api.curlText || ""}
-                          onChange={(e) =>
-                            updateApi(api.id, "curlText", e.target.value)
-                          }
-                          placeholder="curl -s -X POST 'https://...' -H '...' -d '{...}'"
-                        />
-                        {api.apiUrl ? (
-                          <small className="text-muted d-block mt-50">
-                            API URL: <code>{api.apiUrl}</code>
-                          </small>
-                        ) : null}
-                        <div className="d-flex justify-content-end mt-1">
-                          <Button
-                            color="primary"
-                            size="sm"
-                            onClick={() => handleParseCurl(api.id)}
-                          >
-                            Parse cURL
-                          </Button>
-                        </div>
-                      </FormGroup>
-
-                      <TemplateEasyEditor
-                        api={api}
-                        onChangeBodyParams={(nextParams) =>
-                          updateApi(api.id, "bodyParams", nextParams)
-                        }
-                        onUploadImage={handleUploadImage}
-                      />
-                    </div>
-                  </Collapse>
+            {MSG_SECTIONS.map((section) => (
+              <div key={section.key} className="mb-2">
+                <div
+                  className="px-2 py-1 mb-1 d-flex align-items-center flex-wrap"
+                  style={{ gap: 8, background: "#f8f9fa", borderRadius: 8 }}
+                >
+                  <strong>{section.title}</strong>
+                  <Badge color={section.badgeColor} pill>
+                    {section.badge}
+                  </Badge>
+                  <small className="text-muted">{section.subtitle}</small>
                 </div>
-              );
-            })}
+
+                {section.slotIds.map((slotId, subIdx) => {
+                  const api = apis.find((a) => a.id === slotId);
+                  if (!api) return null;
+                  const slot = getSlotById(slotId);
+                  const isOpen = openApiIds.includes(api.id);
+                  const rowLabel =
+                    section.slotIds.length > 1
+                      ? `${subIdx === 0 ? "2a" : "2b"}. ${slot.title}`
+                      : `1. ${slot.title}`;
+
+                  return (
+                    <div key={api.id} className="mb-1" style={{ marginLeft: 4 }}>
+                      <div
+                        style={{
+                          ...faqHeaderStyle,
+                          background: isOpen ? "#eef3ff" : "#fff",
+                          borderColor: isOpen ? "#c5d4f7" : "#e9ecef",
+                        }}
+                        onClick={() => toggleApi(api.id)}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) =>
+                          e.key === "Enter" && toggleApi(api.id)
+                        }
+                      >
+                        {isOpen ? (
+                          <ChevronDown size={16} />
+                        ) : (
+                          <ChevronRight size={16} />
+                        )}
+                        <span className="flex-grow-1">
+                          <strong>{rowLabel}</strong>
+                          <small className="text-muted d-block text-truncate">
+                            {slot.subtitle}
+                            {getParamValue(api.bodyParams, "template.name") ? (
+                              <>
+                                {" · "}
+                                {getParamValue(api.bodyParams, "template.name")}
+                              </>
+                            ) : null}
+                          </small>
+                        </span>
+                        <div
+                          className="form-switch form-check-primary"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <Input
+                            type="switch"
+                            id={`api-enabled-${api.id}`}
+                            checked={api.isEnabled}
+                            onChange={(e) =>
+                              updateApi(api.id, "isEnabled", e.target.checked)
+                            }
+                          />
+                        </div>
+                      </div>
+
+                      <Collapse isOpen={isOpen}>
+                        <div
+                          className="p-2"
+                          style={{
+                            border: "1px solid #e9ecef",
+                            borderTop: "none",
+                            borderRadius: "0 0 8px 8px",
+                          }}
+                        >
+                          <FormGroup>
+                            <Label>Paste full cURL</Label>
+                            <Input
+                              type="textarea"
+                              rows={6}
+                              value={api.curlText || ""}
+                              onChange={(e) =>
+                                updateApi(api.id, "curlText", e.target.value)
+                              }
+                              placeholder={
+                                slot.id === "msg-customer-unfilled"
+                                  ? UNFILLED_CURL_PLACEHOLDER
+                                  : "curl -s -X POST 'https://...' -H '...' -d '{...}'"
+                              }
+                            />
+                            {api.apiUrl ? (
+                              <small className="text-muted d-block mt-50">
+                                API URL: <code>{api.apiUrl}</code>
+                              </small>
+                            ) : null}
+                            <div className="d-flex justify-content-end mt-1">
+                              <Button
+                                color="primary"
+                                size="sm"
+                                onClick={() => handleParseCurl(api.id)}
+                              >
+                                Parse cURL
+                              </Button>
+                            </div>
+                          </FormGroup>
+
+                          <TemplateEasyEditor
+                            api={api}
+                            onChangeBodyParams={(nextParams) =>
+                              updateApi(api.id, "bodyParams", nextParams)
+                            }
+                            onUploadImage={handleUploadImage}
+                          />
+                        </div>
+                      </Collapse>
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
 
             <div className="d-flex justify-content-end align-items-center mt-2">
               <Button color="primary" onClick={handleSave} disabled={saving}>
