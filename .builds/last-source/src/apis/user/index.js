@@ -15,11 +15,9 @@ export const createUserAPI = async (payload) => {
 
 }
 export const updateUserAPI = async (payload) => {
-
-    return await apiCall.put(`/user/update/${payload.id}`, payload.data, {
-        headers: { "Content-Type": "multipart/form-data" }
-    })
-
+    // Send JSON so req.body is parsed. multipart without FormData
+    // arrives empty — API returns success but nothing is saved.
+    return await apiCall.put(`/user/update/${payload.id}`, payload.data)
 }
 export const deleteUserAPI = async (payload) => {
     return await apiCall.delete(`/user/delete/${payload.id}`, {

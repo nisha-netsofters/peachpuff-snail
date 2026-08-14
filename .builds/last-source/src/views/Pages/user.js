@@ -321,7 +321,7 @@ const User = () => {
     if (!emailValidation || regex.test(emailValidation) === false)
       return tostify("Please Enter Valid Email", error);
 
-    if (!passwordValidation || passwordValidation.length < 8)
+    if (!update && (!passwordValidation || passwordValidation.length < 8))
       return tostify("Please Enter 8 Character password", error);
 
     if (!mobileValidation || mobileValidation.length !== 10)
