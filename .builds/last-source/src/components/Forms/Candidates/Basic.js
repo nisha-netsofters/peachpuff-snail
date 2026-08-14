@@ -12,6 +12,7 @@ import {
   genderSelectValue,
 } from "../../../utility/normalizeResumeExtract";
 import course from "../Course";
+import ResumeExtractSpinner from "../../ResumeExtractSpinner";
 
 const DEFAULT_API_CONFIG_ERROR =
   "Resume auto-extraction is unavailable. Please ask your Super Admin to enable and configure OCR & API Configuration (AI API key and model are required).";
@@ -489,14 +490,14 @@ const Basic = ({
           <Col lg={4} xs={12} className="d-flex align-items-end mt-2 mt-lg-0">
             {loading || apiConfigChecking ? (
               <div className="d-flex align-items-center gap-2 text-primary fw-bold w-100" style={{ paddingBottom: "6px" }}>
-                <div className="spinner-border spinner-border-sm" role="status"></div>
+                <ResumeExtractSpinner />
                 <span style={{ fontSize: "12px" }}>
                   {loading ? "Extracting data..." : "Checking API config..."}
                 </span>
               </div>
             ) : preparingResumes.active ? (
               <div className="d-flex align-items-center gap-2 text-primary fw-bold w-100" style={{ paddingBottom: "6px" }}>
-                <div className="spinner-border spinner-border-sm" role="status"></div>
+                <ResumeExtractSpinner />
                 <span style={{ fontSize: "12px" }}>
                   Preparing {preparingResumes.done} of {preparingResumes.total} resumes...
                 </span>

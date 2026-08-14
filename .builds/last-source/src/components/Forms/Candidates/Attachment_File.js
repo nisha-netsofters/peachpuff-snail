@@ -10,6 +10,7 @@ import {
   genderSelectValue,
 } from "../../../utility/normalizeResumeExtract";
 import course from "../Course";
+import ResumeExtractSpinner from "../../ResumeExtractSpinner";
 
 const DEFAULT_API_CONFIG_ERROR =
   "Resume auto-extraction is unavailable. Please ask your Super Admin to enable and configure OCR & API Configuration (AI API key and model are required).";
@@ -488,7 +489,8 @@ const Attachment_File = ({
             ) : null}
           </div>
           {extracting || apiConfigChecking ? (
-            <small className="text-primary d-block mt-50">
+            <small className="text-primary d-flex align-items-center gap-50 mt-50">
+              <ResumeExtractSpinner />
               {extracting ? "Extracting resume data..." : "Checking API config..."}
             </small>
           ) : extracted || candidate?.resumeParsedAt ? (

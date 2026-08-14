@@ -22,6 +22,7 @@ import {
   genderSelectValue,
 } from "../../../utility/normalizeResumeExtract";
 import course from "../Course";
+import ResumeExtractSpinner from "../../ResumeExtractSpinner";
 
 const DEFAULT_API_CONFIG_ERROR =
   "Resume auto-extraction is unavailable. Please ask your Super Admin to enable and configure OCR & API Configuration (AI API key and model are required).";
@@ -449,7 +450,7 @@ const Attachment_File = ({
             )}
             {(extracting || apiConfigChecking) && (
               <div className="mt-2 d-flex align-items-center gap-2 text-primary fw-bold">
-                <div className="spinner-border spinner-border-sm" role="status" />
+                <ResumeExtractSpinner />
                 <span>
                   {extracting ? "Extracting data..." : "Checking API config..."}
                 </span>
