@@ -32,6 +32,8 @@ const PricingCards = ({
   console.log('data =>', data);
   console.log('---------------------');
   const colsProps = { md: 3, xs: 12 };
+  const history = useHistory();
+  const slug = localStorage.getItem("slug");
   const themecolor = useSelector(
     (state) => state?.agency?.agencyDetail?.themecolor
   );
