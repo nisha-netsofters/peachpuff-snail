@@ -68,6 +68,7 @@ import Filter from "../../components/Forms/Candidates/Filter";
 import { tostify, tostifySuccess, tostifyError, tostifyInfo } from "../../components/Tostify";
 import { useHistory, useLocation } from "react-router-dom";
 import {
+  checkCandidatePublicAPI,
   createCandidateAPI,
   getCandidateAPI,
   toggleFavoriteCandidateAPI,
@@ -201,6 +202,8 @@ const SecondPage = ({
     fileLabel: "",
     candidateName: "",
     mobile: "",
+    email: "",
+    matchOn: "",
   });
   const [totalRows, setTotalRows] = useState(1);
   const [perPage, setPerPage] = useState(10);
@@ -1643,6 +1646,8 @@ const SecondPage = ({
         fileLabel,
         candidateName: name || "Existing candidate",
         mobile: existingCandidate?.mobile || "",
+        email: existingCandidate?.email || "",
+        matchOn: existingCandidate?.matchOn || "",
       });
     });
   };
@@ -1653,11 +1658,47 @@ const SecondPage = ({
       fileLabel: "",
       candidateName: "",
       mobile: "",
+      email: "",
+      matchOn: "",
     });
     if (duplicateResolveRef.current) {
       duplicateResolveRef.current(action);
       duplicateResolveRef.current = null;
     }
+  };
+
+  const existingCandidateId = (existing) =>
+    String(existing?.id || existing?._id || "").trim();
+
+  const isDuplicateCreateResult = (result) =>
+    Boolean(
+      result?.duplicate ||
+        /already in used|already exists|already registered/i.test(
+          String(result?.error || result?.msg || "")
+        )
+    );
+
+  const handleDuplicateCandidate = async (fileLabel, payloadData, file, existing) => {
+    const existingId = existingCandidateId(existing);
+    const action = await askDuplicateResumeAction(fileLabel, existing || {});
+    if (action !== "update") {
+      return { kind: "skip" };
+    }
+    if (!existingId) {
+      return {
+        kind: "fail",
+        reason: `${fileLabel}: existing candidate id missing, cannot update`,
+      };
+    }
+    const updateFm = buildCandidateUpdateFormData(payloadData, file, existingId);
+    const updateResult = await updateCandidateAPI({ data: updateFm });
+    if (updateResult?.msg && !updateResult?.error) {
+      return { kind: "update" };
+    }
+    return {
+      kind: "fail",
+      reason: `${fileLabel}: ${updateResult?.error || "update failed"}`,
+    };
   };
 
   const CandidateCreateHandler = async () => {
@@ -1727,7 +1768,6 @@ const SecondPage = ({
             continue;
           }
 
-          const fm = buildCandidateFormData(payloadData, file);
           setBulkUploadProgress({
             active: true,
             current: i + 1,
@@ -1735,34 +1775,58 @@ const SecondPage = ({
             label: fileLabel,
             phase: "uploading",
           });
-          const result = await createCandidateAPI(fm);
-          if (result?.id) {
-            successCount += 1;
-          } else if (result?.duplicate) {
-            const existing = result?.existingCandidate || {};
-            const existingId = existing?.id;
-            if (!existingId) {
-              skipCount += 1;
-              continue;
+
+          let existing = null;
+          let isDuplicate = false;
+          try {
+            const check = await checkCandidatePublicAPI({
+              email: payloadData?.email || "",
+              mobile: payloadData?.mobile || "",
+            });
+            if (isDuplicateCreateResult(check)) {
+              isDuplicate = true;
+              existing = check?.existingCandidate || {
+                email: payloadData?.email || "",
+                mobile: payloadData?.mobile || "",
+                matchOn: payloadData?.email ? "email" : "mobile",
+              };
             }
-            const action = await askDuplicateResumeAction(fileLabel, existing);
-            if (action === "update") {
-              const updateFm = buildCandidateUpdateFormData(
-                payloadData,
-                file,
-                existingId
-              );
-              const updateResult = await updateCandidateAPI({ data: updateFm });
-              if (updateResult?.msg && !updateResult?.error) {
-                updateCount += 1;
-              } else {
-                failCount += 1;
-                failReasons.push(
-                  `${fileLabel}: ${updateResult?.error || "update failed"}`
-                );
-              }
-            } else {
-              skipCount += 1;
+          } catch (checkErr) {
+            console.warn("duplicate check failed, falling back to create", checkErr);
+          }
+
+          if (isDuplicate) {
+            const dupResult = await handleDuplicateCandidate(
+              fileLabel,
+              payloadData,
+              file,
+              existing
+            );
+            if (dupResult.kind === "update") updateCount += 1;
+            else if (dupResult.kind === "skip") skipCount += 1;
+            else {
+              failCount += 1;
+              failReasons.push(dupResult.reason);
+            }
+            continue;
+          }
+
+          const fm = buildCandidateFormData(payloadData, file);
+          const result = await createCandidateAPI(fm);
+          if (result?.id && !isDuplicateCreateResult(result)) {
+            successCount += 1;
+          } else if (isDuplicateCreateResult(result)) {
+            const dupResult = await handleDuplicateCandidate(
+              fileLabel,
+              payloadData,
+              file,
+              result?.existingCandidate || {}
+            );
+            if (dupResult.kind === "update") updateCount += 1;
+            else if (dupResult.kind === "skip") skipCount += 1;
+            else {
+              failCount += 1;
+              failReasons.push(dupResult.reason);
             }
           } else {
             failCount += 1;
@@ -4229,11 +4293,11 @@ const SecondPage = ({
       <Modal
         className="modal-dialog-centered"
         isOpen={duplicateResumeModal.open}
-        toggle={() => closeDuplicateResumeModal("cancel")}
+        toggle={() => closeDuplicateResumeModal("skip")}
         backdrop={false}
         zIndex={1060}
       >
-        <ModalHeader toggle={() => closeDuplicateResumeModal("cancel")}>
+        <ModalHeader toggle={() => closeDuplicateResumeModal("skip")}>
           Resume Already Exists
         </ModalHeader>
         <ModalBody>
@@ -4245,12 +4309,17 @@ const SecondPage = ({
             {duplicateResumeModal.candidateName
               ? ` (${duplicateResumeModal.candidateName})`
               : ""}
+            {duplicateResumeModal.matchOn === "email" && duplicateResumeModal.email
+              ? ` — Email: ${duplicateResumeModal.email}`
+              : ""}
             {duplicateResumeModal.mobile
               ? ` — Mobile: ${duplicateResumeModal.mobile}`
               : ""}
             .
           </p>
-          <p className="mt-1 mb-0">Do you want to update the resume?</p>
+          <p className="mt-1 mb-0">
+            Do you want to update this candidate, or skip this resume?
+          </p>
         </ModalBody>
         <ModalFooter>
           <Button
@@ -4262,9 +4331,9 @@ const SecondPage = ({
           </Button>
           <Button
             color="secondary"
-            onClick={() => closeDuplicateResumeModal("cancel")}
+            onClick={() => closeDuplicateResumeModal("skip")}
           >
-            Cancel
+            Skip
           </Button>
         </ModalFooter>
       </Modal>
