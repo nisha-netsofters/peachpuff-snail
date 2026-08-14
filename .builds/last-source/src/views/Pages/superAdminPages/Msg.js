@@ -79,7 +79,7 @@ const MATCH_TO_PLACEHOLDER = {
 const newApiId = () =>
   `api_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
-/** Fixed API slots — 2 sections: Client (1) + Customer (2 templates). */
+/** Fixed API slots — Client welcome + Customer (2) + Plan assign. */
 const MSG_CONFIG_SLOTS = [
   {
     id: "msg-client-welcome",
@@ -108,6 +108,15 @@ const MSG_CONFIG_SLOTS = [
     badge: "Customer",
     badgeColor: "info",
   },
+  {
+    id: "msg-client-plan",
+    audience: "plan",
+    section: "plan",
+    title: "Plan Assign",
+    subtitle: "new cURL — on plan assign / subscription add",
+    badge: "Plan",
+    badgeColor: "success",
+  },
 ];
 
 const MSG_SECTIONS = [
@@ -126,6 +135,14 @@ const MSG_SECTIONS = [
     badge: "Customer",
     badgeColor: "info",
     slotIds: ["msg-customer-welcome", "msg-customer-unfilled"],
+  },
+  {
+    key: "plan",
+    title: "3. Plan Assign",
+    subtitle: "1 new cURL when a plan is assigned or subscription is added",
+    badge: "Plan",
+    badgeColor: "success",
+    slotIds: ["msg-client-plan"],
   },
 ];
 
@@ -577,12 +594,16 @@ const normalizeApis = (data) => {
     }
 
     const match = pickUnused();
+    if (slot.audience === "plan") {
+      return mergeSavedApi(slot, null);
+    }
     return mergeSavedApi(slot, match);
   });
 };
 
 const getSlotMeta = (api) =>
-  MSG_CONFIG_SLOTS.find((s) => s.id === api.id || s.audience === api.audience) ||
+  MSG_CONFIG_SLOTS.find((s) => s.id === api.id) ||
+  MSG_CONFIG_SLOTS.find((s) => s.audience === api.audience) ||
   MSG_CONFIG_SLOTS[0];
 
 const faqHeaderStyle = {
@@ -600,7 +621,7 @@ const faqHeaderStyle = {
 
 const getMatchOptions = (audience) => {
   const base = MATCH_OPTIONS.filter((o) => o.value !== "image");
-  if (audience === "client") {
+  if (audience === "client" || audience === "plan") {
     return base.filter(
       (o) =>
         o.value !== "profile_link" &&
@@ -1076,8 +1097,8 @@ const Msg = () => {
         </h3>
       </div>
       <p className="text-muted mb-2">
-        2 sections: <b>Client</b> (welcome_msg2) and <b>Customer</b> (welcome +
-        unfilled_fields). When a candidate is added, 2 messages are sent.
+        3 sections: <b>Client</b> (welcome), <b>Customer</b> (welcome +
+        unfilled_fields), and <b>Plan Assign</b> (new cURL on plan / subscription).
       </p>
 
       <Card className="mb-1 border-0 shadow-none">
@@ -1091,12 +1112,12 @@ const Msg = () => {
           {openFaq.config ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
           <strong className="flex-grow-1">1. API Configuration (cURL)</strong>
           <Badge color="primary" pill>
-            2 sections
+            3 sections
           </Badge>
         </div>
         <Collapse isOpen={openFaq.config}>
           <CardBody className="pt-2 px-0">
-            {MSG_SECTIONS.map((section) => (
+            {MSG_SECTIONS.map((section, sectionIdx) => (
               <div key={section.key} className="mb-2">
                 <div
                   className="px-2 py-1 mb-1 d-flex align-items-center flex-wrap"
@@ -1114,10 +1135,11 @@ const Msg = () => {
                   if (!api) return null;
                   const slot = getSlotById(slotId);
                   const isOpen = openApiIds.includes(api.id);
+                  const sectionNum = sectionIdx + 1;
                   const rowLabel =
                     section.slotIds.length > 1
-                      ? `${subIdx === 0 ? "2a" : "2b"}. ${slot.title}`
-                      : `1. ${slot.title}`;
+                      ? `${sectionNum}${subIdx === 0 ? "a" : "b"}. ${slot.title}`
+                      : `${sectionNum}. ${slot.title}`;
 
                   return (
                     <div key={api.id} className="mb-1" style={{ marginLeft: 4 }}>
