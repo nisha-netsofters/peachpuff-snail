@@ -23,6 +23,8 @@ const AI_VALIDATION_MESSAGES = {
     "Invalid AI model. Please ask your Super Admin to set a valid model in OCR & API Configuration.",
   AI_RATE_LIMIT:
     "AI service rate limit reached. Please wait a moment and try again.",
+  AI_SERVICE_BUSY:
+    "Gemini is temporarily busy (high demand). Please wait a few seconds and upload again.",
   AI_NETWORK_ERROR:
     "Live server could not reach Google Gemini. This is not an OCR config change — Hostinger may be blocking outbound Gemini API calls.",
   API_CONFIG_NOT_SET: DEFAULT_API_CONFIG_ERROR,
@@ -47,6 +49,9 @@ const getFriendlyExtractError = (result) => {
   }
   if (lower.includes("cannot reach google gemini") || lower.includes("enotfound") || lower.includes("econnrefused")) {
     return AI_VALIDATION_MESSAGES.AI_NETWORK_ERROR;
+  }
+  if (lower.includes("high demand") || lower.includes("try again later") || lower.includes("temporarily busy")) {
+    return AI_VALIDATION_MESSAGES.AI_SERVICE_BUSY;
   }
   if (lower.includes("model") && (lower.includes("invalid") || lower.includes("not found"))) {
     return AI_VALIDATION_MESSAGES.AI_MODEL_INVALID;
@@ -279,7 +284,7 @@ const Basic = ({
       // Session-token failures only (not AI "access token" / API key errors)
       const isAiValidationError =
         result?.code &&
-        ["AI_API_KEY_INVALID", "AI_MODEL_INVALID", "AI_RATE_LIMIT", "AI_PARSE_FAILED", "API_CONFIG_NOT_SET"].includes(
+        ["AI_API_KEY_INVALID", "AI_MODEL_INVALID", "AI_RATE_LIMIT", "AI_SERVICE_BUSY", "AI_PARSE_FAILED", "API_CONFIG_NOT_SET"].includes(
           result.code
         );
       const isSessionTokenError =
