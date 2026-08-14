@@ -101,7 +101,7 @@ const defaultForm = {
         model: "gpt-4o",
         baseUrl: "https://api.openai.com/v1",
       },
-      gemini: { isEnabled: false, apiKey: "", model: "gemini-3.5-flash" },
+      gemini: { isEnabled: false, apiKey: "", model: "gemini-3.1-flash-lite" },
       claude: {
         isEnabled: false,
         apiKey: "",
@@ -391,7 +391,7 @@ const ApiIntegrationConfig = () => {
                           ? "Leave blank to keep existing key"
                           : `Enter ${FIELD_LABELS[field] || field}`
                         : field === "model" && provider.id === "gemini"
-                        ? "e.g. gemini-3.5-flash"
+                        ? "e.g. gemini-3.1-flash-lite"
                         : field === "model"
                         ? `Enter ${FIELD_LABELS[field] || field}`
                         : ""
