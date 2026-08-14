@@ -12,7 +12,7 @@ import {
   Row,
   Spinner,
 } from "reactstrap";
-import { ChevronDown, ChevronRight, Plus, Trash2 } from "react-feather";
+import { ChevronDown, ChevronRight, Trash2 } from "react-feather";
 import Swal from "sweetalert2";
 import {
   getWelcomeWhatsappConfig,
@@ -54,6 +54,8 @@ const MATCH_OPTIONS = [
   { label: "Candidate Profile Link", value: "profile_link" },
   { label: "Unfilled Fields", value: "unfilled_fields" },
   { label: "Registration Page Link", value: "registration_link" },
+  { label: "Company Name", value: "companyName" },
+  { label: "Company Owner", value: "companyowner" },
 ];
 
 const MATCH_TO_PLACEHOLDER = {
@@ -70,6 +72,8 @@ const MATCH_TO_PLACEHOLDER = {
   candidate_profile_link: "{{candidate_profile_link}}",
   edit_link: "{{edit_link}}",
   registration_link: "{{registration_link}}",
+  companyName: "{{companyName}}",
+  companyowner: "{{companyowner}}",
 };
 
 const newApiId = () =>
@@ -86,6 +90,7 @@ const createEmptyApi = (index = 0) => ({
   bodyParams: DEFAULT_BODY_PARAMS.map((p) => ({ ...p })),
   countryCodePrefix: "91",
   recipientKey: "to",
+  audience: "candidate",
   // auto strips body_1 style names (fixes WhatsApp #132012 on positional templates)
   parameterMode: "auto",
 });
@@ -726,34 +731,6 @@ const Msg = () => {
     );
   };
 
-  const handleAddApi = () => {
-    const next = createEmptyApi(apis.length);
-    setApis((prev) => [...prev, next]);
-    setOpenApiIds((prev) => [...prev, next.id]);
-    setOpenFaq((prev) => ({ ...prev, config: true }));
-  };
-
-  const handleRemoveApi = async (apiId) => {
-    if (apis.length <= 1) {
-      return tostify("At least one cURL config is required");
-    }
-    const api = apis.find((a) => a.id === apiId);
-    const result = await Swal.fire({
-      title: "Delete cURL config?",
-      text: `"${api?.name || "This config"}" will be removed.`,
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonText: "Yes, delete",
-      cancelButtonText: "Cancel",
-      confirmButtonColor: "#ea5455",
-      cancelButtonColor: "#82868b",
-    });
-    if (!result.isConfirmed) return;
-    setApis((prev) => prev.filter((a) => a.id !== apiId));
-    setOpenApiIds((prev) => prev.filter((id) => id !== apiId));
-    tostifySuccess("cURL config removed — click Save Configuration to apply");
-  };
-
   const handleParseCurl = (apiId) => {
     const api = apis.find((a) => a.id === apiId);
     const pastedCurl = api?.curlText || "";
@@ -847,6 +824,7 @@ const Msg = () => {
           countryCodePrefix: api.countryCodePrefix || "91",
           recipientKey: api.recipientKey || "to",
           parameterMode: api.parameterMode || "auto",
+          audience: api.audience === "client" ? "client" : "candidate",
         })),
       };
 
@@ -965,9 +943,25 @@ const Msg = () => {
           <b>Msg API</b>
         </h3>
       </div>
-      <p className="text-muted mb-2">
+      <p className="text-muted mb-1">
         cURL paste karo → Body / Image easy mapping. Technical fields Advanced
         ma chhe.
+      </p>
+      <p
+        className="mb-2"
+        style={{
+          background: "#eef3ff",
+          border: "1px solid #c5d4f7",
+          borderRadius: 8,
+          padding: "10px 12px",
+          color: "#323d76",
+          fontSize: 14,
+        }}
+      >
+        <strong>Client (customer) message:</strong> jya config ma{" "}
+        <b>Send to = Client (customer)</b> select hoy ane enable hoy, te message
+        nava client add thata customer na WhatsApp par jase. Candidate configs
+        candidate create par jase.
       </p>
 
       <Card className="mb-1 border-0 shadow-none">
@@ -983,17 +977,6 @@ const Msg = () => {
           <Badge color="primary" pill>
             {apis.length} config{apis.length > 1 ? "s" : ""}
           </Badge>
-          <Button
-            color="primary"
-            size="sm"
-            className="ml-1"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleAddApi();
-            }}
-          >
-            <Plus size={14} className="mr-50" /> Add cURL Config
-          </Button>
         </div>
         <Collapse isOpen={openFaq.config}>
           <CardBody className="pt-2 px-0">
@@ -1023,11 +1006,22 @@ const Msg = () => {
                         {apiIndex + 1}. {api.name || "Untitled API"}
                       </strong>
                       <small className="text-muted d-block text-truncate">
+                        {api.audience === "client"
+                          ? "Client (customer) — new client add"
+                          : "Candidate — candidate create"}
+                        {" · "}
                         {getParamValue(api.bodyParams, "template.name") ||
                           api.apiUrl ||
                           "No URL yet"}
                       </small>
                     </span>
+                    <Badge
+                      color={api.audience === "client" ? "warning" : "info"}
+                      pill
+                      className="mr-1"
+                    >
+                      {api.audience === "client" ? "Client" : "Candidate"}
+                    </Badge>
                     <div
                       className="form-switch form-check-primary"
                       onClick={(e) => e.stopPropagation()}
@@ -1041,17 +1035,6 @@ const Msg = () => {
                         }
                       />
                     </div>
-                    <Button
-                      color="danger"
-                      size="sm"
-                      outline
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleRemoveApi(api.id);
-                      }}
-                    >
-                      <Trash2 size={14} />
-                    </Button>
                   </div>
 
                   <Collapse isOpen={isOpen}>
@@ -1074,6 +1057,39 @@ const Msg = () => {
                               }
                               placeholder="e.g. Welcome Template"
                             />
+                          </FormGroup>
+                        </Col>
+                        <Col md="6">
+                          <FormGroup>
+                            <Label>Send to</Label>
+                            <Input
+                              type="select"
+                              value={
+                                api.audience === "client"
+                                  ? "client"
+                                  : "candidate"
+                              }
+                              onChange={(e) =>
+                                updateApi(api.id, "audience", e.target.value)
+                              }
+                            >
+                              <option value="candidate">
+                                Candidate (job seeker)
+                              </option>
+                              <option value="client">
+                                Client (customer) — new client add
+                              </option>
+                            </Input>
+                            {api.audience === "client" ? (
+                              <small className="text-muted d-block mt-50">
+                                This message goes to the customer WhatsApp when
+                                a client is added.
+                              </small>
+                            ) : (
+                              <small className="text-muted d-block mt-50">
+                                This message goes to the candidate on create.
+                              </small>
+                            )}
                           </FormGroup>
                         </Col>
                       </Row>
