@@ -90,7 +90,6 @@ const createEmptyApi = (index = 0) => ({
   bodyParams: DEFAULT_BODY_PARAMS.map((p) => ({ ...p })),
   countryCodePrefix: "91",
   recipientKey: "to",
-  audience: "candidate",
   // auto strips body_1 style names (fixes WhatsApp #132012 on positional templates)
   parameterMode: "auto",
 });
@@ -824,7 +823,6 @@ const Msg = () => {
           countryCodePrefix: api.countryCodePrefix || "91",
           recipientKey: api.recipientKey || "to",
           parameterMode: api.parameterMode || "auto",
-          audience: api.audience === "client" ? "client" : "candidate",
         })),
       };
 
@@ -943,25 +941,9 @@ const Msg = () => {
           <b>Msg API</b>
         </h3>
       </div>
-      <p className="text-muted mb-1">
+      <p className="text-muted mb-2">
         cURL paste karo → Body / Image easy mapping. Technical fields Advanced
         ma chhe.
-      </p>
-      <p
-        className="mb-2"
-        style={{
-          background: "#eef3ff",
-          border: "1px solid #c5d4f7",
-          borderRadius: 8,
-          padding: "10px 12px",
-          color: "#323d76",
-          fontSize: 14,
-        }}
-      >
-        <strong>Client (customer) message:</strong> jya config ma{" "}
-        <b>Send to = Client (customer)</b> select hoy ane enable hoy, te message
-        nava client add thata customer na WhatsApp par jase. Candidate configs
-        candidate create par jase.
       </p>
 
       <Card className="mb-1 border-0 shadow-none">
@@ -1006,22 +988,11 @@ const Msg = () => {
                         {apiIndex + 1}. {api.name || "Untitled API"}
                       </strong>
                       <small className="text-muted d-block text-truncate">
-                        {api.audience === "client"
-                          ? "Client (customer) — new client add"
-                          : "Candidate — candidate create"}
-                        {" · "}
                         {getParamValue(api.bodyParams, "template.name") ||
                           api.apiUrl ||
                           "No URL yet"}
                       </small>
                     </span>
-                    <Badge
-                      color={api.audience === "client" ? "warning" : "info"}
-                      pill
-                      className="mr-1"
-                    >
-                      {api.audience === "client" ? "Client" : "Candidate"}
-                    </Badge>
                     <div
                       className="form-switch form-check-primary"
                       onClick={(e) => e.stopPropagation()}
@@ -1047,7 +1018,7 @@ const Msg = () => {
                       }}
                     >
                       <Row>
-                        <Col md="6">
+                        <Col md="12">
                           <FormGroup>
                             <Label>Config name</Label>
                             <Input
@@ -1057,39 +1028,6 @@ const Msg = () => {
                               }
                               placeholder="e.g. Welcome Template"
                             />
-                          </FormGroup>
-                        </Col>
-                        <Col md="6">
-                          <FormGroup>
-                            <Label>Send to</Label>
-                            <Input
-                              type="select"
-                              value={
-                                api.audience === "client"
-                                  ? "client"
-                                  : "candidate"
-                              }
-                              onChange={(e) =>
-                                updateApi(api.id, "audience", e.target.value)
-                              }
-                            >
-                              <option value="candidate">
-                                Candidate (job seeker)
-                              </option>
-                              <option value="client">
-                                Client (customer) — new client add
-                              </option>
-                            </Input>
-                            {api.audience === "client" ? (
-                              <small className="text-muted d-block mt-50">
-                                This message goes to the customer WhatsApp when
-                                a client is added.
-                              </small>
-                            ) : (
-                              <small className="text-muted d-block mt-50">
-                                This message goes to the candidate on create.
-                              </small>
-                            )}
                           </FormGroup>
                         </Col>
                       </Row>
