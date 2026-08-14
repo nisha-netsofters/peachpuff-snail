@@ -39,33 +39,47 @@ export function* WATCH_GET_All_CLIENT() {
 }
 
 export function* WATCH_CREATE_CLIENT(action) {
-  const data = yield createClientAPI(action.payload.data);
-  if (data?.error) {
-    tostifyError(data?.error);
-    action?.payload?.setLoading(false);
-  }
-  if (data?.id) {
-    tostifySuccess("Data Posted Successfully");
-    const resp = yield getClientAPI({
-      page: action.payload?.page,
-      perPage: action.payload?.perPage,
-      filterData: action?.payload?.filterData,
-    });
-    resp.isSuccess = true;
-    yield put({
-      type: actions.SET_CLIENT,
-      payload: resp,
-    });
-  } else if (data.constraint === "clients_email_unique") {
-    yield put({
-      type: actions.SET_CLIENT,
-      payload: data,
-    });
-  } else if (data.constraint === "clients_mobile_unique") {
-    yield put({
-      type: actions.SET_CLIENT,
-      payload: data,
-    });
+  try {
+    const data = yield createClientAPI(action.payload.data);
+    if (data?.error) {
+      tostifyError(data?.error);
+      return;
+    }
+    if (data?.id) {
+      tostifySuccess("Data Posted Successfully");
+      const resp = yield getClientAPI({
+        page: action.payload?.page,
+        perPage: action.payload?.perPage,
+        filterData: action?.payload?.filterData,
+      });
+      resp.isSuccess = true;
+      yield put({
+        type: actions.SET_CLIENT,
+        payload: resp,
+      });
+      return;
+    }
+    if (data?.constraint === "clients_email_unique") {
+      yield put({
+        type: actions.SET_CLIENT,
+        payload: data,
+      });
+      return;
+    }
+    if (data?.constraint === "clients_mobile_unique") {
+      yield put({
+        type: actions.SET_CLIENT,
+        payload: data,
+      });
+      return;
+    }
+    tostifyError("Failed to create client");
+  } catch (err) {
+    tostifyError(
+      err?.response?.data?.error || err?.message || "Failed to create client"
+    );
+  } finally {
+    action?.payload?.setLoading?.(false);
   }
 }
 

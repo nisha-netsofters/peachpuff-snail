@@ -1469,6 +1469,47 @@ const LandingPage = () => {
           </div>
         </section>
 
+        <section className={style["ai-hire-section"]}>
+          <div className={classNames("container", style["container"])}>
+            <div
+              className={style["ai-hire-wrap"]}
+              data-aos="fade-up"
+              data-aos-delay="120"
+            >
+              <p className={style["ai-hire-label"]}>
+                UNIQUE WORLD PLACEMENT
+              </p>
+              <h2 className={style["ai-hire-title"]}>
+                Hire Smarter with the Power of AI
+              </h2>
+              <p className={style["ai-hire-subtitle"]}>
+                Discover India&apos;s fastest-growing talent network powered by
+                AI-driven recruitment.
+              </p>
+              <div className={style["ai-hire-grid"]}>
+                <div className={style["ai-hire-item"]}>
+                  <span className={style["ai-hire-check"]}>
+                    <Check size={18} />
+                  </span>
+                  <p>10,00,000+ Verified Job Seekers</p>
+                </div>
+                <div className={style["ai-hire-item"]}>
+                  <span className={style["ai-hire-check"]}>
+                    <Check size={18} />
+                  </span>
+                  <p>AI-Powered Candidate Matching</p>
+                </div>
+                <div className={style["ai-hire-item"]}>
+                  <span className={style["ai-hire-check"]}>
+                    <Check size={18} />
+                  </span>
+                  <p>Faster Hiring with Higher Accuracy</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
         <section className={style["landing-looking-job-staff-wrapper"]}>
           <div className={classNames("container", style["container"], "h-100")}>
             <div className="row h-100">

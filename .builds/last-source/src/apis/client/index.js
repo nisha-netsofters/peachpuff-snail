@@ -26,7 +26,7 @@ export const getAllClientsAPI = async () => {
 };
 export const createClientAPI = async (payload) => {
   return await apiCall.post("/clients/create", payload, {
-    headers: { "Content-Type": "multipart/form-data" },
+    headers: { "Content-Type": "application/json" },
   });
 };
 export const updateClientAPI = async (payload) => {
