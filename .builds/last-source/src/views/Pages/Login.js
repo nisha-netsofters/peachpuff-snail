@@ -86,6 +86,23 @@ const LoginCover = (props) => {
         if (candMatch) {
           safeRedirect = `/${candMatch[1]}/profile`;
         }
+        // WhatsApp URL button appended the path twice:
+        // /uniqueworld/profile/uniqueworld/profile → /uniqueworld/profile
+        const dup = pathOnly.match(/^\/([^/]+)\/profile\/\1\/profile\/?$/);
+        if (dup) {
+          const qs = safeRedirect.includes("?")
+            ? safeRedirect.slice(safeRedirect.indexOf("?"))
+            : "";
+          safeRedirect = `/${dup[1]}/profile${qs}`;
+        } else {
+          const profileSlash = pathOnly.match(/^\/([^/]+)\/profile\/?$/);
+          if (profileSlash) {
+            const qs = safeRedirect.includes("?")
+              ? safeRedirect.slice(safeRedirect.indexOf("?"))
+              : "";
+            safeRedirect = `/${profileSlash[1]}/profile${qs}`;
+          }
+        }
       }
 
       if (safeRedirect) {

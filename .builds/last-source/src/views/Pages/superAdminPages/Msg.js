@@ -337,6 +337,19 @@ const parseCurlCommand = (rawCurl) => {
     let parsed;
     try {
       parsed = JSON.parse(bodyRaw);
+      const wipe = (node) => {
+        if (typeof node === "string") {
+          return /^(BUTTON)_\d+_VALUE$/i.test(node.trim()) ? "/" : node;
+        }
+        if (Array.isArray(node)) return node.map(wipe);
+        if (node && typeof node === "object") {
+          Object.keys(node).forEach((k) => {
+            node[k] = wipe(node[k]);
+          });
+        }
+        return node;
+      };
+      parsed = wipe(parsed);
     } catch (e) {
       throw new Error("cURL body (-d) is not valid JSON");
     }
