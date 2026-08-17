@@ -1784,10 +1784,19 @@ const SecondPage = ({
             payloadData = buildPayloadFromParsed(parsed, file);
           }
 
-          // Without mobile, backend rejects — treat as failed extract, not duplicate
-          if (!payloadData?.mobile) {
+          const missingEmail = !String(payloadData?.email || "").trim();
+          const missingPhone = !String(payloadData?.mobile || "").trim();
+          if (missingEmail || missingPhone) {
             failCount += 1;
-            failReasons.push(`${fileLabel}: mobile not found in resume`);
+            if (missingEmail && missingPhone) {
+              failReasons.push(
+                `${fileLabel}: email is not in this resume and phone is not in this resume`
+              );
+            } else if (missingEmail) {
+              failReasons.push(`${fileLabel}: email is not in this resume`);
+            } else {
+              failReasons.push(`${fileLabel}: phone is not in this resume`);
+            }
             continue;
           }
 

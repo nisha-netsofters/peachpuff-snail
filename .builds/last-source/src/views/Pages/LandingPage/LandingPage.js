@@ -1491,7 +1491,13 @@ const LandingPage = () => {
                   <span className={style["ai-hire-check"]}>
                     <Check size={18} />
                   </span>
-                  <p>10,00,000+ Verified Job Seekers</p>
+                  <p>
+                    {numberofemp
+                      ? `${Number(
+                          numberofemp?.employee?.[0]?.count || 0
+                        ).toLocaleString("en-IN")} Verified Job Seekers`
+                      : "Verified Job Seekers"}
+                  </p>
                 </div>
                 <div className={style["ai-hire-item"]}>
                   <span className={style["ai-hire-check"]}>
