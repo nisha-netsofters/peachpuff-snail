@@ -112,14 +112,34 @@
   font-size: 14px;
 }
 
-.candidate-selection-clear {
-  color: #323d76 !important;
-  font-weight: 500;
-  font-size: 14px;
-  text-decoration: none !important;
+.candidate-selection-menu-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  color: #1a1a1a;
 
+  &:focus,
   &:hover {
-    color: #1a2454 !important;
+    outline: none;
+    color: #1a2454;
+  }
+
+  &::after {
+    display: none;
+  }
+}
+
+.candidate-selection-menu {
+  min-width: 100px;
+  padding: 4px 0;
+
+  .dropdown-item {
+    font-size: 14px;
+    padding: 6px 14px;
   }
 }
 

@@ -761,8 +761,31 @@ const SecondPage = ({
     handleselected([]);
   };
 
+  const getCurrentPageCandidates = () => candidateList || [];
+
+  const selectAllPageCandidates = () => {
+    const pageCandidates = getCurrentPageCandidates();
+    if (!pageCandidates.length) return;
+    const pageIds = new Set(pageCandidates.map((c) => c.id));
+    const others = selectedCandidatesRef.current.filter(
+      (item) => !pageIds.has(item.id)
+    );
+    selectedCandidatesRef.current = [...others, ...pageCandidates];
+    setSelectedCandidateIds(selectedCandidatesRef.current.map((item) => item.id));
+    handleselected(selectedCandidatesRef.current);
+  };
+
   const isCandidateSelected = (candidateId) =>
     selectedCandidateIds.includes(candidateId);
+
+  const pageCandidates = getCurrentPageCandidates();
+  const selectedOnPageCount = pageCandidates.filter((c) =>
+    selectedCandidateIds.includes(c.id)
+  ).length;
+  const isAllPageSelected =
+    pageCandidates.length > 0 && selectedOnPageCount === pageCandidates.length;
+  const isSomePageSelected =
+    selectedOnPageCount > 0 && selectedOnPageCount < pageCandidates.length;
 
   const handleselected = (rows) => {
     const mails =
@@ -3652,21 +3675,37 @@ const SecondPage = ({
                 <div className="d-flex align-items-center gap-2">
                   <input
                     type="checkbox"
-                    checked
-                    onChange={clearAllSelectedCandidates}
+                    checked={isAllPageSelected}
+                    ref={(el) => {
+                      if (el) el.indeterminate = isSomePageSelected;
+                    }}
+                    onChange={(e) => {
+                      if (e.target.checked) selectAllPageCandidates();
+                      else clearAllSelectedCandidates();
+                    }}
                     style={{ cursor: "pointer", width: 18, height: 18 }}
                   />
-                  <span className="candidate-selection-count">
-                    {selectedCandidateIds.length} selected
-                  </span>
+                  <UncontrolledDropdown>
+                    <DropdownToggle
+                      tag="button"
+                      type="button"
+                      className="candidate-selection-menu-toggle"
+                    >
+                      <ChevronDown size={14} />
+                      <span className="candidate-selection-count">
+                        {selectedCandidateIds.length} selected
+                      </span>
+                    </DropdownToggle>
+                    <DropdownMenu className="candidate-selection-menu">
+                      <DropdownItem onClick={selectAllPageCandidates}>
+                        All
+                      </DropdownItem>
+                      <DropdownItem onClick={clearAllSelectedCandidates}>
+                        None
+                      </DropdownItem>
+                    </DropdownMenu>
+                  </UncontrolledDropdown>
                 </div>
-                <Button
-                  color="link"
-                  className="candidate-selection-clear p-0"
-                  onClick={clearAllSelectedCandidates}
-                >
-                  Clear selection
-                </Button>
               </div>
             )}
             {/* Desktop message when there are no applied candidates */}
