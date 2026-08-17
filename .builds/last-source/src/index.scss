@@ -175,6 +175,14 @@
   text-transform: capitalize;
 }
 
+.job-opening-match-table {
+  min-height: 220px;
+}
+
+.job-opening-match-table .rdt_Table {
+  min-height: 120px;
+}
+
 .apexcharts-data-labels text {
   fill: #ffffff !important;
 }

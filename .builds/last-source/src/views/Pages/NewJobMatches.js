@@ -564,8 +564,26 @@ const NewJobMatches = () => {
             </Card>
           </Col>
           <Col sm={12} md={8} lg={8} xl={9}>
-            <Card className="overflow-hidden">
-              <div className="react-dataTable">
+            <Card>
+              <CardBody className="pb-0">
+                <h5
+                  style={{
+                    color: themeColor,
+                    fontWeight: "600",
+                    margin: "0 0 8px 0",
+                  }}
+                >
+                  New Matches Candidates
+                </h5>
+                <JobOpeningMatchFilters
+                  sortBy={sortBy}
+                  profileCompletion={profileCompletion}
+                  onSortChange={handleSortChange}
+                  onProfileChange={handleProfileChange}
+                  themecolor={themeColor}
+                />
+              </CardBody>
+              <div className="react-dataTable job-opening-match-table">
                 <DataTable
                   paginationRowsPerPageOptions={[10, 20, 30, 50, 100]}
                   selectableRows={false}
@@ -579,31 +597,9 @@ const NewJobMatches = () => {
                   }
                   fixedHeaderScrollHeight="500px"
                   noHeader
-                  subHeader
-                  subHeaderComponent={
-                    <div style={{ width: "100%" }}>
-                      <h5
-                        style={{
-                          color: themeColor,
-                          fontWeight: "600",
-                          margin: "0 0 8px 0",
-                        }}
-                      >
-                        New Matches Candidates
-                      </h5>
-                      <JobOpeningMatchFilters
-                        sortBy={sortBy}
-                        profileCompletion={profileCompletion}
-                        onSortChange={handleSortChange}
-                        onProfileChange={handleProfileChange}
-                        themecolor={themeColor}
-                      />
-                    </div>
-                  }
                   sortServer
                   pagination
                   responsive
-                  // progressPending={getClientCandidateLoader}
                   onChangeRowsPerPage={handlePerRowsChange}
                   onChangePage={handlePageChange}
                   paginationTotalRows={jobOpeningNewMatchCandidate?.total || 0}

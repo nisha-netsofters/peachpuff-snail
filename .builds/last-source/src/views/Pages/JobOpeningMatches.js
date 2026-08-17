@@ -19,7 +19,6 @@ import { useParams } from "react-router-dom/cjs/react-router-dom";
 import DataTable from "react-data-table-component";
 import ComponentSpinner from "../../@core/components/spinner/Loading-spinner";
 import moment from "moment/moment";
-import whatsapp from "../../assets/images/whatsapp-svgrepo-com.svg";
 // import clientActions from "../../redux/client/actions";
 import subscriptionActions from "../../redux/subscription/actions";
 import { interviewRequest } from "../../apis/client";
@@ -31,7 +30,6 @@ import { BsGenderAmbiguous } from "react-icons/bs";
 import { MdOutlinePlace } from "react-icons/md";
 import { PiStudentLight } from "react-icons/pi";
 import { MdOutlineAttachMoney } from "react-icons/md";
-import WhatsappDialog from "../../components/Dialog/WhatsappDialog";
 import JobOpeningMatchFilters from "../../components/JobOpening/JobOpeningMatchFilters";
 
 const JobOpeningMatches = () => {
@@ -53,12 +51,8 @@ const JobOpeningMatches = () => {
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
   const [sortBy, setSortBy] = useState("bestMatch");
-  const [profileCompletion, setProfileCompletion] = useState("");
-  const [whatsappOpen, setWhatsappOpen] = useState(false);
+  const [matchScore, setMatchScore] = useState("");
   const [pageLoader, setPageLoader] = useState(false);
-  const [showWPModal, setShowWPModal] = useState(false);
-  const [WPnumber, setWPnumber] = useState();
-  const [clientData, setClientData] = useState([]);
 
   console.info("--------------------");
   console.info("jobOpeningMatchCandidate => ", jobOpeningMatchCandidate);
@@ -76,7 +70,7 @@ const JobOpeningMatches = () => {
     pageNum,
     perPageNum,
     sort = sortBy,
-    profile = profileCompletion
+    score = matchScore
   ) => {
     await dispatch({
       type: jobOpeningMatchesActions.GET_JOB_OPENING_MATCH_CANDIDATE,
@@ -85,7 +79,7 @@ const JobOpeningMatches = () => {
         page: pageNum,
         perPage: perPageNum,
         sortBy: sort,
-        profileCompletion: profile || undefined,
+        matchScore: score || undefined,
       },
     });
   };
@@ -93,11 +87,11 @@ const JobOpeningMatches = () => {
   const handleSortChange = (value) => {
     setSortBy(value);
     setPage(1);
-    getJobOpeningMatchCandidate(1, perPage, value, profileCompletion);
+    getJobOpeningMatchCandidate(1, perPage, value, matchScore);
   };
 
-  const handleProfileChange = (value) => {
-    setProfileCompletion(value);
+  const handleMatchScoreChange = (value) => {
+    setMatchScore(value);
     setPage(1);
     getJobOpeningMatchCandidate(1, perPage, sortBy, value);
   };
@@ -172,8 +166,9 @@ const JobOpeningMatches = () => {
     },
     {
       name: "Match Score",
-      selector: (row) => row?.matchScore ?? 0,
-      minWidth: "100px",
+      selector: (row) =>
+        row?.matchScore != null ? `${row.matchScore}%` : "0%",
+      minWidth: "110px",
     },
     {
       name: "Profile Completion",
@@ -233,21 +228,6 @@ const JobOpeningMatches = () => {
       selector: (row) => row?.city,
     },
     {
-      name: "Chat",
-      cell: () => {
-        return (
-          <>
-            <a
-              onClick={() => setWhatsappOpen(true)}
-              style={{ display: "flex", justifyContent: "center" }}
-            >
-              <img src={whatsapp} style={{ height: "20%", width: "20%" }} />
-            </a>
-          </>
-        );
-      },
-    },
-    {
       name: "Interview Shedule",
       selector: (row) => (
         <Button
@@ -300,8 +280,9 @@ const JobOpeningMatches = () => {
     },
     {
       name: "Match Score",
-      selector: (row) => row?.matchScore ?? 0,
-      minWidth: "100px",
+      selector: (row) =>
+        row?.matchScore != null ? `${row.matchScore}%` : "0%",
+      minWidth: "110px",
     },
     {
       name: "Profile Completion",
@@ -366,23 +347,6 @@ const JobOpeningMatches = () => {
     {
       name: "City",
       selector: (row) => row?.city,
-    },
-    {
-      name: "Chat",
-      cell: (row) => {
-        return (
-          <>
-            <a
-              onClick={() => {
-                setShowWPModal(true), setWPnumber(row?.mobile);
-              }}
-              style={{ display: "flex", justifyContent: "center" }}
-            >
-              <img src={whatsapp} style={{ height: "20%", width: "20%" }} />
-            </a>
-          </>
-        );
-      },
     },
   ];
 
@@ -564,8 +528,27 @@ const JobOpeningMatches = () => {
             </Card>
           </Col>
           <Col sm={12} md={8} lg={8} xl={9}>
-            <Card className="overflow-hidden">
-              <div className="react-dataTable">
+            <Card>
+              <CardBody className="pb-0">
+                <h5
+                  style={{
+                    color: themeColor,
+                    fontWeight: "600",
+                    margin: "0 0 8px 0",
+                  }}
+                >
+                  Best Matches Candidates
+                </h5>
+                <JobOpeningMatchFilters
+                  sortBy={sortBy}
+                  matchScore={matchScore}
+                  onSortChange={handleSortChange}
+                  onMatchScoreChange={handleMatchScoreChange}
+                  useMatchScoreFilter
+                  themecolor={themeColor}
+                />
+              </CardBody>
+              <div className="react-dataTable job-opening-match-table">
                 <DataTable
                   paginationRowsPerPageOptions={[10, 20, 30, 50, 100]}
                   selectableRows={false}
@@ -579,31 +562,9 @@ const JobOpeningMatches = () => {
                   }
                   fixedHeaderScrollHeight="500px"
                   noHeader
-                  subHeader
-                  subHeaderComponent={
-                    <div style={{ width: "100%" }}>
-                      <h5
-                        style={{
-                          color: themeColor,
-                          fontWeight: "600",
-                          margin: "0 0 8px 0",
-                        }}
-                      >
-                        Best Matches Candidates
-                      </h5>
-                      <JobOpeningMatchFilters
-                        sortBy={sortBy}
-                        profileCompletion={profileCompletion}
-                        onSortChange={handleSortChange}
-                        onProfileChange={handleProfileChange}
-                        themecolor={themeColor}
-                      />
-                    </div>
-                  }
                   sortServer
                   pagination
                   responsive
-                  // progressPending={getClientCandidateLoader}
                   onChangeRowsPerPage={handlePerRowsChange}
                   onChangePage={handlePageChange}
                   paginationTotalRows={jobOpeningMatchCandidate?.total || 0}
@@ -627,33 +588,6 @@ const JobOpeningMatches = () => {
           </Col>
         </Row>
       </div>
-      {showWPModal === true ? (
-        <WhatsappDialog
-          WPnumber={WPnumber}
-          loading={isLoading}
-          showWPModal={showWPModal}
-          setShowWPModal={setShowWPModal}
-          clientData={clientData}
-          setClientData={setClientData}
-        />
-      ) : null}
-      <Modal
-        className="modal-dialog-centered"
-        isOpen={whatsappOpen}
-        toggle={() => setWhatsappOpen(!whatsappOpen)}
-      >
-        <ModalHeader
-          toggle={() => setWhatsappOpen(!whatsappOpen)}
-          style={{ textAlign: "center" }}
-        >
-          {" "}
-          Attention !!
-        </ModalHeader>
-        <ModalBody>
-          To access this feature kindly Contact Uniqueworld Management Team: +91
-          9974877260
-        </ModalBody>
-      </Modal>
       <Modal className="modal-dialog-centered" isOpen={resumeCountFinishError}>
         <ModalHeader
           toggle={() => {
