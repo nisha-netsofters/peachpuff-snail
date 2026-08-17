@@ -117,6 +117,41 @@ const Basic = ({
 
   const resumeCacheKey = (f) => `${f?.name || "resume"}_${f?.size || 0}`;
 
+  const mergeResumeFiles = (existing = [], incoming = []) => {
+    const merged = [...existing];
+    const keys = new Set(existing.map(resumeCacheKey));
+    incoming.forEach((file) => {
+      const key = resumeCacheKey(file);
+      if (!keys.has(key)) {
+        keys.add(key);
+        merged.push(file);
+      }
+    });
+    return merged;
+  };
+
+  const preparseUncachedResumes = async (allFiles, cache) => {
+    const uncached = allFiles.filter((f) => !cache[resumeCacheKey(f)]);
+    if (uncached.length === 0) return;
+    let currentCache = { ...cache };
+    setPreparingResumes({ active: true, done: 0, total: uncached.length });
+    for (let j = 0; j < uncached.length; j += 1) {
+      const f = uncached[j];
+      const data = await parseResumeFileToData(f);
+      if (data) currentCache[resumeCacheKey(f)] = data;
+      setPreparingResumes({
+        active: true,
+        done: j + 1,
+        total: uncached.length,
+      });
+      setCandidate((prev) => {
+        const base = Array.isArray(prev) ? {} : prev || {};
+        return { ...base, resumeParseCache: { ...currentCache } };
+      });
+    }
+    setPreparingResumes({ active: false, done: 0, total: 0 });
+  };
+
   const parseResumeFileToData = async (resumeFile) => {
     const formData = new FormData();
     formData.append("resume", resumeFile);
@@ -130,23 +165,6 @@ const Basic = ({
       } catch (ePub) {}
     }
     return null;
-  };
-
-  const preparseRemainingResumes = async (files, initialCache) => {
-    if (!files || files.length <= 1) return;
-    const cache = { ...initialCache };
-    setPreparingResumes({ active: true, done: 1, total: files.length });
-    for (let j = 1; j < files.length; j++) {
-      const f = files[j];
-      const data = await parseResumeFileToData(f);
-      if (data) cache[resumeCacheKey(f)] = data;
-      setPreparingResumes({ active: true, done: j + 1, total: files.length });
-      setCandidate((prev) => {
-        const base = Array.isArray(prev) ? {} : prev || {};
-        return { ...base, resumeParseCache: { ...cache } };
-      });
-    }
-    setPreparingResumes({ active: false, done: 0, total: 0 });
   };
 
   // Keep parent Submit button disabled while API check / extract is in progress (resume-only page)
@@ -316,8 +334,20 @@ const Basic = ({
       const s = normalizeExtractedResume(result.data || {}, course);
       console.log("ResumeUploadHelper parsed data s:", s);
       if (typeof setCandidate === 'function') {
+        let mergedFilesSnapshot = files;
+        let cacheSnapshot = {
+          [resumeCacheKey(file)]: result.data || {},
+        };
+
         setCandidate((prev) => {
           const curr = Array.isArray(prev) ? {} : prev || {};
+          const existingFiles = Array.isArray(curr.resumeFiles)
+            ? curr.resumeFiles
+            : [];
+          const mergedFiles = allowMultipleResumeSelection
+            ? mergeResumeFiles(existingFiles, files)
+            : files;
+          mergedFilesSnapshot = mergedFiles;
           const edu = (curr.education && curr.education.length) ? curr.education : (s.education || []);
           const prof = Object.assign({}, curr.professional || {}, s.professional || {});
           const address = resolveIndianAddress({
@@ -326,6 +356,11 @@ const Basic = ({
             stateId: curr.stateId || "",
             cityId: curr.cityId || "",
           });
+          const nextCache = {
+            ...(curr.resumeParseCache || {}),
+            [resumeCacheKey(file)]: result.data || {},
+          };
+          cacheSnapshot = nextCache;
           return Object.assign({}, curr, {
             firstname: s.firstname || curr.firstname || "",
             lastname: s.lastname || curr.lastname || "",
@@ -350,21 +385,18 @@ const Basic = ({
             industry: s.industry || curr.industry || "",
             education: edu,
             professional: prof,
-            resume: file,
-            ...(allowMultipleResumeSelection ? { resumeFiles: files } : {}),
+            resume: mergedFiles[0] || file,
+            ...(allowMultipleResumeSelection
+              ? { resumeFiles: mergedFiles }
+              : {}),
             resumeParsedAt: new Date().toISOString(),
-            resumeParseCache: {
-              ...(curr.resumeParseCache || {}),
-              [resumeCacheKey(file)]: result.data || {},
-            },
+            resumeParseCache: nextCache,
           });
         });
-      }
-      if (allowMultipleResumeSelection && files.length > 1) {
-        const initialCache = {
-          [resumeCacheKey(file)]: result.data || {},
-        };
-        preparseRemainingResumes(files, initialCache);
+
+        if (allowMultipleResumeSelection) {
+          preparseUncachedResumes(mergedFilesSnapshot, cacheSnapshot);
+        }
       }
       const genderSelect = genderSelectValue(s.gender);
       if (genderSelect && typeof setGender === 'function') {
@@ -417,11 +449,15 @@ const Basic = ({
     setCandidate((prev) => {
       const base = Array.isArray(prev) ? {} : prev || {};
       const files = [...(base.resumeFiles || selectedResumeFiles)];
+      const removed = files[index];
       files.splice(index, 1);
+      const nextCache = { ...(base.resumeParseCache || {}) };
+      if (removed) delete nextCache[resumeCacheKey(removed)];
       const next = {
         ...base,
         resumeFiles: files,
         resume: files[0] || null,
+        resumeParseCache: nextCache,
       };
       if (files.length === 0) {
         delete next.resumeParsedAt;
