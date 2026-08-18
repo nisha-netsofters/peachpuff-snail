@@ -16,6 +16,21 @@ import { profileUpdate } from "../../apis/profile";
 import { tostify, tostifySuccess } from "../../components/Tostify";
 import { persistor } from "../store";
 
+function loginErrorToast(message) {
+  toast.error(
+    <>
+      <div className="toastify-body">
+        <ul className="list-unstyled mb-0">
+          <li key={message}>
+            <strong>Oops</strong>: {message}
+          </li>
+        </ul>
+      </div>
+    </>,
+    { icon: true, hideProgressBar: true }
+  );
+}
+
 export function* loading(state) {
   yield put({
     type: actions.SET_AUTH_LOADING,
@@ -64,24 +79,13 @@ export function* WATCH_SIGN_IN(action) {
         },
       });
     } else {
-      toast.error(
-        <>
-        <div className="toastify-body">
-          <ul className="list-unstyled mb-0">
-            <li key={resp?.msg}>
-              <strong>Oops</strong>: {resp?.msg}
-            </li>
-          </ul>
-        </div>
-      </>,
-      { icon: true, hideProgressBar: true }
-      );
+      loginErrorToast(resp?.msg || "Invalid email or password");
     }
   }
 } catch (err) {
-  console.info('--------------------')
-  console.info('err => ', err )
-  console.info('--------------------')
+  loginErrorToast(
+    err?.response?.data?.msg || "Invalid email or password"
+  );
   yield loading(false);
 }
 yield loading(false);
@@ -131,23 +135,12 @@ export function* WATCH_SUPER_ADMIN_SIGN_IN(action) {
     console.info('1 => ' )
     console.info('--------------------')
   } else {
-    toast.error(
-      <>
-        <div className="toastify-body">
-          <ul className="list-unstyled mb-0">
-            <li key={resp?.msg}>
-              <strong>Oops</strong>: {resp?.msg}
-            </li>
-          </ul>
-        </div>
-      </>,
-      { icon: true, hideProgressBar: true }
-    );
+    loginErrorToast(resp?.msg || "Invalid email or password");
   }
 } catch (err) {
-  console.info('--------------------')
-  console.info('err => ', err )
-  console.info('--------------------')
+  loginErrorToast(
+    err?.response?.data?.msg || "Invalid email or password"
+  );
   yield loading(false);
 }
 yield loading(false);

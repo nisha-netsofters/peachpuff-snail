@@ -143,7 +143,8 @@ const AgencyForm = ({
       </>
     );
   };
-  const decodedUrl = decodeURIComponent(agency?.logo);
+  const decodedUrl =
+    typeof agency?.logo === "string" ? decodeURIComponent(agency.logo) : "";
   const logoName = decodedUrl.substring(decodedUrl.lastIndexOf("/") + 1);
 
   return (
@@ -336,14 +337,21 @@ const AgencyForm = ({
         <Col lg={6} xs={12} xl={4}>
           <div>
             <Label id="password">
-              Password<span style={{ color: "red" }}>*</span>
+              Password
+              {update !== true ? (
+                <span style={{ color: "red" }}>*</span>
+              ) : null}
             </Label>
             <InputPasswordToggle
               id="password"
               name="password"
               className="input-group-merge"
-              placeholder={"Enter Password"}
-              value={agency?.password}
+              placeholder={
+                update
+                  ? "Leave blank to keep current password"
+                  : "Enter Password"
+              }
+              value={agency?.password || ""}
               onChange={(e) => {
                 handleChange(e);
               }}

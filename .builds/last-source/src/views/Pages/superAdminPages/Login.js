@@ -22,6 +22,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { useSkin } from "@hooks/useSkin";
 import { useEffect, useState } from "react";
 import Loader from "../../../components/Dialog/Loader";
+import { tostifyError } from "../../../components/Tostify";
 
 const Login = (props) => {
   const { skin } = useSkin();
@@ -55,6 +56,10 @@ const Login = (props) => {
 
   const onSubmit = (e) => {
     e.preventDefault();
+    if (!email || !password) {
+      tostifyError("Please enter email and password");
+      return;
+    }
 
     dispatch({
       type: "SUPERADMIN_SIGN_IN",

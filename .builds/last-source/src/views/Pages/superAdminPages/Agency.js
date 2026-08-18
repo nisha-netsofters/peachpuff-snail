@@ -40,7 +40,7 @@ import { useDispatch, useSelector } from "react-redux";
 import CustomHeader from "../../../components/Header/CustomHeader";
 import "@styles/react/libs/react-select/_react-select.scss";
 import "@styles/react/libs/tables/react-dataTable-component.scss";
-import { tostify, tostifyInfo } from "../../../components/Tostify";
+import { tostify, tostifyInfo, tostifySuccess } from "../../../components/Tostify";
 import ComponentSpinner from "../../../@core/components/spinner/Loading-spinner";
 // import { uploadFiles } from './../../helper/fileUpload'
 import Loader from "./../../../components/Dialog/Loader";
@@ -101,8 +101,11 @@ const Agency = () => {
       setLoading(false);
       toast.error("Email is Exist");
     } else {
-      if (allAgency?.isSuccess) clearStates();
-      if (allAgency?.data?.length >= 0) {
+      // List API also returns isSuccess — only close the modal for create/update payloads
+      if (allAgency?.isSuccess && !Array.isArray(allAgency?.data)) {
+        clearStates();
+      }
+      if (Array.isArray(allAgency?.data)) {
         setLoading(false);
         setAgencyList(allAgency?.data || []);
         setTotalRows(allAgency?.total);
@@ -506,58 +509,68 @@ const Agency = () => {
 
   const agencyCreateHandler = async () => {
     setLoading(true);
-    if (agency?.logo) {
-      const resp = await awsUploadAssetsWithResp(agency?.logo);
-      agency.logo = `${resp.url}`;
-    }
-    const resp = await createAgency(agency);
-    if (resp) {
+    try {
+      const payload = { ...agency };
+      if (agency?.logo instanceof File) {
+        const uploaded = await awsUploadAssetsWithResp(agency.logo);
+        if (!uploaded?.url) {
+          tostify("Logo upload failed");
+          return;
+        }
+        payload.logo = uploaded.url;
+      }
+      const resp = await createAgency(payload);
       if (resp?.isSuccess) {
-        setLoading(false);
+        tostifySuccess("Agency created successfully");
         await getAgency(0);
         setShow(false);
         setCreate(false);
       } else {
-        tostify(resp?.error);
-        setLoading(false);
+        tostify(resp?.error || resp?.message || "Agency create failed");
       }
-    } else {
+    } catch (err) {
+      tostify(
+        err?.response?.data?.error ||
+          err?.response?.data?.message ||
+          "Agency create failed"
+      );
+    } finally {
       setLoading(false);
     }
-    // await dispatch({
-    //   type: agencyActions.CREATE_AGENCY,
-    //   payload: agency,
-    // });
   };
 
   const agencyUpdateHandler = async () => {
     setLoading(true);
-    if (
-      typeof agency?.logo == "object" &&
-      agency?.logo != {} &&
-      agency?.logo != undefined &&
-      agency?.logo != null
-    ) {
-      const resp = await awsUploadAssetsWithResp(agency?.logo);
-      agency.logo = `${resp.url}`;
-    }
-    const resp = await updateAgency(agency);
-    if (resp) {
+    try {
+      const payload = { ...agency };
+      if (agency?.logo instanceof File) {
+        const uploaded = await awsUploadAssetsWithResp(agency.logo);
+        if (!uploaded?.url) {
+          tostify("Logo upload failed");
+          return;
+        }
+        payload.logo = uploaded.url;
+      } else if (typeof agency?.logo !== "string") {
+        delete payload.logo;
+      }
+      const resp = await updateAgency(payload);
       if (resp?.isSuccess) {
-        setLoading(false);
+        tostifySuccess("Agency updated successfully");
         await getAgency(0);
         setShow(false);
         setUpdate(false);
       } else {
-        setLoading(false);
+        tostify(resp?.message || resp?.error || "Agency update failed");
       }
-    } else {
+    } catch (err) {
+      tostify(
+        err?.response?.data?.message ||
+          err?.response?.data?.error ||
+          "Agency update failed"
+      );
+    } finally {
       setLoading(false);
     }
-    // await dispatch({
-    //   type: agencyActions.UPDATE_AGENCY,
-    //   payload: agency,
-    // });
   };
   const Validations = async () => {
     const error = false;
@@ -615,10 +628,18 @@ const Agency = () => {
     )
       return tostify("Please Enter Valid Email", error);
     else if (
-      agency?.password == "" ||
-      agency?.password == null ||
-      agency?.password == undefined ||
-      agency?.password.length < 8
+      update !== true &&
+      (agency?.password == "" ||
+        agency?.password == null ||
+        agency?.password == undefined ||
+        agency?.password.length < 8)
+    )
+      return tostify("Please Enter 8 Character password", error);
+    else if (
+      update === true &&
+      agency?.password &&
+      agency.password.length > 0 &&
+      agency.password.length < 8
     )
       return tostify("Please Enter 8 Character password", error);
     else if (
