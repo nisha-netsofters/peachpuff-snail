@@ -6,14 +6,10 @@ export const getFeedBackAPI = async (payload) => {
     })
 }
 export const createFeedBackAPI = async (payload) => {
-    return await apiCall.post('/clientfeedback/create', payload, {
-        headers: { "Content-Type": "multipart/form-data" }
-    })
+    return await apiCall.post('/clientfeedback/create', payload)
 }
 export const updateFeedBackAPI = async (payload) => {
-    return await apiCall.put(`/clientfeedback/update/${payload.id}`, payload.data, {
-        headers: { "Content-Type": "multipart/form-data" }
-    })
+    return await apiCall.put(`/clientfeedback/update/${payload.id}`, payload.data)
 }
 export const deleteFeedBackAPI = async (payload) => {
     return await apiCall.delete(`/clientfeedback/delete/${payload.id}`, {

@@ -81,9 +81,7 @@ export const createCandidateAPI = async (payload) => {
 };
 
 export const createCandidateCsvAPI = async (payload) => {
-  return await apiCall.post("/candidate/create/csv", payload, {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
+  return await apiCall.post("/candidate/create/csv", payload);
 };
 export const updateCandidateAPI = async (payload) => {
   // Do not set Content-Type manually — browser must add multipart boundary

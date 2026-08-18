@@ -173,23 +173,28 @@ const Interview = () => {
     }
   }, [location]);
 
-  // useEffect(() => {
-  //   (async () => {
-  //     await dispatch({
-  //       type: candidateActions.GET_CANDIDATE,
-  //       payload: {
-  //         filterData,
-  //       },
-  //     });
-  //     await dispatch({
-  //       type: onBoardingActions.GET_ONBOARDING,
-  //       payload: {
-  //         filterData,
-  //         userId: loginUser?.id,
-  //       },
-  //     });
-  //   })();
-  // }, []);
+  useEffect(() => {
+    if (!show && !candidateId) return;
+    (async () => {
+      await dispatch({
+        type: candidateActions.GET_CANDIDATE,
+        payload: {
+          page: 1,
+          perPage: 10,
+          filterData: {},
+        },
+      });
+      await dispatch({
+        type: onBoardingActions.GET_ONBOARDING,
+        payload: {
+          filterData: {},
+          userId: loginUser?.id,
+          page: 1,
+          perPage: 50,
+        },
+      });
+    })();
+  }, [show, candidateId, dispatch, loginUser?.id]);
 
   // useEffect(() => {
   //   if (create === false && update === false && candidateId === null) {

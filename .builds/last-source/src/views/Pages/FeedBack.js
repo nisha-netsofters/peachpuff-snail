@@ -35,7 +35,6 @@ import CustomHeader from "../../components/Header/CustomHeader";
 import Filter from "../../components/Forms/feedBack/filter";
 import feeBackActions from "../../redux/feedBack/actions";
 import onBoardingActions from "../../redux/onBoarding/actions";
-import jobCategoryActions from "../../redux/jobCategory/actions";
 import "@styles/react/libs/react-select/_react-select.scss";
 import "@styles/react/libs/tables/react-dataTable-component.scss";
 import FeedBackDialog from "../../components/Dialog/FeedBackDialog";
@@ -227,7 +226,7 @@ const FeedBack = () => {
   const handlePerRowsChange = async (newPerPage, page) => {
     setLoading(true);
     await dispatch({
-      type: jobCategoryActions.GET_JOBCAT,
+      type: feeBackActions.GET_FEEDBACK,
       payload: {
         filterData,
         page,

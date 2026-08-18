@@ -30,21 +30,18 @@ export const createClientAPI = async (payload) => {
   });
 };
 export const updateClientAPI = async (payload) => {
-  // Check if bannerImage is a string URL (not a File object)
-  const hasBannerImageUrl = payload.data?.bannerImage && typeof payload.data.bannerImage === 'string';
-  
   // Check if there are any File objects in the payload
   const hasFiles = Object.values(payload.data || {}).some(
     (value) => value instanceof File
   );
-  
-  // Use JSON when bannerImage is a URL string and no files are present
-  if (hasBannerImageUrl && !hasFiles) {
+
+  // Use JSON whenever no files are present
+  if (!hasFiles) {
     return await apiCall.put(`/clients/update/${payload.id}`, payload.data, {
       headers: { "Content-Type": "application/json" },
     });
   }
-  
+
   // Use multipart/form-data for file uploads
   return await apiCall.put(`/clients/update/${payload.id}`, payload.data, {
     headers: { "Content-Type": "multipart/form-data" },

@@ -38,22 +38,39 @@ const Filter = ({
   const dispatch = useDispatch();
   const [filter, setFilter] = useState(initialState);
   const onBoardings = useSelector((state) => state.onBoarding.results);
+  const allClients = useSelector((state) => state.client);
   const [selectCompany, setSelectCompany] = useState();
   const [company, setCompany] = useState();
-  const test = [];
   const { width } = useBreakpoint();
   useEffect(() => {
+    const test = [];
+    const seen = new Set();
     if (onBoardings !== undefined) {
-      onBoardings.filter((item) => {
+      onBoardings.forEach((item) => {
+        const value = item.id;
+        if (!value || seen.has(String(value))) return;
+        seen.add(String(value));
         test.push({
-          value: item.id,
+          value,
+          id: "onBoardingId",
+          label: item.companyName,
+        });
+      });
+    }
+    if (allClients?.length > 0) {
+      allClients.forEach((item) => {
+        const value = item.id;
+        if (!value || seen.has(String(value))) return;
+        seen.add(String(value));
+        test.push({
+          value,
           id: "onBoardingId",
           label: item.companyName,
         });
       });
     }
     setCompany(test);
-  }, [onBoardings]);
+  }, [onBoardings, allClients]);
 
   const handleFilterData = async () => {
     const filterdata = {};

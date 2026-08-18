@@ -18,7 +18,7 @@ const FeedBack = ({ feedBack, setFeedBack, handleChange = () => {} }) => {
   useEffect(() => {
     const test = [];
     if (onBoardings !== undefined) {
-      onBoardings.filter((item) => {
+      onBoardings.forEach((item) => {
         test.push({
           value: item.id,
           id: "onBoardingId",
@@ -27,26 +27,32 @@ const FeedBack = ({ feedBack, setFeedBack, handleChange = () => {} }) => {
       });
     }
     if (getCompany?.length > 0) {
-      getCompany?.filter((ele) => {
-        ele.label = ele.companyName;
-        ele.key = "onBoardingId";
-        ele.value = ele.id;
-        test.push(ele);
+      getCompany?.forEach((ele) => {
+        test.push({
+          ...ele,
+          label: ele.companyName,
+          key: "onBoardingId",
+          value: ele.id,
+        });
       });
     }
     setCompany(test);
   }, [onBoardings, getCompany]);
-  console.info("----------------------------");
-  console.info("feedBack =>", feedBack);
-  console.info("----------------------------");
+
   useEffect(() => {
     if (feedBack?.onBoarding?.companyName !== undefined) {
-      setSelectCompany({ label: feedBack?.onBoarding?.companyName });
+      setSelectCompany({
+        value: feedBack?.onBoardingId,
+        label: feedBack?.onBoarding?.companyName,
+      });
     }
     if (feedBack?.clients?.companyName !== undefined) {
-      setSelectCompany({ label: feedBack?.clients?.companyName });
+      setSelectCompany({
+        value: feedBack?.onBoardingId,
+        label: feedBack?.clients?.companyName,
+      });
     }
-  }, []);
+  }, [feedBack]);
 
   const themecolor = localStorage.getItem("themecolor");
   const [focus, setIsfocus] = useState(null);

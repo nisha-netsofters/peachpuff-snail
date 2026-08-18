@@ -1,9 +1,13 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Row,
   Col,
   Input,
   Button,
+  Modal,
+  ModalBody,
+  ModalFooter,
+  ModalHeader,
   DropdownMenu,
   DropdownItem,
   DropdownToggle,
@@ -25,7 +29,12 @@ import { useDispatch, useSelector } from "react-redux";
 import { CSVLink } from "react-csv";
 import { useCSVReader } from "react-papaparse";
 import actions from "../../redux/candidate/actions";
-import { tostifySuccess } from "../Tostify";
+import {
+  checkCandidatePublicAPI,
+  createCandidateAPI,
+  updateCandidateAPI,
+} from "../../apis/candidate";
+import { tostifyError, tostifyInfo, tostifySuccess } from "../Tostify";
 import { useLocation } from "react-router-dom";
 import ComposeEmail from "../ComposeEmail/ComposeEmail";
 // import { debounce } from "lodash";
@@ -57,9 +66,18 @@ const CustomHeader = ({
   const [mobile, setMobile] = useState("");
   const [composeOpen, setComposeOpen] = useState(false);
   const [composeClientOpen, setComposeClientOpen] = useState(false);
+  const [duplicateCsvModal, setDuplicateCsvModal] = useState({
+    open: false,
+    rowLabel: "",
+    candidateName: "",
+    mobile: "",
+    email: "",
+  });
   const slug = localStorage.getItem("slug");
   const debouncedValue = useDebounce(mobile);
   const auth = useSelector((state) => state?.auth);
+  const importTriggerRef = useRef(null);
+  const duplicateCsvResolveRef = useRef(null);
 
   useEffect(() => {
     if (typeof setFilterData === "function") {
@@ -105,35 +123,92 @@ const CustomHeader = ({
   ];
 
   const headers = [
-    { label: "firstname" },
-    { label: "lastname" },
-    { label: "email" },
-    { label: "mobile" },
-    { label: "street" },
-    { label: "city" },
-    { label: "state" },
-    { label: "zip" },
-    { label: "alternateMobile" },
-    { label: "comments" },
-    { label: "gender" },
-    { label: "image" },
-    { label: "resume" },
-    { label: "industriesId" },
-    { label: "jobCategoryId" },
-    { label: "course" },
-    { label: "field" },
-    { label: "designation" },
-    { label: "experienceInyear" },
-    { label: "expectedsalary" },
-    { label: "skill" },
-    { label: "noticePeriod" },
-    { label: "highestQualification" },
-    { label: "currentlyWorking" },
-    { label: "currentSalary" },
-    { label: "currentEmployer" },
+    { label: "firstname", key: "firstname" },
+    { label: "lastname", key: "lastname" },
+    { label: "email", key: "email" },
+    { label: "mobile", key: "mobile" },
+    { label: "street", key: "street" },
+    { label: "city", key: "city" },
+    { label: "state", key: "state" },
+    { label: "zip", key: "zip" },
+    { label: "alternateMobile", key: "alternateMobile" },
+    { label: "comments", key: "comments" },
+    { label: "gender", key: "gender" },
+    { label: "image", key: "image" },
+    { label: "resume", key: "resume" },
+    { label: "industriesId", key: "industriesId" },
+    { label: "jobCategoryId", key: "jobCategoryId" },
+    { label: "course", key: "course" },
+    { label: "field", key: "field" },
+    { label: "designation", key: "designation" },
+    { label: "experienceInyear", key: "experienceInyear" },
+    { label: "expectedsalary", key: "expectedsalary" },
+    { label: "skill", key: "skill" },
+    { label: "noticePeriod", key: "noticePeriod" },
+    { label: "highestQualification", key: "highestQualification" },
+    { label: "currentlyWorking", key: "currentlyWorking" },
+    { label: "currentSalary", key: "currentSalary" },
+    { label: "currentEmployer", key: "currentEmployer" },
   ];
 
-  const data = [];
+  const data = [
+    {
+      firstname: "john",
+      lastname: "denial",
+      email: "john@gmail.com",
+      mobile: "9876543210",
+      street: "Ring Road",
+      city: "Surat",
+      state: "Gujarat",
+      zip: "395002",
+      alternateMobile: "9876500001",
+      comments: "Interested in sales role",
+      gender: "male",
+      image: "",
+      resume: "",
+      industriesId: "industry-001",
+      jobCategoryId: "jobcat-001",
+      course: "B.Com",
+      field: "Commerce",
+      designation: "Sales Executive",
+      experienceInyear: "1-3 year",
+      expectedsalary: "25000",
+      skill: "Sales, Communication, Excel",
+      noticePeriod: "15 Days",
+      highestQualification: "Graduate",
+      currentlyWorking: "Yes",
+      currentSalary: "22000",
+      currentEmployer: "ABC Traders",
+    },
+    {
+      firstname: "same",
+      lastname: "Shah",
+      email: "shah@example.com",
+      mobile: "9876543211",
+      street: "Vesu Main Road",
+      city: "Surat",
+      state: "Gujarat",
+      zip: "395007",
+      alternateMobile: "9876500002",
+      comments: "Immediate joining available",
+      gender: "female",
+      image: "",
+      resume: "",
+      industriesId: "industry-002",
+      jobCategoryId: "jobcat-002",
+      course: "MBA",
+      field: "Marketing",
+      designation: "HR Executive",
+      experienceInyear: "0-1 year",
+      expectedsalary: "20000",
+      skill: "Recruitment, MS Office, Communication",
+      noticePeriod: "Immediate",
+      highestQualification: "Post Graduate",
+      currentlyWorking: "No",
+      currentSalary: "0",
+      currentEmployer: "",
+    },
+  ];
   function convertArrayOfObjectsToCSV(array) {
     let result;
 
@@ -215,6 +290,195 @@ const CustomHeader = ({
 
   const toggleComposeEmail = () => {
     setComposeClientOpen(!composeClientOpen);
+  };
+  const askDuplicateCsvAction = (rowLabel, existingCandidate) => {
+    const name =
+      `${existingCandidate?.firstname || ""} ${
+        existingCandidate?.lastname || ""
+      }`.trim() || "Existing candidate";
+    return new Promise((resolve) => {
+      duplicateCsvResolveRef.current = resolve;
+      setDuplicateCsvModal({
+        open: true,
+        rowLabel,
+        candidateName: name,
+        mobile: existingCandidate?.mobile || "",
+        email: existingCandidate?.email || "",
+      });
+    });
+  };
+  const closeDuplicateCsvModal = (action) => {
+    setDuplicateCsvModal({
+      open: false,
+      rowLabel: "",
+      candidateName: "",
+      mobile: "",
+      email: "",
+    });
+    if (duplicateCsvResolveRef.current) {
+      duplicateCsvResolveRef.current(action);
+      duplicateCsvResolveRef.current = null;
+    }
+  };
+  const handleCandidateCsvImport = async (results) => {
+    const csvHeaders = results?.data?.[0];
+    const data = [];
+
+    results?.data?.forEach((ele, index) => {
+      if (index > 0) {
+        const obj = {};
+        const professional = {};
+        ele.forEach((element, i) => {
+          if (
+            professionalField.includes(csvHeaders[i]) &&
+            String(element || "").length > 0
+          ) {
+            professional[csvHeaders[i]] = element;
+          } else if (String(element || "").length > 0) {
+            obj[csvHeaders[i]] = element;
+          }
+        });
+
+        if (JSON.stringify(obj) !== "{}") {
+          obj.professional = professional;
+          data.push(obj);
+        }
+      }
+    });
+
+    if (!data.length) {
+      tostifyError("No valid rows found in CSV");
+      return;
+    }
+
+    let addedCount = 0;
+    let updatedCount = 0;
+    let skippedCount = 0;
+    const skipReasons = [];
+
+    for (let index = 0; index < data.length; index += 1) {
+      const row = data[index];
+      const fileRow = `Row ${index + 2}`;
+      const email = String(row?.email || "").trim();
+      const mobile = String(row?.mobile || "").trim();
+
+      if (!email || !mobile) {
+        skippedCount += 1;
+        if (!email && !mobile) {
+          skipReasons.push(`${fileRow}: email and phone missing`);
+        } else if (!email) {
+          skipReasons.push(`${fileRow}: email missing`);
+        } else {
+          skipReasons.push(`${fileRow}: phone missing`);
+        }
+        continue;
+      }
+
+      const professional = {
+        ...(row?.professional || {}),
+        jobCategoryId:
+          row?.professional?.jobCategoryId || row?.jobCategoryId || "",
+        expectedsalary: Number(
+          row?.professional?.expectedsalary || row?.expectedsalary || 0
+        ),
+        currentSalary: Number(
+          row?.professional?.currentSalary || row?.currentSalary || 0
+        ),
+      };
+      const industries_relation = String(row?.industriesId || "")
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean)
+        .map((industriesId) => ({ industriesId }));
+
+      const payload = {
+        ...row,
+        email,
+        mobile,
+        professional,
+        industries_relation,
+      };
+
+      delete payload.industriesId;
+      delete payload.jobCategoryId;
+
+      const duplicateCheck = await checkCandidatePublicAPI({
+        email,
+        mobile,
+      });
+
+      const existingCandidate = duplicateCheck?.existingCandidate || {};
+      const isDuplicate = Boolean(duplicateCheck?.duplicate || duplicateCheck?.error);
+
+      if (isDuplicate) {
+        const action = await askDuplicateCsvAction(fileRow, existingCandidate);
+        if (action !== "update") {
+          skippedCount += 1;
+          skipReasons.push(`${fileRow}: duplicate skipped`);
+          continue;
+        }
+
+        const existingId = String(
+          existingCandidate?.id || existingCandidate?._id || ""
+        ).trim();
+        if (!existingId) {
+          skippedCount += 1;
+          skipReasons.push(`${fileRow}: existing candidate id missing`);
+          continue;
+        }
+
+        const updateResp = await updateCandidateAPI({
+          data: { ...payload, id: existingId },
+        });
+
+        if (updateResp?.msg) {
+          updatedCount += 1;
+        } else {
+          skippedCount += 1;
+          skipReasons.push(
+            `${fileRow}: ${updateResp?.error || "update failed"}`
+          );
+        }
+        continue;
+      }
+
+      const createResp = await createCandidateAPI(payload);
+      if (createResp?.id) {
+        addedCount += 1;
+      } else {
+        skippedCount += 1;
+        skipReasons.push(`${fileRow}: ${createResp?.error || "create failed"}`);
+      }
+    }
+
+    if (addedCount > 0) {
+      tostifySuccess(
+        `${addedCount} candidate${addedCount > 1 ? "s" : ""} imported successfully`
+      );
+    }
+    if (updatedCount > 0) {
+      tostifySuccess(
+        `${updatedCount} duplicate candidate${updatedCount > 1 ? "s" : ""} updated`
+      );
+    }
+    if (skippedCount > 0) {
+      tostifyInfo(
+        skipReasons.length
+          ? skipReasons.slice(0, 2).join(" | ")
+          : `${skippedCount} row${skippedCount > 1 ? "s" : ""} skipped`
+      );
+    }
+
+    if (addedCount > 0 || updatedCount > 0) {
+      await dispatch({
+        type: actions.GET_CANDIDATE,
+        payload: {
+          page: 1,
+          perPage: 10,
+          filterData: [],
+        },
+      });
+    }
   };
   const themecolor = useSelector(
     (state) => state?.agency?.agencyDetail?.themecolor
@@ -340,87 +604,9 @@ const CustomHeader = ({
                         style={ImportStyle}
                         onMouseEnter={() => setHoverIndex(3)}
                         onMouseLeave={() => setHoverIndex(0)}
+                      onClick={() => importTriggerRef.current?.click()}
                       >
-                        <CSVReader
-                          onUploadAccepted={async (results) => {
-                            const headers = results?.data[0];
-                            const data = [];
-                            results?.data.forEach((ele, index) => {
-                              if (index > 0) {
-                                const obj = {};
-                                const professional = {};
-                                ele.forEach((element, i) => {
-                                  if (
-                                    professionalField.includes(headers[i]) &&
-                                    element.length > 0
-                                  ) {
-                                    professional[headers[i]] = element;
-                                  } else if (element?.length > 0) {
-                                    obj[headers[i]] = element;
-                                  }
-                                });
-
-                                if (JSON.stringify(obj) !== "{}") {
-                                  obj.professional = professional;
-                                  data.push(obj);
-                                }
-                              }
-                            });
-                            await dispatch({
-                              type: actions.CREATE_CANDIDATE_CSV,
-                              payload: { data },
-                            });
-                          }}
-                        >
-                          {({
-                            getRootProps,
-                            acceptedFile,
-                            getRemoveFileProps,
-                          }) => {
-                            useEffect(() => {
-                              if (acceptedFile?.name?.length > 0) {
-                                tostifySuccess(
-                                  `${acceptedFile?.name?.slice(
-                                    0,
-                                    7
-                                  )}... Uploaded`
-                                );
-                              }
-                            }, [acceptedFile]);
-                            return (
-                              <>
-                                <div {...getRootProps()}></div>
-                                <UploadCloud className="font-small-4 me-50" />{" "}
-                                Import
-                                <div
-                                  {...getRemoveFileProps()}
-                                  style={{
-                                    position: "absolute",
-                                    left: "47px",
-                                    top: "1px",
-                                  }}
-                                >
-                                  {acceptedFile ? (
-                                    <>
-                                      <X
-                                        color="red"
-                                        onClick={() => {
-                                          tostifySuccess(
-                                            `${acceptedFile?.name?.slice(
-                                              0,
-                                              7
-                                            )}... Removed`
-                                          );
-                                        }}
-                                        size={15}
-                                      />
-                                    </>
-                                  ) : null}
-                                </div>
-                              </>
-                            );
-                          }}
-                        </CSVReader>
+                      <UploadCloud className="font-small-4 me-50" /> Import
                       </DropdownItem>
                     ) : null}
                     <DropdownItem
@@ -677,84 +863,9 @@ const CustomHeader = ({
                       style={ImportStyle}
                       onMouseEnter={() => setHoverIndex(3)}
                       onMouseLeave={() => setHoverIndex(0)}
+                      onClick={() => importTriggerRef.current?.click()}
                     >
-                      <CSVReader
-                        onUploadAccepted={async (results) => {
-                          const headers = results?.data[0];
-                          const data = [];
-                          results?.data.forEach((ele, index) => {
-                            if (index > 0) {
-                              const obj = {};
-                              const professional = {};
-                              ele.forEach((element, i) => {
-                                if (
-                                  professionalField.includes(headers[i]) &&
-                                  element.length > 0
-                                ) {
-                                  professional[headers[i]] = element;
-                                } else if (element?.length > 0) {
-                                  obj[headers[i]] = element;
-                                }
-                              });
-
-                              if (JSON.stringify(obj) !== "{}") {
-                                obj.professional = professional;
-                                data.push(obj);
-                              }
-                            }
-                          });
-                          await dispatch({
-                            type: actions.CREATE_CANDIDATE_CSV,
-                            payload: { data },
-                          });
-                        }}
-                      >
-                        {({
-                          getRootProps,
-                          acceptedFile,
-                          getRemoveFileProps,
-                        }) => {
-                          useEffect(() => {
-                            if (acceptedFile?.name?.length > 0) {
-                              tostifySuccess(
-                                `${acceptedFile?.name?.slice(0, 7)}... Uploaded`
-                              );
-                            }
-                          }, [acceptedFile]);
-                          return (
-                            <>
-                              <div {...getRootProps()}></div>
-                              <UploadCloud className="font-small-4 me-50" />{" "}
-                              Import
-                              <div
-                                {...getRemoveFileProps()}
-                                style={{
-                                  position: "absolute",
-                                  left: "47px",
-                                  top: "1px",
-                                }}
-                              >
-                                {acceptedFile ? (
-                                  <>
-                                    <X
-                                      color="red"
-                                      onClick={() => {
-                                        tostifySuccess(
-                                          `${acceptedFile?.name?.slice(
-                                            0,
-                                            7
-                                          )}... Removed`
-                                        );
-                                      }}
-                                      size={15}
-                                    />
-                                  </>
-                                ) : null}
-                              </div>
-                            </>
-                          );
-                        }}
-                      </CSVReader>
+                      <UploadCloud className="font-small-4 me-50" /> Import
                     </DropdownItem>
                   ) : null}
                   <DropdownItem
@@ -794,6 +905,58 @@ const CustomHeader = ({
           composeOpen={composeClientOpen}
         />
       )}
+      <Modal
+        className="modal-dialog-centered"
+        isOpen={duplicateCsvModal.open}
+        toggle={() => closeDuplicateCsvModal("skip")}
+      >
+        <ModalHeader toggle={() => closeDuplicateCsvModal("skip")}>
+          Duplicate Candidate Found
+        </ModalHeader>
+        <ModalBody>
+          <p style={{ marginBottom: "0.75rem" }}>
+            <strong>{duplicateCsvModal.rowLabel}</strong> matches an existing
+            candidate.
+          </p>
+          <p style={{ marginBottom: "0.5rem" }}>
+            Candidate: <strong>{duplicateCsvModal.candidateName}</strong>
+          </p>
+          {duplicateCsvModal.email ? (
+            <p style={{ marginBottom: "0.5rem" }}>
+              Email: <strong>{duplicateCsvModal.email}</strong>
+            </p>
+          ) : null}
+          {duplicateCsvModal.mobile ? (
+            <p style={{ marginBottom: "0.5rem" }}>
+              Mobile: <strong>{duplicateCsvModal.mobile}</strong>
+            </p>
+          ) : null}
+          <p style={{ marginBottom: 0 }}>
+            Do you want to update this candidate, or skip this CSV row?
+          </p>
+        </ModalBody>
+        <ModalFooter>
+          <Button
+            color="default"
+            style={{ backgroundColor: themecolor, color: "white" }}
+            onClick={() => closeDuplicateCsvModal("update")}
+          >
+            Update
+          </Button>
+          <Button color="link" onClick={() => closeDuplicateCsvModal("skip")}>
+            Skip
+          </Button>
+        </ModalFooter>
+      </Modal>
+      {location === `/${slug}/candidate` ? (
+        <div style={{ display: "none" }}>
+          <CSVReader onUploadAccepted={handleCandidateCsvImport}>
+            {({ getRootProps }) => (
+              <button type="button" ref={importTriggerRef} {...getRootProps()} />
+            )}
+          </CSVReader>
+        </div>
+      ) : null}
     </div>
   );
 };

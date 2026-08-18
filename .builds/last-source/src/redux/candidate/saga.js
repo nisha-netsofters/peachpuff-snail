@@ -233,7 +233,11 @@ export function* WATCH_CREATE_CANDIDATE(action) {
 export function* WATCH_CREATE_CANDIDATE_CSV(action) {
   const data = yield createCandidateCsvAPI(action.payload.data);
   if (data?.id || data.msg === "success") {
-    tostifySuccess("Data Posted Successfully");
+    tostifySuccess(
+      data?.createdCount
+        ? `${data.createdCount} candidate${data.createdCount > 1 ? "s" : ""} imported successfully`
+        : "Data Posted Successfully"
+    );
     const resp = yield getCandidateAPI({
       page: 1,
       perPage: 10,
@@ -243,6 +247,9 @@ export function* WATCH_CREATE_CANDIDATE_CSV(action) {
       type: actions.SET_CANDIDATE,
       payload: resp,
     });
+  }
+  if (data?.error) {
+    tostifyError(data.error);
   }
 }
 

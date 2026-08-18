@@ -145,11 +145,6 @@ const InterviewForm = ({
 
   useEffect(() => {
     const company = [];
-    candidates?.map((ele) => {
-      ele.label = `${ele.firstname} ${ele.lastname}`;
-      ele.value = ele?.id;
-      ele.key = "candidateId";
-    });
 
     clients?.forEach((ele) => {
       ele.label = ` ${ele.companyName} (${ele?.jobCategory?.jobCategory})`;
@@ -167,10 +162,18 @@ const InterviewForm = ({
     setClientOptions(company);
   }, [candidates, clients, show, getCompany]);
 
+  const candidateOptions =
+    candidates?.map((ele) => ({
+      ...ele,
+      label: `${ele.firstname} ${ele.lastname}`.trim(),
+      value: ele?.id,
+      key: "candidateId",
+    })) || [];
+
   const loadOptions = async (inputValue, callback) => {
     if (candidateIdURL == null) {
       try {
-        let data;
+        let data = candidateOptions;
         if (inputValue.length >= 2) {
           data = await getCandidate(inputValue);
         }
@@ -229,7 +232,7 @@ const InterviewForm = ({
               classNamePrefix="select"
               name="callback-react-select"
               loadOptions={loadOptions}
-              defaultOptions
+              defaultOptions={candidateOptions}
               onInputChange={handleInputChange}
               theme={selectThemeColors}
               onChange={debouncedHandleChange}
