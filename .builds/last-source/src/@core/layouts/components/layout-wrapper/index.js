@@ -6,11 +6,7 @@ import classnames from "classnames";
 
 // ** Store & Actions
 import { useSelector, useDispatch } from "react-redux";
-import {
-  handleContentWidth,
-  handleMenuCollapsed,
-  handleMenuHidden,
-} from "@store/layout";
+import { handleContentWidth, handleMenuCollapsed, handleMenuHidden } from "@store/layout";
 
 // ** Styles
 import "animate.css/animate.css";
@@ -78,15 +74,15 @@ const LayoutWrapper = (props) => {
           style={
             roleuser === "Client"
               ? breakpoint.width > 1160
-                ? { padding: "calc(0rem + 4rem + 1rem) 2rem 0" }
+                ? { padding: "calc(0rem + 2rem + 0.5rem) 2rem 0" }
                 : breakpoint.width <= 1160 && breakpoint.width >= 769
-                ? { padding: "calc(2.5rem + 4.45rem + 1.3rem) 2rem 0" }
-                : { padding: "calc(2.5rem + 2.45rem + 1.3rem) 2rem 0" }
+                ? { padding: "calc(1.25rem + 2.225rem + 0.65rem) 2rem 0" }
+                : { padding: "calc(1.25rem + 1.225rem + 0.65rem) 2rem 0" }
               : breakpoint.width >= 1560
-              ? { padding: "calc(0rem + 4rem + 1rem) 2rem 0" }
+              ? { padding: "calc(0rem + 2rem + 0.5rem) 2rem 0" }
               : breakpoint.width <= 1560 && breakpoint.width >= 769
-              ? { padding: "calc(2.5rem + 4.45rem + 1.3rem) 2rem 0" }
-              : { padding: "calc(2.5rem + 2.45rem + 1.3rem) 2rem 0" }
+              ? { padding: "calc(1.25rem + 2.225rem + 0.65rem) 2rem 0" }
+              : { padding: "calc(1.25rem + 1.225rem + 0.65rem) 2rem 0" }
           }
           className={classnames({
             "content-wrapper": !appLayout,

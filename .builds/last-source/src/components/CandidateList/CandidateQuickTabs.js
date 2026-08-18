@@ -1,6 +1,7 @@
 import { Nav, NavItem, NavLink } from "reactstrap";
 
 export const CANDIDATE_QUICK_TABS = [
+  { id: "all", label: "All" },
   { id: "recentlyAdded", label: "Recently Added" },
   { id: "recentlyViewed", label: "Recently Viewed" },
   { id: "newCandidates", label: "New Candidates" },
@@ -39,7 +40,8 @@ const CandidateQuickTabs = ({
         }}
       >
         {CANDIDATE_QUICK_TABS.map((tab) => {
-          const isActive = activeTab === tab.id;
+          const isActive =
+            tab.id === "all" ? !activeTab : activeTab === tab.id;
           return (
             <NavItem key={tab.id}>
               <NavLink

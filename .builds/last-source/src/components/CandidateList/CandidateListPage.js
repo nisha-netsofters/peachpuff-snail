@@ -611,7 +611,12 @@ const SecondPage = ({
   }, [filterData]);
 
   const handleQuickTabChange = (tabId) => {
-    const next = activeQuickFilter === tabId ? null : tabId;
+    const next =
+      tabId === "all"
+        ? null
+        : activeQuickFilter === tabId
+          ? null
+          : tabId;
     setActiveQuickFilter(next);
     setCurrentPage(1);
     getCandidates(1, next);
