@@ -12,16 +12,10 @@ export const getallIndustriesAPI = async () => {
     })
 }
 export const createIndustriesApi = async (payload) => {
-
-    return await apiCall.post('/industries/create', payload, {
-        headers: { "Content-Type": "multipart/form-data" }
-    })
+    return await apiCall.post('/industries/create', payload)
 }
 export const updateIndustriesAPI = async (payload) => {
-
-    return await apiCall.put(`/industries/update/${payload.id}`, payload.data, {
-        headers: { "Content-Type": "multipart/form-data" }
-    })
+    return await apiCall.put(`/industries/update/${payload.id}`, payload.data)
 }
 export const deleteIndustriesAPI = async (payload) => {
 

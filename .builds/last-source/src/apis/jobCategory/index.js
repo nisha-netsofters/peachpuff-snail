@@ -14,16 +14,10 @@ export const getalljobCatAPI = async () => {
     })
 }
 export const createjobCatAPI = async (payload) => {
-
-    return await apiCall.post('/jobCategory/create', payload, {
-        headers: { "Content-Type": "multipart/form-data" }
-    })
+    return await apiCall.post('/jobCategory/create', payload)
 }
 export const updatejobCatAPI = async (payload) => {
-
-    return await apiCall.put(`/jobCategory/update/${payload.id}`, payload.data, {
-        headers: { "Content-Type": "multipart/form-data" }
-    })
+    return await apiCall.put(`/jobCategory/update/${payload.id}`, payload.data)
 }
 export const deletejobCatAPI = async (payload) => {
 

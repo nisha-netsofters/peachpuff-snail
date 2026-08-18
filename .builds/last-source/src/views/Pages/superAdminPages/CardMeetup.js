@@ -37,7 +37,7 @@ const CardMeetup = () => {
             color="light-primary"
             className="rounded me-1 justify-content-center align-items-center "
             icon={<Calendar size={25} />}
-            style={{ width: "45px" }}
+            style={{ width: "45px", cursor: "default" }}
           />
           <div>
             <h4 className="mb-0">{currentTime.format("dddd, MMMM Do YYYY")}</h4>

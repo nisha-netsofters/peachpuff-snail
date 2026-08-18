@@ -123,6 +123,9 @@ const Industries = () => {
             style={{ cursor: "pointer" }}
             onClick={() => {
               setIndustriesCategory(row);
+              setCategoryValidation(
+                row?.industryCategory || row?.name || ""
+              );
               setUpdate(true);
               setShow(true);
             }}
@@ -148,7 +151,8 @@ const Industries = () => {
     },
     {
       name: "industryCategory",
-      selector: (row) => row?.industryCategory,
+      selector: (row) =>
+        row?.industryCategory || row?.name || row?.category || "",
     },
   ];
   const industriesCreateHandler = async () => {
@@ -516,6 +520,9 @@ const Industries = () => {
                                 className="w-100"
                                 onClick={() => {
                                   setIndustriesCategory(result);
+                                  setCategoryValidation(
+                                    result?.industryCategory || result?.name || ""
+                                  );
                                   setUpdate(true);
                                   setShow(true);
                                 }}

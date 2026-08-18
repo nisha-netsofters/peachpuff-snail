@@ -124,6 +124,7 @@ const JobCategory = () => {
             style={{ cursor: "pointer" }}
             onClick={() => {
               setJobCat(row);
+              setCategoryValidation(row?.jobCategory || row?.name || "");
               setUpdate(true);
               setShow(true);
             }}
@@ -149,7 +150,7 @@ const JobCategory = () => {
     },
     {
       name: "Category",
-      selector: (row) => row?.jobCategory,
+      selector: (row) => row?.jobCategory || row?.name || row?.category || "",
     },
   ];
 
@@ -523,6 +524,9 @@ const JobCategory = () => {
                                 className="w-100"
                                 onClick={() => {
                                   setJobCat(result);
+                                  setCategoryValidation(
+                                    result?.jobCategory || result?.name || ""
+                                  );
                                   setUpdate(true);
                                   setShow(true);
                                 }}

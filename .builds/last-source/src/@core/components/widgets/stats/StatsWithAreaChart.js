@@ -37,6 +37,7 @@ const StatsWithAreaChart = (props) => {
           className="avatar-stats p-50 m-0"
           color={`light-${color}`}
           icon={icon}
+          style={{ cursor: "default" }}
         />
         <h2 className="fw-bolder mt-1" style={{ marginLeft: "13px" }}>
           {stats}

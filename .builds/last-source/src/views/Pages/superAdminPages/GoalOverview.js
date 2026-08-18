@@ -118,7 +118,7 @@ const GoalOverview = (props) => {
       <Card>
         <CardHeader>
           <CardTitle tag="h4">Agency's overview</CardTitle>
-          <HelpCircle size={18} className="text-muted cursor-pointer" />
+          <HelpCircle size={18} className="text-muted" style={{ cursor: "default" }} />
         </CardHeader>
         <CardBody className="p-0">
           <Chart
