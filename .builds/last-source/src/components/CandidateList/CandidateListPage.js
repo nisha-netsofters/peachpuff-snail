@@ -2356,13 +2356,15 @@ const SecondPage = ({
         title: "Name",
         value: `${candidate?.firstname} ${candidate?.lastname}` || "-",
       },
-      count?.plan?.planName !== "free"
+      count?.plan?.planName !== "free" &&
+      count?.plan?.planName !== "Trial"
         ? {
           title: "Email",
           value: candidate?.email || "-",
         }
         : null,
-      count?.plan?.planName !== "free"
+      count?.plan?.planName !== "free" &&
+      count?.plan?.planName !== "Trial"
         ? {
           title: "Contact",
           value: candidate?.mobile || "-",
