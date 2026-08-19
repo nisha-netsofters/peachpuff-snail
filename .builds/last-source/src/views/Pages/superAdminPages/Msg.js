@@ -74,7 +74,25 @@ const MATCH_TO_PLACEHOLDER = {
   registration_link: "{{registration_link}}",
   companyName: "{{companyName}}",
   companyowner: "{{companyowner}}",
+  planName: "{{planName}}",
+  planPrice: "{{planPrice}}",
+  planDuration: "{{planDuration}}",
+  planExpiry: "{{planExpiry}}",
 };
+
+const PLAN_MATCH_OPTIONS = [
+  { label: "Use Input Value", value: "input" },
+  { label: "Contact Name", value: "fullname" },
+  { label: "First Name", value: "firstname" },
+  { label: "Company Name", value: "companyName" },
+  { label: "Company Owner", value: "companyowner" },
+  { label: "Mobile", value: "mobile" },
+  { label: "Email", value: "email" },
+  { label: "Plan Name", value: "planName" },
+  { label: "Plan Price", value: "planPrice" },
+  { label: "Plan Duration", value: "planDuration" },
+  { label: "Plan Expiry", value: "planExpiry" },
+];
 
 const newApiId = () =>
   `api_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -633,8 +651,11 @@ const faqHeaderStyle = {
 };
 
 const getMatchOptions = (audience) => {
+  if (audience === "plan") {
+    return PLAN_MATCH_OPTIONS;
+  }
   const base = MATCH_OPTIONS.filter((o) => o.value !== "image");
-  if (audience === "client" || audience === "plan") {
+  if (audience === "client") {
     return base.filter(
       (o) =>
         o.value !== "profile_link" &&
