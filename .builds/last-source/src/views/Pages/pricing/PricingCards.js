@@ -46,18 +46,24 @@ const PricingCards = ({
   useEffect(() => {
     const newDisabledIndexes = data?.reduce((indexes, item, index) => {
       if (item?.id === planId) {
-        indexes = Array.from({ length: index + 1 }, (_, i) => {
-          return i == 0 ? 1 : i;
-        });
+        // Disable current plan and any lower-tier plans before it
+        indexes = Array.from({ length: index + 1 }, (_, i) => i);
       }
       return indexes;
     }, []);
-    setDisabledIndexes(newDisabledIndexes);
+    setDisabledIndexes(newDisabledIndexes || []);
   }, [data, planId]);
+
+  const isPaidPlan = (planName) => {
+    const name = String(planName || "").toLowerCase().trim();
+    return name !== "trial" && name !== "free";
+  };
   
   const renderPricingCards = () => {
     return data?.map((item, index) => {
       if (item?.planName != "Trial") {
+        const isCurrent =
+          item?.plan_feature_id === plan_feature_id || item?.id === planId;
         return (
           <Col key={index} {...colsProps}>
             <Card
@@ -99,29 +105,22 @@ const PricingCards = ({
                 </div>
                 <div>
                   <Button
-                    onClick={async () => {
-                      //  createOrderInstance(item)
-                      item?.planName == "Enterprises" ||
-                      item?.planName == "Professionals"
-                        ? history.push(`/${slug}/payment/create/${item?.id}`)
-                        : null;
-                      // let resp = await createPayment(item);
-                      // window.open(resp?.data);
-                      // setIsOpenPaymentQR(true);
+                    onClick={() => {
+                      if (isCurrent || !isPaidPlan(item?.planName)) return;
+                      if (!item?.id || !slug) return;
+                      history.push(`/${slug}/payment/create/${item.id}`);
                     }}
                     block
-                    disabled={disabledIndexes.includes(index)}
-                    outline={item?.planName !== "Enterprises"}
-                    color={
-                      item?.plan_feature_id === plan_feature_id
-                        ? "success"
-                        : "default"
+                    disabled={
+                      isCurrent ||
+                      !isPaidPlan(item?.planName) ||
+                      disabledIndexes.includes(index)
                     }
+                    outline={item?.planName !== "Enterprises"}
+                    color={isCurrent ? "success" : "default"}
                     style={{ backgroundColor: themecolor, color: "white" }}
                   >
-                    {item?.plan_feature_id === plan_feature_id
-                      ? "Your current plan"
-                      : "Subscribe Now"}
+                    {isCurrent ? "Your current plan" : "Subscribe Now"}
                   </Button>
                 </div>
                 <ListGroup
