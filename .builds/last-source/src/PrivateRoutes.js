@@ -2,56 +2,94 @@ import { Route, Redirect } from "react-router-dom";
 import { persistor } from "./redux/store";
 import { getAgencyDetailBySlug } from "./apis/agency";
 import { useParams, useLocation } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import agencyActions from "./redux/agency/actions";
+import authActions from "./redux/auth/actions";
 
 const PrivateRoute = ({ component: Component, ...rest }) => {
   const token = localStorage.getItem("token");
   const params = useParams();
-  const location = useLocation(); // Add location to track route changes
+  const location = useLocation();
   const dispatch = useDispatch();
   const [agencyError, setAgencyError] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(Boolean(params?.slug));
   const { user } = useSelector((state) => state.auth);
+  const userRef = useRef(user);
+  userRef.current = user;
+  const loadedSlugRef = useRef(null);
 
+  const hasToken =
+    Boolean(token) && token !== "null" && token !== "undefined";
+
+  // Fetch agency once per slug — do NOT re-run on every user redux update
+  // (that was unmounting the page and looked like a continuous refresh).
   useEffect(() => {
+    let cancelled = false;
+
     (async () => {
-      setLoading(true);
-      setAgencyError(false); // Reset error state on route change
-
-      if (user?.role?.name !== "SuperAdmin" && params?.slug) {
-        try {
-          const resp = await getAgencyDetailBySlug(params?.slug);
-
-          if (resp?.msg === "invalid token or expired token") {
-            localStorage.clear();
-            window.localStorage.removeItem("persist:root");
-            persistor.pause();
-            setAgencyError("auth");
-          } else if (resp?.error === "Your slug is not present in agency") {
-            setAgencyError("slug");
-          } else {
-            dispatch({
-              type: agencyActions.SET_AGENCY_STATE,
-              payload: {
-                agencyDetail: resp,
-              },
-            });
-          }
-        } catch (error) {
-          console.error("Error fetching agency details:", error);
-          setAgencyError("slug");
-        }
+      if (!hasToken) {
+        setLoading(false);
+        return;
       }
 
-      setLoading(false);
+      if (!params?.slug) {
+        setLoading(false);
+        return;
+      }
+
+      if (userRef.current?.role?.name === "SuperAdmin") {
+        setLoading(false);
+        return;
+      }
+
+      // Already loaded this slug in this mount cycle — keep page mounted
+      if (loadedSlugRef.current === params.slug) {
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+      setAgencyError(false);
+
+      try {
+        const resp = await getAgencyDetailBySlug(params.slug);
+
+        if (cancelled) return;
+
+        if (resp?.msg === "invalid token or expired token") {
+          localStorage.clear();
+          window.localStorage.removeItem("persist:root");
+          persistor.pause();
+          dispatch({
+            type: authActions.SET_STATE,
+            payload: { token: null, user: null },
+          });
+          setAgencyError("auth");
+        } else if (resp?.error === "Your slug is not present in agency") {
+          setAgencyError("slug");
+        } else {
+          loadedSlugRef.current = params.slug;
+          dispatch({
+            type: agencyActions.SET_AGENCY_STATE,
+            payload: { agencyDetail: resp },
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching agency details:", error);
+        if (!cancelled) setAgencyError("slug");
+      }
+
+      if (!cancelled) setLoading(false);
     })();
-  }, [params?.slug, user?.role?.name, location.pathname, dispatch]); // Add dependencies
+
+    return () => {
+      cancelled = true;
+    };
+  }, [params?.slug, location.pathname, dispatch, hasToken]);
 
   const loginRedirectTo = () => {
     let returnTo = `${location.pathname || ""}${location.search || ""}`;
-    // Old WhatsApp "profile" links used /{slug}/candidate?id=... — send candidates to Profile
     const candidateMatch = (location.pathname || "").match(
       /^\/([^/]+)\/candidate\/?$/
     );
@@ -68,19 +106,10 @@ const PrivateRoute = ({ component: Component, ...rest }) => {
       : "/login";
   };
 
-  if (
-    token === null ||
-    token === "null" ||
-    token === undefined ||
-    token === "undefined"
-  ) {
-    localStorage.clear();
-    window.localStorage.removeItem("persist:root");
-    persistor.pause();
+  if (!hasToken) {
     return <Redirect to={loginRedirectTo()} />;
   }
 
-  // Expired/invalid session → login (not the 404 page)
   if (agencyError === "auth") {
     return <Redirect to={loginRedirectTo()} />;
   }
@@ -90,7 +119,7 @@ const PrivateRoute = ({ component: Component, ...rest }) => {
   }
 
   if (loading && params?.slug) {
-    return <div>Loading...</div>; // Or your loading component
+    return <div>Loading...</div>;
   }
 
   return <Route {...rest} render={(props) => <Component {...props} />} />;
