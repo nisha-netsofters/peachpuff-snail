@@ -19,6 +19,21 @@ import {
 } from "reactstrap";
 import { useDispatch, useSelector } from "react-redux";
 import { useParams } from "react-router-dom/cjs/react-router-dom";
+import userActions from "../../redux/user/actions";
+
+const splitName = (fullName) => {
+  const parts = String(fullName || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  return {
+    first: parts[0] || "",
+    last: parts.slice(1).join(" ") || "",
+  };
+};
+
+const normalizeMobile = (value) =>
+  String(value || "").replace(/\D/g, "").slice(-10);
 
 const Paymentcreate = () => {
   const slug = localStorage.getItem("slug");
@@ -38,21 +53,118 @@ const Paymentcreate = () => {
   const [selectedState, setSelectedState] = useState();
   const [selectedCity, setSelectedCity] = useState();
   const { planbyid } = useSelector((state) => state?.plans);
-  const { user } = useSelector((state) => state?.user);
+  const storeUser = useSelector((state) => state?.user?.user);
+  const authUser = useSelector((state) => state?.auth?.user);
+  const user = storeUser || authUser;
+
+  // Load latest logged-in user (includes BillingDetails + clients)
+  useEffect(() => {
+    const userId = authUser?.id || storeUser?.id;
+    if (userId) {
+      dispatch({
+        type: userActions.GET_LOGIN_USER_DETAIL,
+        payload: userId,
+      });
+    }
+  }, [authUser?.id, storeUser?.id, dispatch]);
 
   useEffect(() => {
-    setSelectedCity(user?.BillingDetails?.city);
-    setSelectedState(user?.BillingDetails?.state);
-    setfirstname(user?.BillingDetails?.firstname);
-    setlastname(user?.BillingDetails?.lastname);
-    setemail(user?.BillingDetails?.email);
-    setMobilenumber(user?.BillingDetails?.Mobilenumber);
-    setCompany(user?.BillingDetails?.Company);
-    setgst(user?.BillingDetails?.gst);
-    setpannumber(user?.BillingDetails?.pannumber);
-    setStreet(user?.BillingDetails?.address);
-    setzipcode(user?.BillingDetails?.pincode);
+    if (!user) return;
+
+    const billing = user?.BillingDetails || {};
+    const client = user?.clients || {};
+    const fromName = splitName(
+      user?.name || client?.companyowner || client?.companyOwner || ""
+    );
+
+    setfirstname(billing?.firstname || fromName.first || "");
+    setlastname(billing?.lastname || fromName.last || "");
+    setemail(billing?.email || user?.email || client?.email || "");
+    setMobilenumber(
+      normalizeMobile(
+        billing?.Mobilenumber || user?.mobile || client?.mobile || ""
+      )
+    );
+    setCompany(billing?.Company || client?.companyName || "");
+    setgst(billing?.gst || "");
+    setpannumber(billing?.pannumber || "");
+    setStreet(billing?.address || user?.address || "");
+    setzipcode(billing?.pincode || "");
+
+    // Prefer saved billing select objects; else match string against states list later
+    if (billing?.state && typeof billing.state === "object") {
+      setSelectedState({
+        ...billing.state,
+        label: billing.state.label || billing.state.name,
+        value: billing.state.value || billing.state.name,
+        key: "state",
+      });
+    } else if (billing?.state || user?.state) {
+      setSelectedState(billing?.state || user?.state);
+    }
+
+    if (billing?.city && typeof billing.city === "object") {
+      setSelectedCity({
+        ...billing.city,
+        label: billing.city.label || billing.city.name,
+        value: billing.city.value || billing.city.name,
+        key: "city",
+      });
+    } else if (billing?.city || user?.city) {
+      setSelectedCity(billing?.city || user?.city);
+    }
   }, [user]);
+
+  // If state was saved as a string name, resolve full State object (needs isoCode)
+  useEffect(() => {
+    if (!states?.length) return;
+    const stateVal = selectedState;
+    if (!stateVal) return;
+    if (typeof stateVal === "object" && stateVal.isoCode) return;
+
+    const name =
+      typeof stateVal === "string"
+        ? stateVal
+        : stateVal?.name || stateVal?.label || stateVal?.value || "";
+    const matched = states.find(
+      (s) =>
+        String(s.name).toLowerCase() === String(name).toLowerCase() ||
+        String(s.isoCode).toLowerCase() === String(name).toLowerCase()
+    );
+    if (matched) {
+      setSelectedState({
+        ...matched,
+        label: matched.name,
+        value: matched.name,
+        key: "state",
+      });
+    }
+  }, [states, selectedState]);
+
+  // Resolve city string after cities load for selected state
+  useEffect(() => {
+    if (!cities?.length) return;
+    const cityVal = selectedCity;
+    if (!cityVal) return;
+    if (typeof cityVal === "object" && cityVal.stateCode) return;
+
+    const name =
+      typeof cityVal === "string"
+        ? cityVal
+        : cityVal?.name || cityVal?.label || cityVal?.value || "";
+    const matched = cities.find(
+      (c) => String(c.name).toLowerCase() === String(name).toLowerCase()
+    );
+    if (matched) {
+      setSelectedCity({
+        ...matched,
+        label: matched.name,
+        value: matched.name,
+        key: "city",
+      });
+    }
+  }, [cities, selectedCity]);
+
   const theamcolour = localStorage.getItem("themecolor");
   useEffect(() => {
     dispatch({
