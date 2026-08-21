@@ -13,6 +13,7 @@ import { feedBackReducer } from "./feedBack/reducer";
 import { leadReducer } from "./lead/reducer";
 import { jobOpeningReducer } from "./jobOpening/reducer";
 import { industriesReducer } from "./industries/reducer";
+import { areasReducer } from "./areas/reducer";
 import { progressReducer } from "./fileUploadProgress.js/reducer";
 import { subscriptionReducer } from "./subscription/reducer";
 import { combineReducers } from "redux";
@@ -39,6 +40,7 @@ const rootReducer = combineReducers({
   lead: leadReducer,
   jobOpening: jobOpeningReducer,
   industries: industriesReducer,
+  areas: areasReducer,
   progress: progressReducer,
   subscription: subscriptionReducer,
   plans: planReducer,

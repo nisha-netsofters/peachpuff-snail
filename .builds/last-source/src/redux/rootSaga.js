@@ -13,6 +13,7 @@ import plan from "./plan/saga";
 import lead from "./lead/saga";
 import jobOpening from "./jobOpening/saga";
 import industries from "./industries/saga";
+import areas from "./areas/saga";
 import payment from "./payment/saga";
 import agency from "./agency/saga";
 import jobOpeningMatches from "./jobOpeningMatches/saga";
@@ -35,6 +36,7 @@ export default function* rootSaga() {
     lead(),
     jobOpening(),
     industries(),
+    areas(),
     subscription(),
     plan(),
     payment(),

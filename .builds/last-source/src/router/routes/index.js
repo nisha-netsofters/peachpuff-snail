@@ -163,6 +163,12 @@ const Routes = [
     permission: ["SuperAdmin"],
   },
   {
+    path: "/superadmin/areas",
+    exact: true,
+    component: lazy(() => import("../../views/Pages/superAdminPages/Areas")),
+    permission: ["SuperAdmin"],
+  },
+  {
     path: "/:slug/interview",
     exact: true,
     component: lazy(() => import("../../views/Pages/Interview")),

@@ -91,29 +91,76 @@ export function normalizeHighestQualification(raw) {
   return "";
 }
 
+function tokensOverlap(a, b) {
+  const ta = String(a || "")
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((t) => t.length > 2);
+  const tb = String(b || "")
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((t) => t.length > 2);
+  return ta.some((t) => tb.some((u) => u.includes(t) || t.includes(u)));
+}
+
 export function matchEducationField(raw, courseList = []) {
   const str = String(raw || "").trim().toLowerCase();
   if (!str || !Array.isArray(courseList)) return { field: "", course: "" };
 
   for (const c of courseList) {
     const name = String(c.name || "").toLowerCase();
-    if (str.includes(name) || name.includes(str)) {
+    const nameHit =
+      str.includes(name) ||
+      name.includes(str) ||
+      // "b.tech/b.e." vs "b.e. in computer engineering"
+      name.split(/[\/|]/).some((part) => {
+        const p = part.trim();
+        return p.length > 2 && (str.includes(p) || tokensOverlap(str, p));
+      });
+    if (nameHit) {
       const subMatch = (c.sub || []).find((s) => {
         const sub = String(s).toLowerCase();
-        return str.includes(sub) || sub.includes(str);
+        return (
+          str.includes(sub) ||
+          sub.includes(str) ||
+          tokensOverlap(str, sub) ||
+          // Computer Engineering ↔ Computers
+          (sub.startsWith("computer") && /\bcomputer/.test(str))
+        );
       });
       return {
         field: c.name,
-        course: subMatch || (Array.isArray(c.sub) && c.sub.length ? c.sub[0] : ""),
+        course: subMatch || "",
       };
     }
   }
 
-  if (/b\.?tech|b\.?e\b/.test(str)) return { field: "B.Tech/B.E.", course: "" };
-  if (/b\.?arch/.test(str)) return { field: "B.Architect", course: "" };
-  if (/mba|pgdm/.test(str)) return { field: "MBA/PGDM", course: "" };
-  if (/diploma/.test(str)) return { field: "Diploma", course: "" };
-  return { field: "", course: "" };
+  let field = "";
+  if (/b\.?\s*tech|b\.?\s*e\b|bachelor of engineering|computer engineering/.test(str)) {
+    field = "B.Tech/B.E.";
+  } else if (/b\.?\s*arch/.test(str)) field = "B.Architect";
+  else if (/mba|pgdm/.test(str)) field = "MBA/PGDM";
+  else if (/diploma/.test(str)) field = "Diploma";
+
+  let course = "";
+  if (field === "B.Tech/B.E." && /\bcomputer/.test(str)) course = "Computers";
+  return { field, course };
+}
+
+/** Strip "Area / Locality: Vesu" leftovers → "Vesu" */
+export function cleanAreaValue(raw) {
+  let area = String(raw || "").trim();
+  if (!area) return "";
+  area = area
+    .replace(/^\/?\s*locality\s*/i, "")
+    .replace(/^\/?\s*suburb\s*/i, "")
+    .replace(/^\/?\s*area\s*/i, "")
+    .replace(/^[:\-–—|/]+\s*/g, "")
+    .trim();
+  const afterColon = area.match(/^(?:area|locality|suburb)\s*[:\-–—|/]\s*(.+)$/i);
+  if (afterColon) area = afterColon[1].trim();
+  if (/^(area|locality|suburb|select)$/i.test(area)) return "";
+  return area;
 }
 
 export function buildIndustriesRelation(industryStr, industriesList = []) {
@@ -152,25 +199,85 @@ export function matchJobCategoryId(raw, jobCategories = []) {
     const name = String(j.jobCategory || j.label || "").toLowerCase();
     return name === str || name.includes(str) || str.includes(name);
   });
-  return found ? found.id || found._id || found.value || null : null;
+  if (found) return found.id || found._id || found.value || null;
+
+  // Fuzzy: "IT Software - Developer" ↔ "Software Development"
+  const stop = new Set(["and", "the", "for", "job", "jobs", "category", "it"]);
+  const tokens = str
+    .split(/[^a-z0-9]+/)
+    .filter((t) => t.length > 2 && !stop.has(t));
+  if (!tokens.length) return null;
+
+  let best = null;
+  let bestScore = 0;
+  for (const j of jobCategories) {
+    const name = String(j.jobCategory || j.label || "").toLowerCase();
+    const nameTokens = name
+      .split(/[^a-z0-9]+/)
+      .filter((t) => t.length > 2 && !stop.has(t));
+    const score = tokens.filter((t) =>
+      nameTokens.some((n) => n.includes(t) || t.includes(n))
+    ).length;
+    if (score > bestScore) {
+      bestScore = score;
+      best = j;
+    }
+  }
+  if (bestScore < 1 || !best) return null;
+  return best.id || best._id || best.value || null;
 }
 
-export function normalizeProfessional(prof = {}, courseList = []) {
+export function normalizeProfessional(prof = {}, courseList = [], education = []) {
   const p = { ...(prof || {}) };
 
   p.experienceInyear = normalizeExperienceInYear(p.experienceInyear);
   p.currentlyWorking = normalizeCurrentlyWorking(p.currentlyWorking);
   p.noticePeriod = normalizeNoticePeriod(p.noticePeriod);
-  p.highestQualification = normalizeHighestQualification(
-    p.highestQualification || p.course || ""
-  );
 
-  const eduSource = [p.field, p.course, p.highestQualification, prof.course, prof.highestQualification]
+  const edu0 =
+    Array.isArray(education) && education.length ? education[0] : null;
+  const eduSource = [
+    p.field,
+    p.course,
+    p.highestQualification,
+    prof.course,
+    prof.highestQualification,
+    edu0?.sub,
+    edu0?.name,
+  ]
     .filter(Boolean)
     .join(" ");
   const eduMatch = matchEducationField(eduSource, courseList);
   if (eduMatch.field && !p.field) p.field = eduMatch.field;
-  if (eduMatch.course && !p.course) p.course = eduMatch.course;
+  if (eduMatch.course) {
+    // Prefer Course.js option (e.g. Computers) over free text (Computer Engineering)
+    if (
+      !p.course ||
+      String(p.course).toLowerCase() !== String(eduMatch.course).toLowerCase()
+    ) {
+      const raw = String(p.course || "").toLowerCase();
+      const matched = String(eduMatch.course).toLowerCase();
+      if (
+        !p.course ||
+        raw.includes(matched) ||
+        matched.includes(raw) ||
+        tokensOverlap(raw, matched) ||
+        (matched.startsWith("computer") && /\bcomputer/.test(raw))
+      ) {
+        p.course = eduMatch.course;
+      }
+    }
+  }
+  // "Computer Engineering" alone → Computers under B.Tech/B.E.
+  if (p.course && !p.field) {
+    const again = matchEducationField(p.course, courseList);
+    if (again.field) p.field = again.field;
+    if (again.course) p.course = again.course;
+  }
+
+  p.highestQualification = normalizeHighestQualification(
+    p.highestQualification || edu0?.name || p.course || ""
+  );
 
   if (p.currentSalary != null && p.currentSalary !== "") {
     const n = Number(p.currentSalary);
@@ -185,10 +292,15 @@ export function normalizeProfessional(prof = {}, courseList = []) {
 }
 
 export function normalizeExtractedResume(data = {}, courseList = []) {
-  const professional = normalizeProfessional(data.professional || {}, courseList);
+  const professional = normalizeProfessional(
+    data.professional || {},
+    courseList,
+    data.education || []
+  );
   return {
     ...data,
     gender: normalizeGender(data.gender),
+    area: cleanAreaValue(data.area),
     industry: data.industry || professional.industry || "",
     professional,
   };

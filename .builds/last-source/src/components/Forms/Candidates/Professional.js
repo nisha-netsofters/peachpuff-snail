@@ -205,7 +205,11 @@ const Professional = ({
       <Formik initialValues={{}}>
         {({ values, setFieldValue }) => {
           useEffect(() => {
-            const prof = normalizeProfessional(candidate?.professional, course);
+            const prof = normalizeProfessional(
+              candidate?.professional,
+              course,
+              candidate?.education
+            );
             if (!prof || typeof prof !== "object") return;
 
             for (const key in prof) {
@@ -306,12 +310,35 @@ const Professional = ({
             }
 
             if (prof.course && prof.field) {
+              const fieldMatch =
+                course.find(
+                  (ele) =>
+                    String(ele.name).toLowerCase() ===
+                    String(prof.field).toLowerCase()
+                ) || null;
+              const rawCourse = String(prof.course).trim();
+              const subList = fieldMatch?.sub || [];
+              const courseMatch =
+                subList.find(
+                  (s) => String(s).toLowerCase() === rawCourse.toLowerCase()
+                ) ||
+                subList.find((s) => {
+                  const a = String(s).toLowerCase();
+                  const b = rawCourse.toLowerCase();
+                  return (
+                    a.includes(b) ||
+                    b.includes(a) ||
+                    (a.startsWith("computer") && /\bcomputer/.test(b))
+                  );
+                }) ||
+                rawCourse;
+
               setSubCourse({
-                label: prof.course,
+                label: courseMatch,
                 field: prof.field,
-                value: prof.course,
+                value: courseMatch,
               });
-              setFieldValue("course", prof.course);
+              setFieldValue("course", courseMatch);
             }
 
             if (prof?.currentSalary && Number(prof.currentSalary) > 0) {

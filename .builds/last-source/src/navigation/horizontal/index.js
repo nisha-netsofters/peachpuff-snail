@@ -12,6 +12,7 @@ import {
   Anchor,
   FileText,
   Settings,
+  MapPin,
 } from "react-feather";
 
 export default [
@@ -104,6 +105,13 @@ export default [
     title: "Industries",
     icon: <MessageCircle size={20} />,
     navLink: `/superadmin/industries`,
+    permission: ["SuperAdmin"],
+  },
+  {
+    id: "Areas",
+    title: "Areas",
+    icon: <MapPin size={20} />,
+    navLink: `/superadmin/areas`,
     permission: ["SuperAdmin"],
   },
   {

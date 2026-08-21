@@ -1,8 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Col, Input, Label, Row } from "reactstrap";
 import Select from "react-select";
 import { selectThemeColors } from "../../../utility/Utils";
 import { resolveIndianAddress } from "../../../utility/resolveIndianAddress";
+import { cleanAreaValue } from "../../../utility/normalizeResumeExtract";
+import { getAreasByCity } from "../../../apis/areas";
 
 export const Address = ({
   cities,
@@ -16,6 +18,10 @@ export const Address = ({
   isDisabledAllFields,
   handleChange = () => {},
 }) => {
+  const [areaOptions, setAreaOptions] = useState([]);
+  const [selectedArea, setSelectedArea] = useState(null);
+  const [areasLoading, setAreasLoading] = useState(false);
+
   useEffect(() => {
     states?.forEach((ele) => {
       ele.label = ele.name;
@@ -34,6 +40,110 @@ export const Address = ({
 
   const themecolor = localStorage.getItem("themecolor");
   const [focus, setIsfocus] = useState(null);
+
+  const cityName = useMemo(
+    () => selectedCity?.value || selectedCity?.name || candidate?.city || "",
+    [selectedCity, candidate?.city]
+  );
+  const stateName = useMemo(
+    () => selectedState?.value || selectedState?.name || candidate?.state || "",
+    [selectedState, candidate?.state]
+  );
+
+  // Load areas when city changes
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!cityName) {
+        setAreaOptions([]);
+        setSelectedArea(null);
+        return;
+      }
+      setAreasLoading(true);
+      try {
+        const resp = await getAreasByCity({
+          state: stateName,
+          city: cityName,
+        });
+        const list = Array.isArray(resp?.data)
+          ? resp.data
+          : Array.isArray(resp)
+          ? resp
+          : [];
+        if (cancelled) return;
+        const options = list.map((a) => ({
+          label: a.name,
+          value: a.name,
+          key: "area",
+          id: a.id,
+        }));
+        setAreaOptions(options);
+
+        // Resume / saved area match (exact, then fuzzy contains)
+        // Also recover Vesu from Address line when Area field empty
+        let currentArea = cleanAreaValue(candidate?.area || "");
+        if (!currentArea && candidate?.street) {
+          const streetLower = String(candidate.street).toLowerCase();
+          const fromStreet = options.find((o) => {
+            const v = o.value.toLowerCase();
+            return (
+              v.length >= 3 &&
+              new RegExp(
+                `(?:^|[^a-z0-9])${v.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?:[^a-z0-9]|$)`,
+                "i"
+              ).test(streetLower)
+            );
+          });
+          if (fromStreet) currentArea = fromStreet.value;
+        }
+
+        if (currentArea) {
+          const lower = currentArea.toLowerCase();
+          const match =
+            options.find((o) => o.value.toLowerCase() === lower) ||
+            options.find(
+              (o) =>
+                o.value.toLowerCase().includes(lower) ||
+                lower.includes(o.value.toLowerCase())
+            );
+          if (match) {
+            setSelectedArea(match);
+            if (candidate?.area !== match.value) {
+              setCandidate((prev) => ({
+                ...(Array.isArray(prev) ? {} : prev || {}),
+                area: match.value,
+              }));
+            }
+          } else {
+            // Keep parsed free-text visible until user picks from list
+            setSelectedArea({
+              label: currentArea,
+              value: currentArea,
+              key: "area",
+            });
+            if (!candidate?.area) {
+              setCandidate((prev) => ({
+                ...(Array.isArray(prev) ? {} : prev || {}),
+                area: currentArea,
+              }));
+            }
+          }
+        } else {
+          setSelectedArea(null);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setAreaOptions([]);
+          setSelectedArea(null);
+        }
+      } finally {
+        if (!cancelled) setAreasLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [cityName, stateName, candidate?.area, candidate?.street, candidate?.resumeParsedAt]);
 
   // Resolve state dropdown + stateId when resume / autofill sets state name only
   useEffect(() => {
@@ -147,26 +257,6 @@ export const Address = ({
         </Col>
         <Col lg={6} xs={12} xl={4}>
           <div>
-            <Label>Area</Label>
-            <Input
-              maxLength={100}
-              id="area"
-              onFocus={() => setIsfocus("area")}
-              onBlur={() => setIsfocus(null)}
-              style={{
-                borderColor: focus === "area" && themecolor,
-              }}
-              className="w-100"
-              type="text"
-              placeholder="Enter Area"
-              value={candidate?.area || ""}
-              disabled={isDisabledAllFields}
-              onChange={(e) => handleChange(e)}
-            />
-          </div>
-        </Col>
-        <Col lg={6} xs={12} xl={4}>
-          <div>
             <Label>State</Label>
             <Select
               id="state"
@@ -180,10 +270,13 @@ export const Address = ({
               onChange={(e) => {
                 setSelectedState(e);
                 setSelectedCity(undefined);
+                setSelectedArea(null);
+                setAreaOptions([]);
                 setCandidate((prev) => {
                   const next = { ...prev, state: e.value, stateId: e.isoCode };
                   delete next.city;
                   delete next.cityId;
+                  delete next.area;
                   return next;
                 });
               }}
@@ -204,7 +297,51 @@ export const Address = ({
               theme={selectThemeColors}
               onChange={(e) => {
                 setSelectedCity(e);
-                handleChange(e);
+                setSelectedArea(null);
+                setCandidate((prev) => {
+                  const next = {
+                    ...prev,
+                    city: e.value,
+                    cityId: e.value,
+                  };
+                  delete next.area;
+                  return next;
+                });
+              }}
+            />
+          </div>
+        </Col>
+        <Col lg={6} xs={12} xl={4}>
+          <div>
+            <Label>Area</Label>
+            <Select
+              id="area"
+              value={selectedArea || null}
+              placeholder={
+                !cityName
+                  ? "Select city first"
+                  : areasLoading
+                  ? "Loading areas..."
+                  : areaOptions.length
+                  ? "Select Area"
+                  : "No areas for this city"
+              }
+              options={areaOptions}
+              isDisabled={
+                isDisabledAllFields || !cityName || areasLoading
+              }
+              isClearable
+              className="react-select"
+              classNamePrefix="select"
+              theme={selectThemeColors}
+              onChange={(e) => {
+                setSelectedArea(e || null);
+                setCandidate((prev) => {
+                  const next = { ...(prev || {}) };
+                  if (e?.value) next.area = e.value;
+                  else delete next.area;
+                  return next;
+                });
               }}
             />
           </div>
