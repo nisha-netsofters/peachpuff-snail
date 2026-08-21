@@ -70,6 +70,13 @@ const User = ({
       price: user?.subscription?.plan?.price,
       planName: user?.subscription?.plan?.planName,
     });
+    // Keep planId on user so admin save always sends the selected plan
+    if (user?.subscription?.plan?.id && !user?.planId) {
+      setUser((prev) => ({
+        ...prev,
+        planId: user.subscription.plan.id,
+      }));
+    }
   }, []);
 
   useEffect(() => {
@@ -290,7 +297,7 @@ const User = ({
                   theme={selectThemeColors}
                   onChange={(e) => {
                     setSelectedPlan(e);
-                    setUser({ ...user, planId: e.id });
+                    setUser({ ...user, planId: e.id || e.value });
                   }}
                 />
               </div>
