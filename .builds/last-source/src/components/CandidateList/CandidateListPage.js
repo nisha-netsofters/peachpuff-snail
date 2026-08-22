@@ -1609,7 +1609,86 @@ const SecondPage = ({
     return null;
   };
 
-  const buildCandidateFormData = (data, resumeFile) => {
+  const hasResumeMergeValue = (value) => {
+    if (value === null || value === undefined) return false;
+    if (typeof value === "string") return value.trim() !== "";
+    if (Array.isArray(value)) return value.length > 0;
+    if (typeof value === "object") {
+      if (value instanceof File || value instanceof Blob) return true;
+      return Object.values(value).some(hasResumeMergeValue);
+    }
+    return true;
+  };
+
+  const mergeResumeObjects = (existing, incoming) => {
+    const base =
+      existing && typeof existing === "object" ? { ...existing } : {};
+    if (!incoming || typeof incoming !== "object") return base;
+    const merged = { ...base };
+    for (const [key, value] of Object.entries(incoming)) {
+      if (!hasResumeMergeValue(value)) continue;
+      if (
+        typeof value === "object" &&
+        !Array.isArray(value) &&
+        !(value instanceof File) &&
+        !(value instanceof Blob) &&
+        typeof merged[key] === "object" &&
+        merged[key] !== null &&
+        !Array.isArray(merged[key])
+      ) {
+        merged[key] = mergeResumeObjects(merged[key], value);
+      } else {
+        merged[key] = value;
+      }
+    }
+    return merged;
+  };
+
+  const mergeResumeUpdateWithExisting = (existing, parsedPayload) => {
+    if (!existing) return parsedPayload;
+    const merged = mergeResumeObjects(existing, parsedPayload);
+    if (parsedPayload?.resume) merged.resume = parsedPayload.resume;
+    if (!hasResumeMergeValue(parsedPayload?.industries_relation)) {
+      merged.industries_relation = existing.industries_relation || [];
+    }
+    if (!hasResumeMergeValue(parsedPayload?.education)) {
+      merged.education = existing.education;
+    }
+    if (!hasResumeMergeValue(parsedPayload?.experience)) {
+      merged.experience = existing.experience;
+    }
+    return merged;
+  };
+
+  const findExistingCandidateRecord = (existingId) => {
+    const id = String(existingId || "").trim();
+    if (!id) return null;
+    const pools = [
+      ...(candidates?.results || []),
+      ...(candidateList || []),
+    ];
+    return (
+      pools.find((row) => String(row?.id || row?._id || "") === id) || null
+    );
+  };
+
+  const fetchExistingCandidateRecord = async (existingId) => {
+    const cached = findExistingCandidateRecord(existingId);
+    if (cached) return cached;
+    try {
+      const resp = await getCandidateAPI({
+        page: 1,
+        perPage: 1,
+        filterData: { id: existingId },
+      });
+      return resp?.results?.[0] || null;
+    } catch (err) {
+      return null;
+    }
+  };
+
+  const buildCandidateFormData = (data, resumeFile, options = {}) => {
+    const isUpdate = options?.isUpdate === true;
     const fm = new FormData();
     const skipKeys = [
       "resumeFiles",
@@ -1632,20 +1711,35 @@ const SecondPage = ({
       }
       fm.append(key, data[key]);
     }
-    fm.append(
-      "professional",
-      JSON.stringify(
+    if (
+      !isUpdate ||
+      hasResumeMergeValue(
         data?.professional && typeof data.professional === "object"
           ? data.professional
-          : {}
+          : null
       )
-    );
-    fm.append(
-      "industries_relation",
-      JSON.stringify(
-        Array.isArray(data?.industries_relation) ? data.industries_relation : []
-      )
-    );
+    ) {
+      fm.append(
+        "professional",
+        JSON.stringify(
+          data?.professional && typeof data.professional === "object"
+            ? data.professional
+            : {}
+        )
+      );
+    }
+    if (
+      !isUpdate ||
+      (Array.isArray(data?.industries_relation) &&
+        data.industries_relation.length > 0)
+    ) {
+      fm.append(
+        "industries_relation",
+        JSON.stringify(
+          Array.isArray(data?.industries_relation) ? data.industries_relation : []
+        )
+      );
+    }
     if (Array.isArray(data?.education) && data.education.length > 0) {
       fm.append("education", JSON.stringify(data.education));
     }
@@ -1659,7 +1753,7 @@ const SecondPage = ({
   };
 
   const buildCandidateUpdateFormData = (data, resumeFile, candidateId) => {
-    const fm = buildCandidateFormData(data, resumeFile);
+    const fm = buildCandidateFormData(data, resumeFile, { isUpdate: true });
     fm.append("id", candidateId);
     fm.append("status", "view");
     return fm;
@@ -1718,7 +1812,16 @@ const SecondPage = ({
         reason: `${fileLabel}: existing candidate id missing, cannot update`,
       };
     }
-    const updateFm = buildCandidateUpdateFormData(payloadData, file, existingId);
+    const existingRecord = await fetchExistingCandidateRecord(existingId);
+    const mergedPayload = mergeResumeUpdateWithExisting(
+      existingRecord,
+      payloadData
+    );
+    const updateFm = buildCandidateUpdateFormData(
+      mergedPayload,
+      file,
+      existingId
+    );
     const updateResult = await updateCandidateAPI({ data: updateFm });
     if (updateResult?.msg && !updateResult?.error) {
       return { kind: "update" };
