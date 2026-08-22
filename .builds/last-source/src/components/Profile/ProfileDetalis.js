@@ -52,34 +52,11 @@ const ProfileDetails = () => {
     }
   }, []);
 
-  useEffect(() => {
-    // Prefer latest auth userDetails so profile updates show immediately.
-    if (userDetails?.role?.name === "Candidate" && candidateProfile) {
-      const candidateData = {
-        ...candidateProfile,
-        ...userDetails,
-        name:
-          userDetails?.name ||
-          (candidateProfile?.firstname && candidateProfile?.lastname
-            ? `${candidateProfile.firstname} ${candidateProfile.lastname}`
-            : ""),
-        mobile: userDetails?.mobile || candidateProfile?.mobile || "",
-        email: userDetails?.email || candidateProfile?.email || "",
-        image: userDetails?.image || candidateProfile?.image || "",
-        address:
-          userDetails?.address ||
-          (candidateProfile?.street
-            ? `${candidateProfile.street}, ${candidateProfile.city || ""}, ${
-                candidateProfile.state || ""
-              } ${candidateProfile.zip || ""}`.trim()
-            : ""),
-        alternateMobile: candidateProfile?.alternateMobile || "",
-      };
-      setUser(candidateData);
-    } else {
-      setUser(userDetails);
-    }
-  }, [userData, candidateProfile, userDetails]);
+  const resolveProfileMobile = (details, profile) =>
+    details?.mobile ||
+    details?.mobileNumber ||
+    profile?.mobile ||
+    "";
 
   const MAX_PROFILE_IMAGE_SIZE = 800 * 1024; // 800 kB
 
@@ -109,7 +86,7 @@ const ProfileDetails = () => {
 
   const defaultValues = {
     name: userDetails?.name || "",
-    mobile: userDetails?.mobile || "",
+    mobile: resolveProfileMobile(userDetails, candidateProfile),
     address: userDetails?.address || "",
   };
   const showErrors = (field, valueLen, min) => {
@@ -148,6 +125,47 @@ const ProfileDetails = () => {
     defaultValues,
     resolver: yupResolver(SignupSchema),
   });
+
+  useEffect(() => {
+    // Prefer latest auth userDetails so profile updates show immediately.
+    if (userDetails?.role?.name === "Candidate" && candidateProfile) {
+      const mobile = resolveProfileMobile(userDetails, candidateProfile);
+      const fullName =
+        userDetails?.name ||
+        (candidateProfile?.firstname && candidateProfile?.lastname
+          ? `${candidateProfile.firstname} ${candidateProfile.lastname}`
+          : "");
+      const candidateData = {
+        ...candidateProfile,
+        ...userDetails,
+        name: fullName,
+        mobile,
+        email: userDetails?.email || candidateProfile?.email || "",
+        image: userDetails?.image || candidateProfile?.image || "",
+        address:
+          userDetails?.address ||
+          (candidateProfile?.street
+            ? `${candidateProfile.street}, ${candidateProfile.city || ""}, ${
+                candidateProfile.state || ""
+              } ${candidateProfile.zip || ""}`.trim()
+            : ""),
+        alternateMobile: candidateProfile?.alternateMobile || "",
+      };
+      setUser(candidateData);
+      reset({
+        name: fullName,
+        mobile,
+        address: candidateData.address || "",
+      });
+    } else if (userDetails) {
+      setUser(userDetails);
+      reset({
+        name: userDetails?.name || "",
+        mobile: resolveProfileMobile(userDetails),
+        address: userDetails?.address || "",
+      });
+    }
+  }, [userData, candidateProfile, userDetails, reset]);
 
   useEffect(() => {
     if (progress?.isError === true) {
