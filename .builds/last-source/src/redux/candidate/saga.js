@@ -408,13 +408,21 @@ export function* WATCH_HIRED_CANDIDATE(action) {
   }
 }
 export function* WATCH_SEND_MAIL_TO_SELECTED_CANDIDATES(action) {
-  const data = yield sendMailToCandidates(action.payload);
-  if (data.msg === "Emails sent") {
-    yield put({
-      type: actions.IS_SENT,
-      payload: true,
-    });
-  } else {
+  try {
+    const data = yield sendMailToCandidates(action.payload);
+    const isQueued =
+      data?.msg === "Emails sent" || data?.msg === "Emails queued";
+    if (isQueued) {
+      yield put({
+        type: actions.IS_SENT,
+        payload: true,
+      });
+    } else {
+      yield put({
+        type: actions.IS_NOT_SENT,
+      });
+    }
+  } catch (err) {
     yield put({
       type: actions.IS_NOT_SENT,
     });

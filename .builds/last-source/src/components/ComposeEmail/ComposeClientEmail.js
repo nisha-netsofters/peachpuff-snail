@@ -51,6 +51,12 @@ const ComposeClientEmail = ({ composeOpen, toggleCompose }) => {
         if (isNotSent) {
             toast.warn("Something went wrong")
             setLoading(false)
+            setTimeout(() => {
+                dispatch({
+                    type: actions.IS_NOT_SENT,
+                    payload: false
+                })
+            }, 200)
         }
     }, [isSent, isNotSent])
 

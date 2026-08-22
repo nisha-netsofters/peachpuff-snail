@@ -10,7 +10,11 @@ export const candidateReducer = (state = [], action) => {
     case actions.IS_SENT:
       return { ...state, isSent: action.payload, isNotSent: false };
     case actions.IS_NOT_SENT:
-      return { ...state, isSent: false, isNotSent: true };
+      return {
+        ...state,
+        isSent: false,
+        isNotSent: action.payload === false ? false : true,
+      };
     case actions.PLAN_EXPIRE:
       return { ...state, isPlanExpire: true };
     case actions.CREATE_PUBLIC_CANDIDATE_POPUP:
