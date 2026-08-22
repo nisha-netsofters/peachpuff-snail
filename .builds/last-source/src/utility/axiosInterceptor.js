@@ -41,14 +41,12 @@ apiCall.interceptors.request.use(
         delete req.headers["Content-Type"];
         delete req.headers["content-type"];
       }
-      // Axios may also keep Content-Type in common headers
-      if (req.headers?.common) {
-        delete req.headers.common["Content-Type"];
-        delete req.headers.common["content-type"];
-      }
-      if (req.headers?.post) {
-        delete req.headers.post["Content-Type"];
-        delete req.headers.post["content-type"];
+      // Axios may also keep Content-Type in common/method headers
+      for (const scope of ["common", "post", "put", "patch"]) {
+        if (req.headers?.[scope]) {
+          delete req.headers[scope]["Content-Type"];
+          delete req.headers[scope]["content-type"];
+        }
       }
     }
     

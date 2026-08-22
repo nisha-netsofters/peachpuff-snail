@@ -1698,9 +1698,29 @@ const SecondPage = ({
       "education",
       "experience",
       "id",
+      "_id",
       "resume",
       "professional",
       "industries_relation",
+      "createdAt",
+      "updatedAt",
+      "agencyId",
+      "interviewStatus",
+      "interviewStatusUpdate",
+      "interviewerId",
+      "interviews",
+      "whatsappMsg",
+      "isdeleted",
+      "status",
+      "jobOpeningId",
+      "appliedStatus",
+      "matchScore",
+      "client",
+      "jobCategory",
+      "industries",
+      "agency",
+      "role",
+      "subscription",
     ];
     for (const key in data) {
       if (skipKeys.includes(key)) continue;
@@ -1828,7 +1848,12 @@ const SecondPage = ({
     }
     return {
       kind: "fail",
-      reason: `${fileLabel}: ${updateResult?.error || "update failed"}`,
+      reason: `${fileLabel}: ${
+        updateResult?.error ||
+        updateResult?.constraint ||
+        updateResult?.msg ||
+        "update failed"
+      }`,
     };
   };
 
