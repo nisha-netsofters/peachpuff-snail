@@ -73,7 +73,9 @@ const InterviewDialog = ({
             //   history.push(`/${slug}/candidate`);
             // }
           }}
-        ></ModalHeader>
+        >
+          {update ? "Edit Interview" : "Schedule Interview"}
+        </ModalHeader>
         {loading == true ? (
           <Loader loading={loading} theamcolour={themecolor} />
         ) : null}
@@ -110,7 +112,7 @@ const InterviewDialog = ({
               style={{ backgroundColor: themecolor, color: "white" }}
               onClick={() => interviewHandler()}
             >
-              Submit
+              {update ? "Update" : "Submit"}
             </Button>
           </div>
         </ModalBody>

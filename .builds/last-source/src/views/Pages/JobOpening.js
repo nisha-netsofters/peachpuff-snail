@@ -30,7 +30,6 @@ import {
   ModalBody,
   ModalFooter,
   ModalHeader,
-  Label,
   Pagination,
   PaginationItem,
   PaginationLink,
@@ -62,10 +61,19 @@ import { useHistory } from "react-router-dom/cjs/react-router-dom.min";
 import { getJobApplyListAPI } from "../../apis/jobapplylist";
 import {
   updateJobPostingStatusAPI,
-  assignJobRecruiterAPI,
 } from "../../apis/jobOpening";
-import Select from "react-select";
-import { selectThemeColors } from "@utils";
+
+const getDefaultExpiryDateISO = () => {
+  const date = new Date();
+  date.setDate(date.getDate() + 30);
+  date.setHours(12, 0, 0, 0);
+  return date.toISOString();
+};
+
+const getNewJobOpeningDefaults = () => ({
+  postingStatus: "open",
+  expiryDate: getDefaultExpiryDateISO(),
+});
 
 const canvasStyles = {
   position: "fixed",
@@ -102,7 +110,6 @@ const JobOpening = () => {
   const roleName = user?.role?.name || loginUser?.role?.name || "";
   const canDeleteJob = roleName === "Admin";
   const canPublishJob = roleName === "Admin";
-  const canArchiveJob = roleName === "Admin";
   const canAssignRecruiter = roleName === "Admin";
   const canCloseJob =
     roleName === "Admin" ||
@@ -111,12 +118,9 @@ const JobOpening = () => {
   const canOpenJob = canCloseJob;
 
   const assignableUsers = useSelector((state) => state?.user?.roleWise || []);
-  const [showAssignModal, setShowAssignModal] = useState(false);
-  const [assignJobRow, setAssignJobRow] = useState(null);
-  const [selectedRecruiter, setSelectedRecruiter] = useState(null);
-  const [statusLoading, setStatusLoading] = useState(false);
   const [filterData, setFilterData] = useState({});
-  const [recruiterFilter, setRecruiterFilter] = useState(null);
+  const [filterToggleMode, setFilterToggleMode] = useState(false);
+  const [clear, setClear] = useState(false);
 
 
   const { currentPlan } = useSelector((state) => state.subscription);
@@ -181,14 +185,29 @@ const JobOpening = () => {
     });
   };
 
-  const handleRecruiterFilterChange = (option) => {
-    setRecruiterFilter(option);
-    const nextFilters = option?.value
-      ? { recruiterId: option.value }
-      : {};
-    setFilterData(nextFilters);
+  const handleFilter = (filter) => {
+    setFilterData(filter);
     setCurrentPage(1);
-    getjobOpening(1, nextFilters);
+    getjobOpening(1, filter);
+  };
+
+  const handleFilterToggleMode = (mode) => {
+    setFilterToggleMode(mode);
+  };
+
+  const setclearstate = (value) => {
+    setClear(value);
+  };
+
+  const handleClear = () => {
+    setFilterData({});
+    setCurrentPage(1);
+    setClear(true);
+    getjobOpening(1, {});
+  };
+
+  const filterToggle = () => {
+    setFilterToggleMode(!filterToggleMode);
   };
 
   useEffect(() => {
@@ -209,7 +228,6 @@ const JobOpening = () => {
   const handlePostingStatus = async (row, postingStatus) => {
     if (!row?.id) return;
     try {
-      setStatusLoading(true);
       setLoading(true);
       const res = await updateJobPostingStatusAPI({
         id: row.id,
@@ -236,49 +254,6 @@ const JobOpening = () => {
         err?.response?.data?.msg ||
           err?.message ||
           "Failed to update status"
-      );
-    } finally {
-      setStatusLoading(false);
-      setLoading(false);
-    }
-  };
-
-  const openAssignModal = (row) => {
-    setAssignJobRow(row);
-    const current = assignableUsers?.find((u) => u.id === row?.recruiterId);
-    setSelectedRecruiter(
-      current
-        ? { value: current.id, label: current.name, id: current.id }
-        : null
-    );
-    setShowAssignModal(true);
-  };
-
-  const confirmAssignRecruiter = async () => {
-    if (!assignJobRow?.id || !selectedRecruiter?.value) {
-      toast.error("Please select a recruiter");
-      return;
-    }
-    try {
-      setLoading(true);
-      const res = await assignJobRecruiterAPI({
-        id: assignJobRow.id,
-        recruiterId: selectedRecruiter.value,
-      });
-      const body = res?.success !== undefined ? res : res?.data;
-      if (body?.success) {
-        toast.success(body.msg || "Recruiter assigned");
-        setShowAssignModal(false);
-        setAssignJobRow(null);
-        await getjobOpening(currentPage);
-      } else {
-        toast.error(body?.msg || "Failed to assign recruiter");
-      }
-    } catch (err) {
-      toast.error(
-        err?.response?.data?.msg ||
-          err?.message ||
-          "Failed to assign recruiter"
       );
     } finally {
       setLoading(false);
@@ -326,33 +301,6 @@ const JobOpening = () => {
           <span className="align-middle">Close</span>
         </DropdownItem>
       ) : null}
-      {canArchiveJob && row?.postingStatus !== "archived" ? (
-        <DropdownItem
-          tag="a"
-          href="/"
-          className="w-100"
-          onClick={(e) => {
-            e.preventDefault();
-            handlePostingStatus(row, "archived");
-          }}
-        >
-          <span className="align-middle">Archive</span>
-        </DropdownItem>
-      ) : null}
-      {canAssignRecruiter ? (
-        <DropdownItem
-          tag="a"
-          href="/"
-          className="w-100"
-          onClick={(e) => {
-            e.preventDefault();
-            openAssignModal(row);
-          }}
-        >
-          <UserPlus size={15} className="me-50" />
-          <span className="align-middle">Assign Recruiter</span>
-        </DropdownItem>
-      ) : null}
     </>
   );
 
@@ -390,13 +338,17 @@ const JobOpening = () => {
   };
 
 
-  // Relevant candidates — existed in DB before job post and match this job
-  const handleViewRelevant = (job) => {
+  // Best match candidates for this job opening
+  const handleViewBestMatch = (job) => {
     const jobId = job.id || job._id;
     if (!jobId) return;
 
     const slug = localStorage.getItem("slug");
-    history.push(`/${slug}/jobopening-match/${jobId}`);
+    window.open(
+      `/${slug}/jobopening-match/${jobId}`,
+      "_blank",
+      "noopener,noreferrer"
+    );
   };
 
   // Formal job applications (apply form)
@@ -406,15 +358,6 @@ const JobOpening = () => {
 
     const slug = localStorage.getItem("slug");
     history.push(`/${slug}/applied-candidates/${jobId}`);
-  };
-
-  // New matches — post-job candidates scored like jobmatching
-  const handleViewNewMatches = (job) => {
-    const jobId = job.id || job._id;
-    if (!jobId) return;
-
-    const slug = localStorage.getItem("slug");
-    history.push(`/${slug}/job-new-matches/${jobId}`);
   };
 
   // 🔹 Export CSV - Download all candidates for this job
@@ -635,27 +578,17 @@ const JobOpening = () => {
         <div className="d-flex flex-column align-items-center gap-50">
           <Button
             size="sm"
-            color="info"
+            color="default"
             style={{
               fontSize: "12px",
               minWidth: "110px",
               padding: "4px 10px",
+              backgroundColor: themecolor,
+              color: "white",
             }}
-            onClick={() => handleViewRelevant(row)}
+            onClick={() => handleViewBestMatch(row)}
           >
-            Relevant
-          </Button>
-          <Button
-            size="sm"
-            color="warning"
-            style={{
-              fontSize: "12px",
-              minWidth: "110px",
-              padding: "4px 10px",
-            }}
-            onClick={() => handleViewNewMatches(row)}
-          >
-            New Matches
+            Best Match
           </Button>
         </div>
       ),
@@ -783,6 +716,7 @@ const JobOpening = () => {
     const salaryNum = Number(jobOpening?.salary || jobOpening?.salaryRangeStart || 0);
     const payload = {
       ...jobOpening,
+      expiryDate: jobOpening?.expiryDate || getDefaultExpiryDateISO(),
       salaryRangeStart:
         jobOpening?.salaryRangeStart || (salaryNum > 0 ? salaryNum : 0),
       salaryRangeEnd:
@@ -1025,14 +959,57 @@ const JobOpening = () => {
         <h3 style={{ color: themecolor }}>
           <b>Job Opening</b>
         </h3>
-
+        {Object.keys(filterData).length > 0 ? (
+          <div
+            style={{ marginLeft: "auto", display: "flex", alignItems: "end" }}
+          >
+            {width > 786 ? (
+              <h3 style={{ fontSize: "16px", marginBottom: "9px" }}>
+                No Of Filter Applied : {Object.keys(filterData).length}
+              </h3>
+            ) : null}
+            <Button
+              className="add-new-user"
+              color="link"
+              onClick={handleClear}
+              style={{ color: themecolor }}
+            >
+              {width > 786 ? "Clear" : "Clear Filter"}
+            </Button>
+          </div>
+        ) : null}
+        <Button
+          style={
+            width > 769
+              ? {
+                  width: "145px",
+                  marginLeft:
+                    Object.keys(filterData).length > 0 ? "10px" : "auto",
+                  backgroundColor: themecolor,
+                  color: "white",
+                }
+              : {
+                  width: "60px",
+                  marginLeft:
+                    Object.keys(filterData).length > 0 ? "10px" : "auto",
+                  backgroundColor: themecolor,
+                  color: "white",
+                }
+          }
+          color="default"
+          onClick={() => {
+            filterToggle();
+          }}
+        >
+          {width > 769 ? "Filter Data" : <FilterIcon size={17} />}
+        </Button>
         <Button
           style={
             width > 769
               ? { display: "none", backgroundColor: themecolor, color: "white" }
               : {
                 width: "60px",
-                marginLeft: "auto",
+                marginLeft: "10px",
                 backgroundColor: themecolor,
                 color: "white",
               }
@@ -1040,7 +1017,7 @@ const JobOpening = () => {
           className="add-new-user"
           color="default"
           onClick={() => {
-            setJobOpening({ postingStatus: "open" });
+            setJobOpening(getNewJobOpeningDefaults());
             setCreate(true);
             setShow(true);
           }}
@@ -1049,8 +1026,19 @@ const JobOpening = () => {
         </Button>
       </div>
 
+      <Filter
+        handleFilterToggleMode={handleFilterToggleMode}
+        clear={clear}
+        setclear={setclearstate}
+        setFilterToggleMode={setFilterToggleMode}
+        setFilterData={setFilterData}
+        handleFilter={handleFilter}
+        users={assignableUsers}
+        open={filterToggleMode}
+        toggleSidebar={filterToggle}
+      />
+
       <Row className="mt-1" style={{ transition: "all 0.5s ease-in-out" }}>
-        <Col sm={12} md={12} lg={12} xl={12}></Col>
         <Col
           sm={12}
           md={12}
@@ -1123,25 +1111,16 @@ const JobOpening = () => {
                             </div>
                             <Button
                               size="sm"
-                              color="info"
+                              color="default"
                               style={{
                                 fontSize: "11px",
                                 padding: "2px 8px",
+                                backgroundColor: themecolor,
+                                color: "white",
                               }}
-                              onClick={() => handleViewRelevant(result)}
+                              onClick={() => handleViewBestMatch(result)}
                             >
-                              Relevant
-                            </Button>
-                            <Button
-                              size="sm"
-                              color="warning"
-                              style={{
-                                fontSize: "11px",
-                                padding: "2px 8px",
-                              }}
-                              onClick={() => handleViewNewMatches(result)}
-                            >
-                              New Matches
+                              Best Match
                             </Button>
                             <div
                               style={{
@@ -1380,17 +1359,10 @@ const JobOpening = () => {
                   <CustomHeader
                     setShow={setShow}
                     setCreate={(val) => {
-                      if (val) setJobOpening({ postingStatus: "open" });
+                      if (val) setJobOpening(getNewJobOpeningDefaults());
                       setCreate(val);
                     }}
                     store={JobOpenings?.results}
-                    showRecruiterFilter={canAssignRecruiter}
-                    recruiterFilter={recruiterFilter}
-                    recruiterOptions={(assignableUsers || []).map((u) => ({
-                      value: u.id,
-                      label: u.name,
-                    }))}
-                    onRecruiterFilterChange={handleRecruiterFilterChange}
                   />
                 }
               />
@@ -1423,45 +1395,6 @@ const JobOpening = () => {
         </ModalFooter>
       </Modal >
 
-
-      <Modal
-        className="modal-dialog-centered"
-        isOpen={showAssignModal}
-        toggle={() => setShowAssignModal(!showAssignModal)}
-      >
-        <ModalHeader toggle={() => setShowAssignModal(false)}>
-          Assign Recruiter
-        </ModalHeader>
-        <ModalBody>
-          <Label>Select Recruiter / Staff</Label>
-          <Select
-            className="react-select"
-            classNamePrefix="select"
-            theme={selectThemeColors}
-            placeholder="Select recruiter"
-            value={selectedRecruiter}
-            options={(assignableUsers || []).map((u) => ({
-              value: u.id,
-              label: u.name,
-              id: u.id,
-            }))}
-            onChange={(e) => setSelectedRecruiter(e)}
-          />
-        </ModalBody>
-        <ModalFooter>
-          <Button
-            color="default"
-            style={{ backgroundColor: themecolor, color: "white" }}
-            onClick={confirmAssignRecruiter}
-            disabled={statusLoading}
-          >
-            Assign
-          </Button>
-          <Button color="secondary" onClick={() => setShowAssignModal(false)}>
-            Cancel
-          </Button>
-        </ModalFooter>
-      </Modal>
 
       {show === true ? (
         <JobOpeningDialog

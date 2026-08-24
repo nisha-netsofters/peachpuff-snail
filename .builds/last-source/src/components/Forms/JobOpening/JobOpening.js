@@ -532,23 +532,6 @@ const JobOpening = ({
             }
           />
         </Col>
-
-        <Col xs={12}>
-          <Label>Benefits</Label>
-          <Input
-            disabled={isRecruiter}
-            id="benefits"
-            type="textarea"
-            rows={3}
-            value={jobOpening?.benefits || ""}
-            placeholder="Enter Benefits"
-            maxLength={5000}
-            onFocus={() => setIsfocus("benefits")}
-            onBlur={() => setIsfocus(null)}
-            style={{ borderColor: focus === "benefits" && themecolor }}
-            onChange={onTextChange}
-          />
-        </Col>
       </Row>
 
       <AiJobDescriptionPanel

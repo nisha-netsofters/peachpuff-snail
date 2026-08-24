@@ -309,10 +309,6 @@ const Interview = () => {
       },
     },
     {
-      name: "Scheduled By",
-      selector: (row) => <>{row?.users?.name}</>,
-    },
-    {
       name: "Lineup Date",
       selector: (row) => moment(row?.createdAt).format("DD-MM-YYYY"),
     },
@@ -351,6 +347,11 @@ const Interview = () => {
     {
       name: "Comments",
       selector: (row) => row?.comments,
+    },
+    {
+      name: "Scheduled By",
+      minWidth: "130px",
+      selector: (row) => row?.users?.name || "-",
     },
   ];
 
@@ -514,12 +515,12 @@ const Interview = () => {
         value: name || "-",
       },
       {
-        title: "Scheduled By",
-        value: interviews?.users?.name || "-",
-      },
-      {
         title: "Lineup Date",
         value: moment(interviews?.date).format("DD-MM-YYYY") || "-",
+      },
+      {
+        title: "Scheduled By",
+        value: interviews?.users?.name || "-",
       },
     ];
 

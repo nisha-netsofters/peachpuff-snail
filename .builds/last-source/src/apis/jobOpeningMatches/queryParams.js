@@ -9,5 +9,8 @@ export const buildJobMatchQueryString = (jobOpening = {}) => {
   if (jobOpening.profileCompletion) {
     params.set("profileCompletion", jobOpening.profileCompletion);
   }
+  if (jobOpening.matchDuration) {
+    params.set("matchDuration", jobOpening.matchDuration);
+  }
   return params.toString();
 };

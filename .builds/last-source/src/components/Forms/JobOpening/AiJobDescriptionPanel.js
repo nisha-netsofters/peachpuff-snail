@@ -12,7 +12,6 @@ const AI_ACTIONS = [
 ];
 
 const FIELD_MAP = [
-  { key: "jobSummary", label: "Job Summary", formKey: "jobSummary", type: "textarea" },
   {
     key: "responsibilities",
     label: "Responsibilities",
@@ -26,12 +25,6 @@ const FIELD_MAP = [
     type: "textarea",
   },
   {
-    key: "preferredSkills",
-    label: "Preferred Skills",
-    formKey: "preferredSkills",
-    type: "textarea",
-  },
-  {
     key: "qualification",
     label: "Qualification (AI text)",
     formKey: "aiQualification",
@@ -42,12 +35,6 @@ const FIELD_MAP = [
     key: "companyOverview",
     label: "Company Overview",
     formKey: "companyOverview",
-    type: "textarea",
-  },
-  {
-    key: "callToAction",
-    label: "Call to Action",
-    formKey: "callToAction",
     type: "textarea",
   },
 ];
@@ -95,12 +82,9 @@ const AiJobDescriptionPanel = ({
   const hasGeneratedContent = useMemo(
     () =>
       Boolean(
-        jobOpening?.jobSummary ||
-          jobOpening?.keyRole ||
-          jobOpening?.preferredSkills ||
+        jobOpening?.keyRole ||
           jobOpening?.benefits ||
           jobOpening?.companyOverview ||
-          jobOpening?.callToAction ||
           jobOpening?.jobDescription
       ),
     [jobOpening]
@@ -111,28 +95,22 @@ const AiJobDescriptionPanel = ({
     const composedDescription =
       data.fullDescription ||
       [
-        data.jobSummary && `Job Summary\n${data.jobSummary}`,
         data.responsibilities && `Responsibilities\n${data.responsibilities}`,
         data.requiredSkills && `Required Skills\n${data.requiredSkills}`,
-        data.preferredSkills && `Preferred Skills\n${data.preferredSkills}`,
         data.qualification && `Qualification\n${data.qualification}`,
         data.benefits && `Benefits\n${data.benefits}`,
         data.companyOverview && `Company Overview\n${data.companyOverview}`,
-        data.callToAction && `Call to Action\n${data.callToAction}`,
       ]
         .filter(Boolean)
         .join("\n\n");
 
     setJobOpening({
       ...jobOpening,
-      jobSummary: data.jobSummary || "",
       keyRole: data.responsibilities || jobOpening?.keyRole || "",
       basicSkill: data.requiredSkills || jobOpening?.basicSkill || "",
-      preferredSkills: data.preferredSkills || "",
       aiQualification: data.qualification || "",
       benefits: data.benefits || jobOpening?.benefits || "",
       companyOverview: data.companyOverview || "",
-      callToAction: data.callToAction || "",
       jobDescription: composedDescription || jobOpening?.jobDescription || "",
       other: data.benefits || jobOpening?.other || "",
     });
@@ -246,7 +224,7 @@ const AiJobDescriptionPanel = ({
           <Input
             disabled={disabled}
             type="textarea"
-            rows={field.key === "jobSummary" || field.key === "responsibilities" ? 4 : 3}
+            rows={field.key === "responsibilities" ? 4 : 3}
             value={jobOpening?.[field.formKey] || ""}
             placeholder={`AI will fill ${field.label}`}
             onChange={(e) => updateField(field.formKey, e.target.value)}
@@ -254,19 +232,6 @@ const AiJobDescriptionPanel = ({
         </Col>
       ))}
 
-      <Col xs={12}>
-        <Label>Full Job Description (combined)</Label>
-        <Input
-          disabled={disabled}
-          type="textarea"
-          rows={6}
-          value={jobOpening?.jobDescription || ""}
-          placeholder="Combined job description (auto-filled by AI, editable)"
-          onChange={(e) =>
-            setJobOpening({ ...jobOpening, jobDescription: e.target.value })
-          }
-        />
-      </Col>
     </Row>
   );
 };

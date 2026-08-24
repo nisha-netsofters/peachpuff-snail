@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { ArrowLeft } from "react-feather";
+import { ArrowLeft, ChevronDown, ChevronUp } from "react-feather";
 import { useDispatch, useSelector } from "react-redux";
 import { useHistory } from "react-router-dom/cjs/react-router-dom.min";
 import {
@@ -8,6 +8,7 @@ import {
   Card,
   CardBody,
   Col,
+  Collapse,
   Modal,
   ModalBody,
   ModalFooter,
@@ -22,7 +23,12 @@ import moment from "moment/moment";
 import whatsapp from "../../assets/images/whatsapp-svgrepo-com.svg";
 // import clientActions from "../../redux/client/actions";
 import subscriptionActions from "../../redux/subscription/actions";
-import { interviewRequest } from "../../apis/client";
+import InterviewDialog from "../../components/Dialog/interviewDialog";
+import interviewActions from "../../redux/interview/actions";
+import candidateActions from "../../redux/candidate/actions";
+import onBoardingActions from "../../redux/onBoarding/actions";
+import { tostify } from "../../components/Tostify";
+import { getInterviewAPI } from "../../apis/interview";
 import Avatar from "@components/avatar";
 import { MdOutlineCategory } from "react-icons/md";
 import { BsPersonWorkspace } from "react-icons/bs";
@@ -33,6 +39,12 @@ import { PiStudentLight } from "react-icons/pi";
 import { MdOutlineAttachMoney } from "react-icons/md";
 import WhatsappDialog from "../../components/Dialog/WhatsappDialog";
 import JobOpeningMatchFilters from "../../components/JobOpening/JobOpeningMatchFilters";
+import JobMatchProfileDialog from "../../components/JobOpening/JobMatchProfileDialog";
+import {
+  InterviewStatusCell,
+  getInterviewButtonLabel,
+  getViewProfileButtonLabel,
+} from "../../components/JobOpening/jobMatchTableHelpers";
 
 const NewJobMatches = () => {
   const history = useHistory();
@@ -43,6 +55,9 @@ const NewJobMatches = () => {
     (state) => state?.agency?.agencyDetail?.themecolor
   );
   const user = useSelector((state) => state?.auth?.user);
+  const loginUser = useSelector((state) => state?.auth?.user);
+  const clients = useSelector((state) => state.onBoarding.results);
+  const candidates = useSelector((state) => state.candidate.results);
   const { isLoading, jobOpeningNewMatchCandidate, jobOpeningRow } = useSelector(
     (state) => state?.jobOpeningMatches
   );
@@ -52,10 +67,28 @@ const NewJobMatches = () => {
 
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
-  const [sortBy, setSortBy] = useState("bestMatch");
+  const [sortBy, setSortBy] = useState("newToOld");
   const [profileCompletion, setProfileCompletion] = useState("");
+  const [matchDuration, setMatchDuration] = useState("");
   const [whatsappOpen, setWhatsappOpen] = useState(false);
-  const [pageLoader, setPageLoader] = useState(false);
+  const [interviewLoading, setInterviewLoading] = useState(false);
+  const [filterToggleMode, setFilterToggleMode] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [showInterview, setShowInterview] = useState(false);
+  const [interview, setInterview] = useState({});
+  const [createInterview, setCreateInterview] = useState(false);
+  const [updateInterview, setUpdateInterview] = useState(false);
+  const [selectCandidateValidation, setSelectCandidateValidation] = useState(null);
+  const [selectCompanyValidation, setSelectCompanyValidation] = useState(null);
+  const [dateValidation, setDateValidation] = useState(null);
+  const [interviewStartValidation, setInterviewStartValidation] = useState(null);
+  const [interviewValidation, setInterviewValidation] = useState(null);
+  const [showProfile, setShowProfile] = useState(false);
+  const [profileCandidate, setProfileCandidate] = useState({});
+  const [industriesData, setIndustriesData] = useState([]);
+  const [gender, setGender] = useState("");
+  const [, setProfileEmail] = useState("");
+  const [viewedCandidateIds, setViewedCandidateIds] = useState(() => new Set());
   const [showWPModal, setShowWPModal] = useState(false);
   const [WPnumber, setWPnumber] = useState();
   const [clientData, setClientData] = useState([]);
@@ -76,7 +109,8 @@ const NewJobMatches = () => {
     pageNum,
     perPageNum,
     sort = sortBy,
-    profile = profileCompletion
+    profile = profileCompletion,
+    duration = matchDuration
   ) => {
     await dispatch({
       type: jobOpeningMatchesActions.GET_JOB_OPENING_NEW_MATCH_CANDIDATE,
@@ -86,20 +120,39 @@ const NewJobMatches = () => {
         perPage: perPageNum,
         sortBy: sort,
         profileCompletion: profile || undefined,
+        matchDuration: duration || undefined,
       },
     });
   };
 
+  const reloadMatches = () =>
+    getNewJobMatchCandidate(page, perPage, sortBy, profileCompletion, matchDuration);
+
   const handleSortChange = (value) => {
     setSortBy(value);
-    setPage(1);
-    getNewJobMatchCandidate(1, perPage, value, profileCompletion);
   };
 
   const handleProfileChange = (value) => {
     setProfileCompletion(value);
+  };
+
+  const handleMatchDurationChange = (value) => {
+    setMatchDuration(value);
+  };
+
+  const handleFilterSearch = () => {
     setPage(1);
-    getNewJobMatchCandidate(1, perPage, sortBy, value);
+    getNewJobMatchCandidate(1, perPage, sortBy, profileCompletion, matchDuration);
+    setFilterToggleMode(false);
+  };
+
+  const handleFilterClear = () => {
+    setSortBy("newToOld");
+    setProfileCompletion("");
+    setMatchDuration("");
+    setPage(1);
+    getNewJobMatchCandidate(1, perPage, "newToOld", "", "");
+    setFilterToggleMode(false);
   };
 
   useEffect(() => {
@@ -111,20 +164,172 @@ const NewJobMatches = () => {
     })();
   }, []);
 
-  const candidateInterviewRequest = async (candidate) => {
-    setPageLoader(true);
-    const payload = {
-      candidate: candidate?.id,
-      client: user?.clients?.id,
-    };
-    const resp = await interviewRequest(payload);
-    if (resp?.msg == "success") {
-      await getNewJobMatchCandidate(page, perPage);
-      setPageLoader(false);
-    } else {
-      await setPageLoader(false);
+  useEffect(() => {
+    if (!showInterview) return;
+    (async () => {
+      await dispatch({
+        type: candidateActions.GET_CANDIDATE,
+        payload: { page: 1, perPage: 10, filterData: {} },
+      });
+      await dispatch({
+        type: onBoardingActions.GET_ONBOARDING,
+        payload: {
+          filterData: {},
+          userId: loginUser?.id,
+          page: 1,
+          perPage: 50,
+        },
+      });
+    })();
+  }, [showInterview, dispatch, loginUser?.id]);
+
+  const openInterviewDialog = async (candidate) => {
+    setInterviewLoading(true);
+    let existing =
+      candidate?.latestInterview?.id
+        ? candidate.latestInterview
+        : candidate?.interviews?.id
+          ? candidate.interviews
+          : null;
+    if (!existing?.id) {
+      try {
+        const resp = await getInterviewAPI({
+          page: 1,
+          perPage: 1,
+          skipUserFilter: true,
+          filterData: { candidateId: candidate.id },
+        });
+        existing = resp?.results?.[0];
+      } catch (error) {
+        existing = null;
+      }
     }
-    await setPageLoader(false);
+    if (existing?.id) {
+      setInterview({
+        ...existing,
+        candidateId: existing.candidateId || candidate.id,
+        candidate: existing.candidate || {
+          firstname: candidate.firstname,
+          lastname: candidate.lastname,
+          interviewStatus: candidate.interviewStatus,
+        },
+      });
+      setCreateInterview(false);
+      setUpdateInterview(true);
+    } else {
+      setInterview({
+        candidateId: candidate?.id,
+        userId: loginUser?.id,
+      });
+      setCreateInterview(true);
+      setUpdateInterview(false);
+    }
+    setShowInterview(true);
+    setInterviewLoading(false);
+  };
+
+  const interviewCreateHandler = async () => {
+    setInterviewLoading(true);
+    const payload = {
+      ...(Array.isArray(interview) ? {} : interview || {}),
+      userId: interview?.userId || loginUser?.id,
+    };
+    await dispatch({
+      type: interviewActions.CREATE_INTERVIEW,
+      payload: { data: payload, page: 1, perPage: 10 },
+    });
+    setInterviewLoading(false);
+    setShowInterview(false);
+    setCreateInterview(false);
+    setUpdateInterview(false);
+    setInterview({});
+    reloadMatches();
+  };
+
+  const interviewUpdateHandler = async () => {
+    setInterviewLoading(true);
+    await dispatch({
+      type: interviewActions.UPDATE_INTERVIEW,
+      payload: { data: interview, page: 1, perPage: 10 },
+    });
+    setInterviewLoading(false);
+    setShowInterview(false);
+    setCreateInterview(false);
+    setUpdateInterview(false);
+    setInterview({});
+    reloadMatches();
+  };
+
+  const interviewHandler = async () => {
+    if (updateInterview) {
+      interviewUpdateHandler();
+      return;
+    }
+    if (!createInterview) return;
+    if (selectCandidateValidation === null) tostify("Please Select Candidate");
+    else if (selectCompanyValidation === null) tostify("Please Select Company");
+    else if (dateValidation === null) tostify("Please Select date");
+    else if (
+      interviewStartValidation === null &&
+      (interview?.interviewStatus === "scheduled" ||
+        interview?.interviewStatus === undefined)
+    )
+      tostify("Please Select Interview Time");
+    else if (
+      interviewValidation === null &&
+      interview?.interviewStatus === "scheduled"
+    )
+      tostify("Please Select Interview Option");
+    else interviewCreateHandler();
+  };
+
+  const openViewProfile = (row) => {
+    if (!row?.id) return;
+    const candidateId = String(row.id);
+    dispatch({
+      type: candidateActions.CANDIDATE_STATUS,
+      payload: { id: candidateId },
+    });
+    setViewedCandidateIds((prev) => new Set(prev).add(candidateId));
+    setProfileCandidate(row);
+    setIndustriesData(row?.industries_relation || []);
+    setGender(row?.gender || "");
+    setProfileEmail(row?.email || "");
+    setShowProfile(true);
+  };
+
+  const viewProfileColumn = {
+    name: "View Profile",
+    minWidth: "130px",
+    cell: (row) => (
+      <Button
+        onClick={() => openViewProfile(row)}
+        style={{ padding: "10px", backgroundColor: themeColor, color: "white" }}
+        color="default"
+      >
+        {getViewProfileButtonLabel(row, viewedCandidateIds)}
+      </Button>
+    ),
+  };
+
+  const interviewScheduleColumn = {
+    name: "Interview Shedule",
+    minWidth: "150px",
+    cell: (row) => (
+      <Button
+        onClick={() => openInterviewDialog(row)}
+        style={{ padding: "10px", backgroundColor: themeColor, color: "white" }}
+        color="default"
+      >
+        {getInterviewButtonLabel(row)}
+      </Button>
+    ),
+  };
+
+  const interviewStatusColumn = {
+    name: "Interview Status",
+    minWidth: "130px",
+    cell: (row) => <InterviewStatusCell row={row} />,
   };
 
   const customStyles = {
@@ -247,32 +452,9 @@ const NewJobMatches = () => {
         );
       },
     },
-    {
-      name: "Interview Shedule",
-      selector: (row) => (
-        <Button
-          disabled={row?.interview_request?.isdisabled == true ? true : false}
-          onClick={() => {
-            candidateInterviewRequest(row);
-          }}
-          style={
-            row?.interview_request?.isdisabled == true
-              ? {
-                  opacity: "0.5",
-                  padding: "10px",
-                  backgroundColor: themeColor,
-                  color: "white",
-                }
-              : { padding: "10px", backgroundColor: themeColor, color: "white" }
-          }
-          color="default"
-        >
-          {row?.interview_request?.isdisabled == true
-            ? "Req. Sent"
-            : "Interview"}
-        </Button>
-      ),
-    },
+    interviewStatusColumn,
+    viewProfileColumn,
+    interviewScheduleColumn,
   ];
   const subscriptionColumnsClients = [
     {
@@ -384,39 +566,84 @@ const NewJobMatches = () => {
         );
       },
     },
+    interviewStatusColumn,
+    viewProfileColumn,
+    interviewScheduleColumn,
   ];
 
-  const handlePerRowsChange = async (newPerPage, page) => {
+  const handlePerRowsChange = async (newPerPage, pageNum) => {
     setPerPage(newPerPage);
-    getNewJobMatchCandidate(page, newPerPage);
+    getNewJobMatchCandidate(pageNum, newPerPage, sortBy, profileCompletion, matchDuration);
   };
 
-  const handlePageChange = (page) => {
-    setPage(page);
-    getNewJobMatchCandidate(page, perPage);
+  const handlePageChange = (pageNum) => {
+    setPage(pageNum);
+    getNewJobMatchCandidate(pageNum, perPage, sortBy, profileCompletion, matchDuration);
   };
 
   return (
     <>
       <div>
-        <Button
+        <div
           style={{
-            color: themeColor,
             display: "flex",
             alignItems: "center",
-            gap: "5px",
-          }}
-          className="add-new-user mb-2"
-          color="default"
-          onClick={() => {
-            history.push(`/${slug}/jobopening`);
+            flexWrap: "wrap",
+            gap: "8px",
+            marginBottom: "12px",
           }}
         >
-          <ArrowLeft size={17} />
-          Back
-        </Button>
+          <Button
+            style={{
+              color: themeColor,
+              display: "flex",
+              alignItems: "center",
+              gap: "5px",
+            }}
+            className="add-new-user"
+            color="default"
+            onClick={() => {
+              history.push(`/${slug}/jobopening`);
+            }}
+          >
+            <ArrowLeft size={17} />
+            Back
+          </Button>
+          <Button
+            color="default"
+            style={{
+              backgroundColor: themeColor,
+              color: "white",
+              marginLeft: "auto",
+            }}
+            onClick={() => setDetailsOpen((prev) => !prev)}
+          >
+            Job Details {detailsOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+          </Button>
+          <Button
+            color="default"
+            style={{ backgroundColor: themeColor, color: "white", width: "145px" }}
+            onClick={() => setFilterToggleMode((prev) => !prev)}
+          >
+            Filter Data
+          </Button>
+        </div>
+        <JobOpeningMatchFilters
+          asSidebar
+          open={filterToggleMode}
+          toggleSidebar={() => setFilterToggleMode((prev) => !prev)}
+          sortBy={sortBy}
+          profileCompletion={profileCompletion}
+          matchDuration={matchDuration}
+          onSortChange={handleSortChange}
+          onProfileChange={handleProfileChange}
+          onMatchDurationChange={handleMatchDurationChange}
+          onSearch={handleFilterSearch}
+          onClear={handleFilterClear}
+        />
         <Row>
-          <Col sm={12} md={4} lg={4} xl={3}>
+          <Col sm={12} md={4} lg={4} xl={3} style={{ display: detailsOpen ? "block" : "none" }}>
+            <Collapse isOpen={detailsOpen}>
             <Card>
               <CardBody>
                 <h5
@@ -562,8 +789,9 @@ const NewJobMatches = () => {
                 </div>
               </CardBody>
             </Card>
+            </Collapse>
           </Col>
-          <Col sm={12} md={8} lg={8} xl={9}>
+          <Col sm={12} md={detailsOpen ? 8 : 12} lg={detailsOpen ? 8 : 12} xl={detailsOpen ? 9 : 12}>
             <Card>
               <CardBody className="pb-0">
                 <h5
@@ -574,21 +802,24 @@ const NewJobMatches = () => {
                   }}
                 >
                   New Matches Candidates
+                  <span
+                    style={{
+                      color: "#5e5873",
+                      fontWeight: "400",
+                      fontSize: "13px",
+                      marginLeft: "8px",
+                    }}
+                  >
+                    {`${jobOpeningNewMatchCandidate?.total || 0} Matches Found`}
+                  </span>
                 </h5>
-                <JobOpeningMatchFilters
-                  sortBy={sortBy}
-                  profileCompletion={profileCompletion}
-                  onSortChange={handleSortChange}
-                  onProfileChange={handleProfileChange}
-                  themecolor={themeColor}
-                />
               </CardBody>
               <div className="react-dataTable job-opening-match-table">
                 <DataTable
                   paginationRowsPerPageOptions={[10, 20, 30, 50, 100]}
                   selectableRows={false}
                   fixedHeader={true}
-                  progressPending={isLoading || pageLoader}
+                  progressPending={isLoading || interviewLoading}
                   progressComponent={
                     <ComponentSpinner
                       isClientCandidate={true}
@@ -691,6 +922,39 @@ const NewJobMatches = () => {
           </Button>
         </ModalFooter>
       </Modal>
+      {showInterview ? (
+        <InterviewDialog
+          loading={interviewLoading}
+          setCreate={setCreateInterview}
+          create={createInterview}
+          setUpdate={setUpdateInterview}
+          interviewHandler={interviewHandler}
+          interview={interview}
+          setInterview={setInterview}
+          show={showInterview}
+          setShow={setShowInterview}
+          clients={clients}
+          candidates={candidates}
+          update={updateInterview}
+          loginUser={loginUser}
+          setSelectCandidateValidation={setSelectCandidateValidation}
+          setSelectCompanyValidation={setSelectCompanyValidation}
+          setDateValidation={setDateValidation}
+          setInterviewStartValidation={setInterviewStartValidation}
+          setInterviewValidation={setInterviewValidation}
+        />
+      ) : null}
+      <JobMatchProfileDialog
+        show={showProfile}
+        setShow={setShowProfile}
+        candidate={profileCandidate}
+        setCandidate={setProfileCandidate}
+        industriesData={industriesData}
+        setIndustriesData={setIndustriesData}
+        gender={gender}
+        setGender={setGender}
+        setEmail={setProfileEmail}
+      />
     </>
   );
 };
