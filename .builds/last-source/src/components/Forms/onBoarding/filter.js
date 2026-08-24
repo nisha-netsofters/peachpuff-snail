@@ -17,7 +17,8 @@ import "@styles/react/libs/react-select/_react-select.scss";
 import "@styles/react/libs/tables/react-dataTable-component.scss";
 import { useDispatch, useSelector } from "react-redux";
 import Scrollbars from "react-custom-scrollbars";
-import course from "./../Course";
+import { qualificationSelectOptions } from "../../../utility/qualificationOptions";
+import useEducationCourseCascade from "../../../utility/hooks/useEducationCourseCascade";
 import actions from "./../../../redux/onBoarding/actions";
 import useBreakpoint from "../../../utility/hooks/useBreakpoints";
 
@@ -62,6 +63,7 @@ const Filter = ({
   const [work, setWork] = useState();
   const [qua, setQua] = useState();
   const [field, setField] = useState();
+  const [educationId, setEducationId] = useState("");
   const [subCourse, setSubCourse] = useState();
   const { width } = useBreakpoint();
   useEffect(() => {
@@ -104,11 +106,14 @@ const Filter = ({
   ];
 
   const qualification = [
-    { value: "under graduate", id: "qualification", label: "Under Graduate" },
-    { value: "graduation", id: "qualification", label: "Graduation" },
-    { value: "post graduate", id: "qualification", label: "Post Graduate" },
+    ...qualificationSelectOptions("qualification"),
     { value: "any", id: "qualification", label: "Any" },
   ];
+  const { educationOptions, courseOptions, educationLoading, courseLoading } =
+    useEducationCourseCascade({
+      qualificationValue: qua?.value || "",
+      educationId,
+    });
 
   const handleFilterChange = (id, value) => {
     setFilter({ ...filter, [id]: value });
@@ -163,8 +168,9 @@ const Filter = ({
       },
     });
     setFilterData([]);
-    setSubCourse({ label: "Select Field" });
-    setField({ label: "Select Course" });
+    setSubCourse(null);
+    setField(null);
+    setEducationId("");
     handleFilterToggleMode(false);
     setclear(false);
   };
@@ -401,64 +407,6 @@ const Filter = ({
               />
             </Col>
             <Col md="12" className="mt-1">
-              <div>
-                <Label>Education</Label>
-                <Select
-                  menuPlacement="auto"
-                  style={{ cursor: "pointer" }}
-                  id="field"
-                  name="field"
-                  value={field}
-                  placeholder="Select field"
-                  options={course?.map((ele) => {
-                    ele = {
-                      label: ele.name,
-                      id: "field",
-                      value: ele.sub,
-                    };
-                    return ele;
-                  })}
-                  className="react-select"
-                  classNamePrefix="select"
-                  theme={selectThemeColors}
-                  onChange={(e) => {
-                    setField(e);
-                    handleFilterChange(e.id, e.label);
-                    // setFieldValue(e.id, e.label)
-                  }}
-                />
-              </div>
-            </Col>
-            <Col md="12" className="mt-1">
-              <div>
-                <Label>Course</Label>
-                <Select
-                  menuPlacement="auto"
-                  style={{ cursor: "pointer" }}
-                  id="course"
-                  name="course"
-                  value={subCourse}
-                  placeholder="Select course"
-                  options={field?.value?.map((ele) => {
-                    ele = {
-                      label: ele,
-                      field: field?.label,
-                      id: "course",
-                      value: ele,
-                    };
-                    return ele;
-                  })}
-                  className="react-select"
-                  classNamePrefix="select"
-                  theme={selectThemeColors}
-                  onChange={(e) => {
-                    setSubCourse(e);
-                    handleFilterChange(e.id, e.value);
-                  }}
-                />
-              </div>
-            </Col>
-            <Col md="12" className="mt-1">
               <Label id="companyEmail">Designation</Label>
               <Input
                 id="designation"
@@ -567,8 +515,70 @@ const Filter = ({
                 theme={selectThemeColors}
                 onChange={(e) => {
                   setQua(e);
+                  setField(null);
+                  setEducationId("");
+                  setSubCourse(null);
+                  handleFilterChange("field", "");
+                  handleFilterChange("course", "");
                 }}
               />
+            </Col>
+            <Col md="12" className="mt-1">
+              <div>
+                <Label>Education</Label>
+                <Select
+                  menuPlacement="auto"
+                  id="field"
+                  name="field"
+                  value={field}
+                  isDisabled={!qua?.value}
+                  placeholder={
+                    !qua?.value
+                      ? "Select Qualification first"
+                      : educationLoading
+                        ? "Loading education..."
+                        : "Select Education"
+                  }
+                  options={educationOptions}
+                  className="react-select"
+                  classNamePrefix="select"
+                  theme={selectThemeColors}
+                  onChange={(e) => {
+                    setField(e);
+                    setEducationId(e?.value || "");
+                    setSubCourse(null);
+                    handleFilterChange("field", e?.label || "");
+                    handleFilterChange("course", "");
+                  }}
+                />
+              </div>
+            </Col>
+            <Col md="12" className="mt-1">
+              <div>
+                <Label>Course</Label>
+                <Select
+                  menuPlacement="auto"
+                  id="course"
+                  name="course"
+                  value={subCourse}
+                  isDisabled={!educationId}
+                  placeholder={
+                    !field
+                      ? "Select Education first"
+                      : courseLoading
+                        ? "Loading courses..."
+                        : "Select course"
+                  }
+                  options={courseOptions}
+                  className="react-select"
+                  classNamePrefix="select"
+                  theme={selectThemeColors}
+                  onChange={(e) => {
+                    setSubCourse(e);
+                    handleFilterChange("course", e?.value || "");
+                  }}
+                />
+              </div>
             </Col>
             <Col md="12" className="mt-1">
               <Label id="salaryRangeStart">Salary Range Start</Label>

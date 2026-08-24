@@ -6,11 +6,15 @@ import Flatpickr from "react-flatpickr";
 import { selectThemeColors } from "@utils";
 import "@styles/react/libs/flatpickr/flatpickr.scss";
 import { useSelector } from "react-redux";
-import course from "./../Course";
+import { qualificationSelectOptions } from "../../../utility/qualificationOptions";
+import useEducationCourseCascade from "../../../utility/hooks/useEducationCourseCascade";
+import {
+  matchEducationOption,
+  matchCourseOption,
+} from "../../../utility/normalizeResumeExtract";
 
 const OnBoarding = ({
   onBoarding,
-  update,
   setOnBoarding,
   isRecruiter,
   handleChange = () => {},
@@ -19,6 +23,7 @@ const OnBoarding = ({
   const industries = useSelector((state) => state.industries);
   const [am, setAm] = useState();
   const [field, setField] = useState();
+  const [educationId, setEducationId] = useState("");
   const [subCourse, setSubCourse] = useState();
   const [pm, setPm] = useState();
   const [gender, setGender] = useState();
@@ -74,13 +79,6 @@ const OnBoarding = ({
     if (onBoarding?.minExperienceYears !== undefined) {
       setExperienceInYear({ label: onBoarding?.minExperienceYears });
     }
-    if (onBoarding?.field?.length > 0) {
-      course.filter((ele) => {
-        if (ele.name === onBoarding?.field) {
-          setField({ value: ele.sub, label: ele.name });
-        }
-      });
-    }
   }, []);
   useEffect(() => {
     if (am !== undefined) {
@@ -90,27 +88,6 @@ const OnBoarding = ({
       setOnBoarding({ ...onBoarding, jobEndTime: pm });
     }
   }, [am, pm]);
-  useEffect(() => {
-    if (update === true && onBoarding?.field?.length > 0) {
-      if (
-        subCourse?.field === onBoarding?.field ||
-        subCourse?.field === undefined
-      ) {
-        setSubCourse({
-          label: onBoarding?.course,
-          field: field?.label,
-          value: onBoarding?.course,
-        });
-      } else {
-        setSubCourse(null);
-      }
-    } else {
-      setSubCourse(null);
-    }
-    if (field?.value?.length === 0) {
-      setOnBoarding({ ...onBoarding, course: "Please Select" });
-    }
-  }, [field]);
 
   const genderOptions = [
     { value: "male", id: "gender", label: "Male" },
@@ -124,11 +101,35 @@ const OnBoarding = ({
     { value: "both", id: "workType", label: "Both" },
   ];
   const qualification = [
-    { value: "under graduate", id: "qualification", label: "Under Graduate" },
-    { value: "graduation", id: "qualification", label: "Graduation" },
-    { value: "post graduate", id: "qualification", label: "Post Graduate" },
+    ...qualificationSelectOptions("qualification"),
     { value: "any", id: "qualification", label: "Any" },
   ];
+  const { educationOptions, courseOptions, educationLoading, courseLoading } =
+    useEducationCourseCascade({
+      qualificationValue: qua?.value || "",
+      educationId,
+    });
+
+  useEffect(() => {
+    const savedField = onBoarding?.field;
+    if (!savedField || !educationOptions.length) return;
+    const match = matchEducationOption(savedField, educationOptions);
+    if (match) {
+      setField(match);
+      setEducationId(match.value);
+    }
+  }, [educationOptions, onBoarding?.field]);
+
+  useEffect(() => {
+    const savedCourse = onBoarding?.course;
+    if (!savedCourse || !courseOptions.length) return;
+    const match = matchCourseOption(savedCourse, courseOptions);
+    setSubCourse({
+      label: match?.label || savedCourse,
+      value: match?.value || savedCourse,
+      id: "course",
+    });
+  }, [courseOptions, onBoarding?.course]);
   const sundayOptions = [
     { value: "on", id: "sunday", label: "On" },
     { value: "off", id: "sunday", label: "Off" },
@@ -652,6 +653,14 @@ const OnBoarding = ({
             onChange={(e) => {
               setQua(e);
               handleChange(e);
+              setField(null);
+              setEducationId("");
+              setSubCourse(null);
+              setOnBoarding((prev) => ({
+                ...prev,
+                field: "",
+                course: "",
+              }));
             }}
           />
         </Col>
@@ -664,18 +673,23 @@ const OnBoarding = ({
               id="field"
               name="field"
               value={field}
-              placeholder="Select field"
-              options={course?.map((ele) => {
-                ele = { label: ele.name, id: "field", value: ele.sub };
-                return ele;
-              })}
+              isDisabled={!qua?.value}
+              placeholder={
+                !qua?.value
+                  ? "Select Qualification first"
+                  : educationLoading
+                    ? "Loading education..."
+                    : "Select Education"
+              }
+              options={educationOptions}
               className="react-select"
               classNamePrefix="select"
               theme={selectThemeColors}
               onChange={(e) => {
                 setField(e);
-                //   setFieldValue(e.id, e.label)
-                setOnBoarding({ ...onBoarding, field: e.label });
+                setEducationId(e?.value || "");
+                setSubCourse(null);
+                setOnBoarding({ ...onBoarding, field: e.label, course: "" });
               }}
             />
           </div>
@@ -688,23 +702,21 @@ const OnBoarding = ({
               id="course"
               name="course"
               value={subCourse}
-              placeholder="Select course"
-              options={field?.value?.map((ele) => {
-                ele = {
-                  label: ele,
-                  field: field?.label,
-                  id: "course",
-                  value: ele,
-                };
-                return ele;
-              })}
+              isDisabled={!educationId}
+              placeholder={
+                !field
+                  ? "Select Education first"
+                  : courseLoading
+                    ? "Loading courses..."
+                    : "Select course"
+              }
+              options={courseOptions}
               className="react-select"
               classNamePrefix="select"
               theme={selectThemeColors}
               onChange={(e) => {
                 setSubCourse(e);
                 handleChange(e);
-                //   setFieldValue(e.id, e.value)
               }}
             />
           </div>

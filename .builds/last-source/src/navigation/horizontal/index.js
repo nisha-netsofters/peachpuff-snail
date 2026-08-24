@@ -115,6 +115,13 @@ export default [
     permission: ["SuperAdmin"],
   },
   {
+    id: "Education",
+    title: "Education",
+    icon: <BookOpen size={20} />,
+    navLink: `/superadmin/education`,
+    permission: ["SuperAdmin"],
+  },
+  {
     id: "Transaction",
     title: "TransactionList",
     icon: <MessageCircle size={20} />,

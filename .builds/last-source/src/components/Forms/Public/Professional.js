@@ -6,7 +6,12 @@ import { Form, Formik } from "formik";
 import { useDispatch, useSelector } from "react-redux";
 import { ArrowLeft, ArrowRight } from "react-feather";
 import actions from "./../../../redux/jobCategory/actions";
-import course from "./../Course";
+import { QUALIFICATION_HELD_OPTIONS } from "../../../utility/qualificationOptions";
+import useEducationCourseCascade from "../../../utility/hooks/useEducationCourseCascade";
+import {
+  matchEducationOption,
+  matchCourseOption,
+} from "../../../utility/normalizeResumeExtract";
 import industriesActions from "../../../redux/industries/actions";
 import { toast } from "react-toastify";
 import useBreakpoint from "./../../../utility/hooks/useBreakpoints";
@@ -29,6 +34,7 @@ const Professional = ({
   const industries = useSelector((state) => state.industries);
   const [quelification, setQuelification] = useState();
   const [field, setField] = useState();
+  const [educationId, setEducationId] = useState("");
   const [subCourse, setSubCourse] = useState();
   const [experienceInYear, setExperienceInYear] = useState([]);
   const [selectindustries, setSelectIndustries] = useState([]);
@@ -87,19 +93,11 @@ const Professional = ({
     setSubCourse(null);
   }, [field]);
 
-  const Quelification = [
-    {
-      value: "under graduate",
-      id: "highestQualification",
-      label: "Under Graduate",
-    },
-    { value: "graduation", id: "highestQualification", label: "Graduation" },
-    {
-      value: "post graduate",
-      id: "highestQualification",
-      label: "Post Graduate",
-    },
-  ];
+  const { educationOptions, courseOptions, educationLoading, courseLoading } =
+    useEducationCourseCascade({
+      qualificationValue: quelification?.value || "",
+      educationId,
+    });
 
   const experienceOptions = [
     { value: "0-1 year", id: "experienceInyear", label: "0-1 Year" },
@@ -194,29 +192,6 @@ const Professional = ({
             return { value: np, label: np, id: "noticePeriod" };
           };
 
-          // Match AI education field to course list
-          const matchCourseField = (fieldStr) => {
-            if (!fieldStr) return null;
-            const lf = String(fieldStr).toLowerCase().trim();
-            for (const c of course) {
-              if (c.name.toLowerCase() === lf) return { value: c.sub, label: c.name };
-              if (c.sub && Array.isArray(c.sub)) {
-                for (const sub of c.sub) {
-                  if (sub.name && sub.name.toLowerCase() === lf) {
-                    return { value: c.sub, label: c.name };
-                  }
-                }
-              }
-            }
-            // Fuzzy match
-            for (const c of course) {
-              if (lf.includes(c.name.toLowerCase()) || c.name.toLowerCase().includes(lf)) {
-                return { value: c.sub, label: c.name };
-              }
-            }
-            return null;
-          };
-
           useEffect(() => {
             if (candidate?.id || candidate?.resumeParsedAt) {
               const prof = candidate?.professional || {};
@@ -238,20 +213,7 @@ const Professional = ({
                 setFieldValue("highestQualification", qualOpt.value);
               }
 
-              // Education field / course
-              const fieldMatch = matchCourseField(prof.field || prof.course);
-              if (fieldMatch) {
-                setField(fieldMatch);
-                setFieldValue("field", fieldMatch.label);
-              } else if (prof.field) {
-                // Fallback: set raw value
-                setField({ value: [], label: prof.field });
-                setFieldValue("field", prof.field);
-              }
-              if (prof.course) {
-                setSubCourse({ label: prof.course, value: prof.course, field: fieldMatch?.label });
-                setFieldValue("course", prof.course);
-              }
+              // Education / course are bound after Super Admin options load
 
               // Job Category — match AI name to real options
               const jobCatName = String(
@@ -352,6 +314,32 @@ const Professional = ({
               }
             }
           }, [candidate, jobCategoryOptions]);
+
+          useEffect(() => {
+            const savedField =
+              candidate?.professional?.field || values?.field || "";
+            if (!savedField || !educationOptions.length) return;
+            const match = matchEducationOption(savedField, educationOptions);
+            if (match) {
+              setField(match);
+              setEducationId(match.value);
+              setFieldValue("field", match.label);
+            }
+          }, [educationOptions, candidate?.id, candidate?.resumeParsedAt]);
+
+          useEffect(() => {
+            const savedCourse =
+              candidate?.professional?.course || values?.course || "";
+            if (!savedCourse || !courseOptions.length) return;
+            const match = matchCourseOption(savedCourse, courseOptions);
+            const value = match?.value || match?.label || savedCourse;
+            setSubCourse({
+              label: match?.label || value,
+              value,
+              id: "course",
+            });
+            setFieldValue("course", value);
+          }, [courseOptions, candidate?.id, candidate?.resumeParsedAt]);
           // Professional required fields are optional (nullable) so auto-extract submit is not blocked
           const Validations = async () => {
             return false;
@@ -462,13 +450,18 @@ const Professional = ({
                         name="highestQualification"
                         value={quelification}
                         placeholder="Select Qualification"
-                        options={Quelification}
+                        options={QUALIFICATION_HELD_OPTIONS}
                         className="react-select"
                         classNamePrefix="select"
                         theme={selectThemeColors}
                         onChange={(e) => {
                           setQuelification(e);
                           setFieldValue(e.id, e.value);
+                          setField(null);
+                          setEducationId("");
+                          setSubCourse(null);
+                          setFieldValue("field", "");
+                          setFieldValue("course", "");
                         }}
                       />
                     </div>
@@ -484,21 +477,24 @@ const Professional = ({
                         id="field"
                         name="field"
                         value={field}
-                        placeholder="Select Education"
-                        options={course?.map((ele) => {
-                          ele = {
-                            label: ele.name,
-                            id: "field",
-                            value: ele.sub,
-                          };
-                          return ele;
-                        })}
+                        isDisabled={!quelification?.value}
+                        placeholder={
+                          !quelification?.value
+                            ? "Select Qualification first"
+                            : educationLoading
+                              ? "Loading education..."
+                              : "Select Education"
+                        }
+                        options={educationOptions}
                         className="react-select"
                         classNamePrefix="select"
                         theme={selectThemeColors}
                         onChange={(e) => {
                           setField(e);
-                          setFieldValue(e.id, e.label);
+                          setEducationId(e?.value || "");
+                          setFieldValue("field", e?.label || "");
+                          setSubCourse(null);
+                          setFieldValue("course", "");
                         }}
                       />
                     </div>
@@ -511,16 +507,15 @@ const Professional = ({
                         id="course"
                         name="course"
                         value={subCourse}
-                        placeholder="Select course"
-                        options={field?.value?.map((ele) => {
-                          ele = {
-                            label: ele,
-                            field: field?.label,
-                            id: "course",
-                            value: ele,
-                          };
-                          return ele;
-                        })}
+                        placeholder={
+                          !field
+                            ? "Select Education first"
+                            : courseLoading
+                              ? "Loading courses..."
+                              : "Select course"
+                        }
+                        isDisabled={!educationId}
+                        options={courseOptions}
                         className="react-select"
                         classNamePrefix="select"
                         theme={selectThemeColors}

@@ -8,7 +8,6 @@ import {
   // useDispatch,
   useSelector
 } from "react-redux";
-import course from "./../Course";
 import { toast } from "react-toastify";
 import { FileText } from "react-feather";
 import { BsUpload } from "react-icons/bs";
@@ -18,7 +17,12 @@ import {
   normalizeProfessional,
   buildIndustriesRelation,
   matchJobCategoryId,
+  matchEducationOption,
+  matchCourseOption,
 } from "../../../utility/normalizeResumeExtract";
+import { QUALIFICATION_HELD_OPTIONS } from "../../../utility/qualificationOptions";
+import useEducationCourseCascade from "../../../utility/hooks/useEducationCourseCascade";
+import course from "./../Course";
 import {
   getUnfilledInputStyle,
   getUnfilledSelectStyles,
@@ -35,7 +39,6 @@ const Professional = ({
   showResumeFileName,
   setShowResumeFileName,
   handleResumeChange,
-  update,
   isDisabledAllFields,
   highlightUnfilled = false,
   unfilledKeys = null,
@@ -57,6 +60,7 @@ const Professional = ({
   // const dispatch = useDispatch();
   const [quelification, setQuelification] = useState();
   const [field, setField] = useState();
+  const [educationId, setEducationId] = useState("");
   const [industriesOptions, setIndustriesOptions] = useState([]);
   const [subCourse, setSubCourse] = useState();
   const [experienceInYear, setExperienceInYear] = useState([]);
@@ -66,10 +70,11 @@ const Professional = ({
   const [jobCategoryOptions, setJobCategoryOptions] = useState([]);
   const [jobCat, setJobCat] = useState();
   const [eng, setEng] = useState([]);
-  useEffect(() => {
-    console.log("jobs=====================>", candidate?.professional?.jobCategoryId);
-
-  }), []
+  const { educationOptions, courseOptions, educationLoading, courseLoading } =
+    useEducationCourseCascade({
+      qualificationValue: quelification?.value || "",
+      educationId,
+    });
   useEffect(() => {
     if (jobCategory?.length > 0) {
       const options = jobCategory.map((item) => ({
@@ -126,19 +131,7 @@ const Professional = ({
       setCandidate((prev) => ({ ...prev, industries_relation: relations }));
     }
   }, [candidate?.resumeParsedAt, candidate?.industry, industries]);
-  const Quelification = [
-    {
-      value: "under graduate",
-      id: "highestQualification",
-      label: "Under Graduate",
-    },
-    { value: "graduation", id: "highestQualification", label: "Graduation" },
-    {
-      value: "post graduate",
-      id: "highestQualification",
-      label: "Post Graduate",
-    },
-  ];
+  const Quelification = QUALIFICATION_HELD_OPTIONS;
 
   const English = [
     { value: "Poor", id: "english", label: "Poor" },
@@ -162,24 +155,6 @@ const Professional = ({
     { value: "yes", id: "currentlyWorking", label: "Yes" },
     { value: "no", id: "currentlyWorking", label: "No" },
   ];
-  useEffect(() => {
-    if (update === true && candidate?.professional?.field?.length > 0) {
-      if (
-        subCourse?.field === candidate?.professional?.field ||
-        subCourse?.field === undefined
-      ) {
-        setSubCourse({
-          label: candidate?.professional?.course,
-          field: field?.label,
-          value: candidate?.professional?.course,
-        });
-      } else {
-        setSubCourse(null);
-      }
-    } else {
-      setSubCourse(null);
-    }
-  }, [field]);
 
   const onIndustriesChange = (industry) => {
     const data = [];
@@ -295,52 +270,6 @@ const Professional = ({
               setFieldValue("currentlyWorking", prof.currentlyWorking);
             }
 
-            if (prof.field) {
-              const fieldMatch = course.find(
-                (ele) => String(ele.name).toLowerCase() === String(prof.field).toLowerCase()
-              ) || course.find((ele) => {
-                const name = String(ele.name).toLowerCase();
-                const raw = String(prof.field).toLowerCase();
-                return name.includes(raw) || raw.includes(name);
-              });
-              if (fieldMatch) {
-                setField({ value: fieldMatch.sub, label: fieldMatch.name });
-                setFieldValue("field", fieldMatch.name);
-              }
-            }
-
-            if (prof.course && prof.field) {
-              const fieldMatch =
-                course.find(
-                  (ele) =>
-                    String(ele.name).toLowerCase() ===
-                    String(prof.field).toLowerCase()
-                ) || null;
-              const rawCourse = String(prof.course).trim();
-              const subList = fieldMatch?.sub || [];
-              const courseMatch =
-                subList.find(
-                  (s) => String(s).toLowerCase() === rawCourse.toLowerCase()
-                ) ||
-                subList.find((s) => {
-                  const a = String(s).toLowerCase();
-                  const b = rawCourse.toLowerCase();
-                  return (
-                    a.includes(b) ||
-                    b.includes(a) ||
-                    (a.startsWith("computer") && /\bcomputer/.test(b))
-                  );
-                }) ||
-                rawCourse;
-
-              setSubCourse({
-                label: courseMatch,
-                field: prof.field,
-                value: courseMatch,
-              });
-              setFieldValue("course", courseMatch);
-            }
-
             if (prof?.currentSalary && Number(prof.currentSalary) > 0) {
               const calculatedSalary = parseFloat(prof.currentSalary) * 1.2;
               if (!isNaN(calculatedSalary)) {
@@ -348,6 +277,40 @@ const Professional = ({
               }
             }
           }, [candidate?.id, candidate?.resumeParsedAt, jobCategory]);
+
+          useEffect(() => {
+            const savedField =
+              candidate?.professional?.field || values?.field || "";
+            if (!savedField || !educationOptions.length) return;
+            const match = matchEducationOption(savedField, educationOptions);
+            if (match) {
+              setField(match);
+              setEducationId(match.value);
+              setFieldValue("field", match.label);
+            } else {
+              setField({
+                label: savedField,
+                value: "",
+                id: "field",
+              });
+              setFieldValue("field", savedField);
+            }
+          }, [educationOptions, candidate?.id, candidate?.resumeParsedAt]);
+
+          useEffect(() => {
+            const savedCourse =
+              candidate?.professional?.course || values?.course || "";
+            if (!savedCourse || !courseOptions.length) return;
+            const match = matchCourseOption(savedCourse, courseOptions);
+            const value = match?.value || match?.label || savedCourse;
+            setSubCourse({
+              label: match?.label || value,
+              value,
+              id: "course",
+              field: field?.label,
+            });
+            setFieldValue("course", value);
+          }, [courseOptions, candidate?.id, candidate?.resumeParsedAt]);
 
           function handleSalary() {
             setTimeout(() => {
@@ -408,9 +371,6 @@ const Professional = ({
               return { ...prev, professional: merged };
             });
           }, [values]);
-          console.log('---------------------');
-          console.log('values =>', values);
-          console.log('---------------------');
           return (
             <Form>
               <div>
@@ -504,6 +464,11 @@ const Professional = ({
                         onChange={(e) => {
                           setQuelification(e);
                           setFieldValue(e.id, e.value);
+                          setField(null);
+                          setEducationId("");
+                          setSubCourse(null);
+                          setFieldValue("field", "");
+                          setFieldValue("course", "");
                         }}
                       />
                     </div>
@@ -518,16 +483,17 @@ const Professional = ({
                         id="field"
                         name="field"
                         value={field}
-                        isDisabled={isDisabledAllFields}
-                        placeholder="Select Education"
-                        options={course?.map((ele) => {
-                          ele = {
-                            label: ele.name,
-                            id: "field",
-                            value: ele.sub,
-                          };
-                          return ele;
-                        })}
+                        isDisabled={
+                          isDisabledAllFields || !quelification?.value
+                        }
+                        placeholder={
+                          !quelification?.value
+                            ? "Select Qualification first"
+                            : educationLoading
+                              ? "Loading education..."
+                              : "Select Education"
+                        }
+                        options={educationOptions}
                         className="react-select"
                         classNamePrefix="select"
                         theme={selectThemeColors}
@@ -536,7 +502,10 @@ const Professional = ({
                         )}
                         onChange={(e) => {
                           setField(e);
-                          setFieldValue(e.id, e.label);
+                          setEducationId(e?.value || "");
+                          setFieldValue("field", e?.label || "");
+                          setSubCourse(null);
+                          setFieldValue("course", "");
                         }}
                       />
                     </div>
@@ -549,17 +518,17 @@ const Professional = ({
                         id="course"
                         name="course"
                         value={subCourse}
-                        placeholder="Select course"
-                        isDisabled={isDisabledAllFields}
-                        options={field?.value?.map((ele) => {
-                          ele = {
-                            label: ele,
-                            field: field?.label,
-                            id: "course",
-                            value: ele,
-                          };
-                          return ele;
-                        })}
+                        placeholder={
+                          !field
+                            ? "Select Education first"
+                            : courseLoading
+                              ? "Loading courses..."
+                              : "Select course"
+                        }
+                        isDisabled={
+                          isDisabledAllFields || !educationId
+                        }
+                        options={courseOptions}
                         className="react-select"
                         classNamePrefix="select"
                         theme={selectThemeColors}

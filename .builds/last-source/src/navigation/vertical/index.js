@@ -121,6 +121,13 @@ export default [
     navLink: "/superadmin/areas",
     permission: ["SuperAdmin"],
   },
+  {
+    id: "Education",
+    title: "Education",
+    icon: <BookOpen size={20} />,
+    navLink: "/superadmin/education",
+    permission: ["SuperAdmin"],
+  },
   // {
   //   id: "Hot Vacancy",
   //   title: "Hot Vacancy",

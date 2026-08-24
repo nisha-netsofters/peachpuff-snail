@@ -137,14 +137,88 @@ export function matchEducationField(raw, courseList = []) {
 
   let field = "";
   if (/b\.?\s*tech|b\.?\s*e\b|bachelor of engineering|computer engineering/.test(str)) {
-    field = "B.Tech/B.E.";
-  } else if (/b\.?\s*arch/.test(str)) field = "B.Architect";
+    field = "B.Tech / B.E";
+  } else if (/b\.?\s*arch/.test(str)) field = "B.Arch";
   else if (/mba|pgdm/.test(str)) field = "MBA/PGDM";
+  else if (/m\.?\s*tech|m\.?\s*e\b/.test(str)) field = "M.Tech";
   else if (/diploma/.test(str)) field = "Diploma";
+  else if (/b\.?\s*com/.test(str)) field = "B.Com";
+  else if (/b\.?\s*sc/.test(str)) field = "B.Sc";
+  else if (/b\.?\s*a\b|bachelor of arts/.test(str)) field = "B.A - Bachelor of Arts";
+  else if (/b\.?\s*c\.?\s*a|bachelor of computer/.test(str)) field = "B.C.A";
 
   let course = "";
-  if (field === "B.Tech/B.E." && /\bcomputer/.test(str)) course = "Computers";
+  if (field === "B.Tech / B.E" && /\bcomputer/.test(str)) {
+    course = "Computer Science and Engineering (CSE)";
+  }
   return { field, course };
+}
+
+/** Collapse "B.Tech / B.E." and "B.Tech/B.E" to the same key */
+export function normalizeLookupKey(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, "");
+}
+
+function scoreOptionMatch(saved, optionLabel) {
+  const a = String(saved || "").trim().toLowerCase();
+  const b = String(optionLabel || "").trim().toLowerCase();
+  if (!a || !b) return 0;
+  if (a === b) return 100;
+  const ka = normalizeLookupKey(a);
+  const kb = normalizeLookupKey(b);
+  if (ka && ka === kb) return 95;
+  if (ka && kb && (ka.includes(kb) || kb.includes(ka))) {
+    return 80 + Math.min(ka.length, kb.length) / Math.max(ka.length, kb.length);
+  }
+  if (tokensOverlap(a, b)) return 60;
+  // Computers ↔ Computer Science / Computer Engineering
+  if (
+    (/^computers?$/.test(a) || /\bcomputer/.test(a)) &&
+    /\bcomputer/.test(b)
+  ) {
+    return 55;
+  }
+  return 0;
+}
+
+/** Match AI/resume education text to Super Admin education dropdown option */
+export function matchEducationOption(savedField, educationOptions = []) {
+  if (!savedField || !Array.isArray(educationOptions) || !educationOptions.length) {
+    return null;
+  }
+  let best = null;
+  let bestScore = 0;
+  for (const opt of educationOptions) {
+    const score = scoreOptionMatch(savedField, opt.label);
+    if (score > bestScore) {
+      bestScore = score;
+      best = opt;
+    }
+  }
+  return bestScore >= 55 ? best : null;
+}
+
+/** Match AI/resume course text to Super Admin course dropdown option */
+export function matchCourseOption(savedCourse, courseOptions = []) {
+  if (!savedCourse || !Array.isArray(courseOptions) || !courseOptions.length) {
+    return null;
+  }
+  let best = null;
+  let bestScore = 0;
+  for (const opt of courseOptions) {
+    const score = Math.max(
+      scoreOptionMatch(savedCourse, opt.label),
+      scoreOptionMatch(savedCourse, opt.value)
+    );
+    if (score > bestScore) {
+      bestScore = score;
+      best = opt;
+    }
+  }
+  return bestScore >= 55 ? best : null;
 }
 
 /** Strip "Area / Locality: Vesu" leftovers → "Vesu" */

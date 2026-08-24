@@ -349,6 +349,20 @@ const JobOpeningMatches = () => {
       selector: (row) => row?.lastname,
     },
     {
+      name: "Match Score",
+      selector: (row) =>
+        row?.matchScore != null ? `${row.matchScore}%` : "0%",
+      minWidth: "110px",
+    },
+    {
+      name: "Profile Completion",
+      selector: (row) =>
+        row?.profileCompleteness != null
+          ? `${row.profileCompleteness}%`
+          : "-",
+      minWidth: "120px",
+    },
+    {
       name: "Job Category",
       selector: (row) => row?.professional?.jobCategory?.jobCategory,
     },
@@ -397,6 +411,20 @@ const JobOpeningMatches = () => {
     {
       name: "Last Name",
       selector: (row) => row?.lastname,
+    },
+    {
+      name: "Match Score",
+      selector: (row) =>
+        row?.matchScore != null ? `${row.matchScore}%` : "0%",
+      minWidth: "110px",
+    },
+    {
+      name: "Profile Completion",
+      selector: (row) =>
+        row?.profileCompleteness != null
+          ? `${row.profileCompleteness}%`
+          : "-",
+      minWidth: "120px",
     },
     {
       name: "Email-id",
