@@ -28,7 +28,9 @@ function* WATCH_DECREASE_RESUME_DOWNLOADING(action) {
     const resp = yield decreaseResumeDownload(action.payload);
 
     if (resp?.currentPlan || resp?.isSavedCandidate) {
-      window.open(resumeUrl, "_blank", "noopener,noreferrer");
+      if (!action.payload?.skipOpen) {
+        window.open(resumeUrl, "_blank", "noopener,noreferrer");
+      }
       if (resp?.currentPlan) {
         yield put({
           type: actions.SET_SUBSCRIPTION_STATE,
@@ -45,7 +47,7 @@ function* WATCH_DECREASE_RESUME_DOWNLOADING(action) {
         payload: true,
       });
       tostify(resp.msg);
-    } else {
+    } else if (!action.payload?.skipOpen) {
       // Unexpected success shape — still try open resume
       window.open(resumeUrl, "_blank", "noopener,noreferrer");
     }

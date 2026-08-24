@@ -179,7 +179,9 @@ const Candidate = ({
             setCreate(false);
             pushfunction();
           }}
-        ></ModalHeader>
+        >
+          {isDisabledAllFields ? "View Profile" : null}
+        </ModalHeader>
 
         {loading === true && !bulkUploadProgress?.active ? (
           <Loader loading={loading} theamcolour={themecolor} noBackdrop />
@@ -336,6 +338,7 @@ const Candidate = ({
           )}
 
           {/* SUBMIT BUTTON */}
+          {!isDisabledAllFields && (
           <div
             style={{
               display: "flex",
@@ -347,12 +350,10 @@ const Candidate = ({
               type="button"
               className="add-new-user"
               disabled={
-                isDisabledAllFields === true ||
                 (loading === true && !bulkUploadProgress?.active) ||
                 resumeBusy === true
               }
               style={
-                isDisabledAllFields === true ||
                 (loading === true && !bulkUploadProgress?.active) ||
                 resumeBusy === true
                   ? {
@@ -366,7 +367,7 @@ const Candidate = ({
               }
               color="default"
               onClick={(e) => {
-                if (isDisabledAllFields || (loading && !bulkUploadProgress?.active) || resumeBusy) return;
+                if ((loading && !bulkUploadProgress?.active) || resumeBusy) return;
                 CandidateHandler(e);
               }}
             >
@@ -379,6 +380,7 @@ const Candidate = ({
                 : "Submit"}
             </Button>
           </div>
+          )}
         </ModalBody>
       </Modal>
 

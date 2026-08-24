@@ -78,13 +78,22 @@
   padding-top: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
+  scrollbar-width: thin;
+  scrollbar-color: #9aa3b8 #eef0f4;
 
   &::-webkit-scrollbar {
-    display: none;
-    width: 0;
+    width: 8px;
     height: 0;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: #eef0f4;
+    border-radius: 8px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: #9aa3b8;
+    border-radius: 8px;
   }
 }
 

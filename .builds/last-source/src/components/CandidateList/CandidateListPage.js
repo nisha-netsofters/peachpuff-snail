@@ -27,6 +27,7 @@ import {
   Briefcase,
   User,
   Trash2,
+  Download,
 } from "react-feather";
 import UserMaleIcon from "../../assets/images/avatars/Male-01.png";
 import UserFemaleIcon from "../../assets/images/avatars/Female-01.png";
@@ -230,6 +231,15 @@ const SecondPage = ({
   const [currentPage, setCurrentPage] = useState(1);
   const [showWPModal, setShowWPModal] = useState(false);
   const [showContactDetails, setShowContactDetails] = useState(false);
+  const [resumePreview, setResumePreview] = useState({
+    open: false,
+    url: null,
+    previewUrl: null,
+    blobUrl: null,
+    fileName: "",
+    loading: false,
+    error: null,
+  });
 
   // useLayoutEffect(() => {
   //   // if (bestMatchesCandidate) {
@@ -818,7 +828,7 @@ const SecondPage = ({
     });
   };
 
-  const decreaseResumeDownload = (userId, subscriptionId, row) => {
+  const decreaseResumeDownload = (userId, subscriptionId, row, extra = {}) => {
     dispatch({
       type: subscriptionActions.DECREASE_RESUME_DOWNLOADING,
       payload: {
@@ -826,6 +836,7 @@ const SecondPage = ({
         subscriptionId,
         candidateId: row?.id,
         url: resolveAssetUrl(row?.resume) || row?.resume,
+        ...extra,
       },
     });
   };
@@ -841,13 +852,146 @@ const SecondPage = ({
     );
   };
 
-  const openCandidateResume = (resumePath) => {
+  const getResumeFileName = (resumePath) => {
+    try {
+      const decoded = decodeURIComponent(String(resumePath || ""));
+      const name = decoded.split("?")[0].split("#")[0];
+      const fileName = name.substring(name.lastIndexOf("/") + 1);
+      return fileName || "resume";
+    } catch (e) {
+      return "resume";
+    }
+  };
+
+  const isPdfResume = (path) => /\.pdf($|\?|#)/i.test(String(path || ""));
+  const isOfficeResume = (path) =>
+    /\.(doc|docx)($|\?|#)/i.test(String(path || ""));
+
+  const closeResumePreview = () => {
+    setResumePreview((prev) => {
+      if (prev?.blobUrl) {
+        URL.revokeObjectURL(prev.blobUrl);
+      }
+      return {
+        open: false,
+        url: null,
+        previewUrl: null,
+        blobUrl: null,
+        fileName: "",
+        loading: false,
+        error: null,
+      };
+    });
+  };
+
+  const openCandidateResume = async (resumePath) => {
     const url = resolveAssetUrl(resumePath);
     if (!url) {
       tostify("Resume file not available");
       return;
     }
-    window.open(url, "_blank", "noopener,noreferrer");
+    const fileName = getResumeFileName(resumePath || url);
+    setResumePreview({
+      open: true,
+      url,
+      previewUrl: null,
+      blobUrl: null,
+      fileName,
+      loading: true,
+      error: null,
+    });
+    try {
+      const res = await fetch(url);
+      if (!res.ok) {
+        setResumePreview((prev) => ({
+          ...prev,
+          loading: false,
+          previewUrl: null,
+          error:
+            res.status === 404
+              ? "Resume file not found on server."
+              : "Unable to load resume preview.",
+        }));
+        return;
+      }
+      const blob = await res.blob();
+      // Avoid showing Express HTML error pages inside the iframe
+      if (
+        blob.type &&
+        blob.type.includes("text/html") &&
+        (isPdfResume(fileName) || isOfficeResume(fileName))
+      ) {
+        setResumePreview((prev) => ({
+          ...prev,
+          loading: false,
+          previewUrl: null,
+          error: "Resume file not found on server.",
+        }));
+        return;
+      }
+      const typedBlob =
+        isPdfResume(fileName) || isPdfResume(url)
+          ? new Blob([blob], { type: "application/pdf" })
+          : blob;
+      const blobUrl = URL.createObjectURL(typedBlob);
+      setResumePreview((prev) => ({
+        ...prev,
+        previewUrl: blobUrl,
+        blobUrl,
+        loading: false,
+        error: null,
+      }));
+    } catch (e) {
+      setResumePreview((prev) => ({
+        ...prev,
+        loading: false,
+        previewUrl: null,
+        error: "Unable to load resume preview.",
+      }));
+    }
+  };
+
+  const downloadResumeFromPreview = async () => {
+    const fileName = resumePreview.fileName || "resume";
+    try {
+      if (resumePreview.blobUrl) {
+        const a = document.createElement("a");
+        a.href = resumePreview.blobUrl;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        return;
+      }
+      const res = await fetch(resumePreview.url);
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 1500);
+    } catch (e) {
+      if (resumePreview.url) {
+        window.open(resumePreview.url, "_blank", "noopener,noreferrer");
+      } else {
+        tostify("Resume file not available");
+      }
+    }
+  };
+
+  const openViewProfile = (row) => {
+    if (!row) return;
+    setIsDisabledAllFields(true);
+    setCandidate(row);
+    setIndustriesData(row?.industries_relation);
+    statusUpdate(row);
+    setEmail(row?.email);
+    setCreate(false);
+    setUpdate(true);
+    setShow(true);
   };
 
   const handleOpenResume = (row) => {
@@ -856,7 +1000,7 @@ const SecondPage = ({
       return;
     }
 
-    // Already saved/viewed → open directly
+    // Already saved/viewed → open preview
     if (isSavedCandidates || row?.saved_Candidates?.id || row?.savedCandidates?.id) {
       openCandidateResume(row?.resume);
       return;
@@ -871,7 +1015,8 @@ const SecondPage = ({
       return;
     }
 
-    decreaseResumeDownload(userId, subscriptionId, row);
+    decreaseResumeDownload(userId, subscriptionId, row, { skipOpen: true });
+    openCandidateResume(row?.resume);
   };
 
   const isCandidateFavorited = (row) =>
@@ -2521,7 +2666,27 @@ const SecondPage = ({
             >
               {state.title}:{" "}
             </strong>
-            <strong style={{ fontSize: "12px" }}>{state.value}</strong>
+            <strong
+              style={{
+                fontSize: "12px",
+                ...(state.title === "Name"
+                  ? {
+                      cursor: "pointer",
+                      textDecoration: "underline",
+                      textUnderlineOffset: "2px",
+                      color: themecolor || "#323D76",
+                    }
+                  : {}),
+              }}
+              onClick={
+                state.title === "Name"
+                  ? () => openViewProfile(candidate)
+                  : undefined
+              }
+              title={state.title === "Name" ? "View Profile" : undefined}
+            >
+              {state.value}
+            </strong>
           </div>
         </div>
         {/* <div
@@ -4046,7 +4211,16 @@ const SecondPage = ({
                                       );
                                     }}
                                   />
-                                  <span>
+                                  <span
+                                    title="View Profile"
+                                    onClick={() => openViewProfile(candidate)}
+                                    style={{
+                                      cursor: "pointer",
+                                      textDecoration: "underline",
+                                      textUnderlineOffset: "3px",
+                                      color: themecolor || "#323D76",
+                                    }}
+                                  >
                                     {candidate?.firstname} {candidate?.lastname}
                                   </span>
                                   <Badge
@@ -4430,6 +4604,105 @@ const SecondPage = ({
         </Col>
       </Row>
       </div>
+      <Modal
+        className="modal-dialog-centered modal-xl"
+        isOpen={resumePreview.open}
+        toggle={closeResumePreview}
+      >
+        <ModalHeader toggle={closeResumePreview}>
+          <div className="d-flex align-items-center justify-content-between w-100">
+            <span>View Resume</span>
+          </div>
+        </ModalHeader>
+        <ModalBody>
+          {resumePreview.loading ? (
+            <div
+              className="d-flex align-items-center justify-content-center"
+              style={{ minHeight: "40vh" }}
+            >
+              <ComponentSpinner
+                isClientCandidate={true}
+                theamcolour={themecolor}
+              />
+            </div>
+          ) : resumePreview.error ? (
+            <div
+              className="d-flex flex-column align-items-center justify-content-center text-center"
+              style={{ minHeight: "30vh" }}
+            >
+              <FileText size={42} className="mb-1" />
+              <p className="mb-0 text-danger">{resumePreview.error}</p>
+              {resumePreview.fileName ? (
+                <p className="mt-1 mb-0 text-muted">
+                  {resumePreview.fileName}
+                </p>
+              ) : null}
+            </div>
+          ) : (isPdfResume(resumePreview.fileName) ||
+              isPdfResume(resumePreview.url)) &&
+            resumePreview.previewUrl ? (
+            <iframe
+              title="Resume preview"
+              src={resumePreview.previewUrl}
+              style={{
+                width: "100%",
+                height: "70vh",
+                border: "none",
+                background: "#f4f4f4",
+              }}
+            />
+          ) : (isOfficeResume(resumePreview.fileName) ||
+              isOfficeResume(resumePreview.url)) &&
+            resumePreview.url &&
+            /^https:\/\//i.test(resumePreview.url) &&
+            !/localhost|127\.0\.0\.1/.test(resumePreview.url) ? (
+            <iframe
+              title="Resume preview"
+              src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(
+                resumePreview.url
+              )}`}
+              style={{
+                width: "100%",
+                height: "70vh",
+                border: "none",
+                background: "#f4f4f4",
+              }}
+            />
+          ) : (
+            <div
+              className="d-flex flex-column align-items-center justify-content-center text-center"
+              style={{ minHeight: "30vh", padding: "1rem" }}
+            >
+              <FileText size={42} className="mb-1" />
+              <p className="mb-1">
+                <strong>{resumePreview.fileName || "Resume"}</strong>
+              </p>
+              <p className="mb-0 text-muted">
+                {isOfficeResume(resumePreview.fileName) ||
+                isOfficeResume(resumePreview.url)
+                  ? "Word (.doc/.docx) files cannot be previewed here. Use Download to open the file."
+                  : "Preview is not available for this file type. Use Download to open the file."}
+              </p>
+            </div>
+          )}
+        </ModalBody>
+        <ModalFooter>
+          <Button color="secondary" onClick={closeResumePreview}>
+            Close
+          </Button>
+          <Button
+            color="default"
+            style={{ backgroundColor: themecolor, color: "white" }}
+            disabled={
+              !!resumePreview.error ||
+              (!resumePreview.url && !resumePreview.blobUrl)
+            }
+            onClick={downloadResumeFromPreview}
+          >
+            <Download size={16} className="me-50" /> Download
+          </Button>
+        </ModalFooter>
+      </Modal>
       {show === true ? (
         <>
           <Candidate

@@ -4,7 +4,6 @@ export const CANDIDATE_QUICK_TABS = [
   { id: "all", label: "All" },
   { id: "recentlyAdded", label: "Recently Added" },
   { id: "recentlyViewed", label: "Recently Viewed" },
-  { id: "newCandidates", label: "New Candidates" },
   { id: "inProcess", label: "In Process" },
   { id: "interviewScheduled", label: "Interview Scheduled" },
   { id: "selected", label: "Selected" },
