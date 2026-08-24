@@ -415,7 +415,7 @@ const Attachment_File = ({
 
         <Col lg={6} xs={12} xl={6}>
           <Label>Resume</Label>
-          {extractError && (
+          {extractError && !isDisabledAllFields && (
             <div
               className="mb-1 p-2 rounded"
               style={{
@@ -428,7 +428,7 @@ const Attachment_File = ({
               {extractError}
             </div>
           )}
-          {!apiConfigChecking && apiConfigReady === false && (
+          {!isDisabledAllFields && !apiConfigChecking && apiConfigReady === false && (
             <div
               className="mb-1 p-2 rounded"
               style={{
@@ -442,7 +442,29 @@ const Attachment_File = ({
             </div>
           )}
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            {showResumeLabel ? (
+            {isDisabledAllFields ? (
+              <Label
+                className="mb-0"
+                style={
+                  typeof candidate?.resume === "string" && candidate.resume
+                    ? {
+                        cursor: "pointer",
+                        textDecoration: "underline",
+                        color: themecolor || "#323D76",
+                      }
+                    : undefined
+                }
+                onClick={() => {
+                  if (typeof candidate?.resume === "string" && candidate.resume) {
+                    openStoredAsset(candidate.resume);
+                  }
+                }}
+              >
+                {fileName
+                  ? `${fileName.slice(0, 80)}${fileName.length > 80 ? "…" : ""}`
+                  : "—"}
+              </Label>
+            ) : showResumeLabel ? (
               <Label className="mb-0">
                 {fileName
                   ? `${fileName.slice(0, 80)}${fileName.length > 80 ? "…" : ""}`
@@ -460,14 +482,12 @@ const Attachment_File = ({
                   borderColor: focus === "resume" && themecolor,
                 }}
                 name="customFile"
-                disabled={
-                  isDisabledAllFields || extracting || apiConfigChecking
-                }
+                disabled={extracting || apiConfigChecking}
                 placeholder={"fileName"}
                 onChange={handleResumeSelect}
               />
             )}
-            {resumeReady ? (
+            {!isDisabledAllFields && resumeReady ? (
               <Button
                 type="button"
                 className="add-new-user"
@@ -477,7 +497,10 @@ const Attachment_File = ({
                 <Cancel height={16} width={16} />
               </Button>
             ) : null}
-            {update && typeof candidate?.resume === "string" && candidate.resume.length > 0 ? (
+            {!isDisabledAllFields &&
+            update &&
+            typeof candidate?.resume === "string" &&
+            candidate.resume.length > 0 ? (
               <Button
                 type="button"
                 className="add-new-user"
@@ -488,7 +511,8 @@ const Attachment_File = ({
               </Button>
             ) : null}
           </div>
-          {extracting || apiConfigChecking ? (
+          {!isDisabledAllFields &&
+            (extracting || apiConfigChecking ? (
             <small className="text-primary d-flex align-items-center gap-50 mt-50">
               <ResumeExtractSpinner />
               {extracting ? "Extracting resume data..." : "Checking API config..."}
@@ -501,13 +525,35 @@ const Attachment_File = ({
             <small className="text-muted d-block mt-50">
               Upload resume to auto-fill candidate details
             </small>
-          )}
+          ))}
         </Col>
 
         <Col lg={6} xs={12} xl={6}>
           <Label>Passport Size Photo</Label>
           <div style={{ display: "flex", alignItems: "center" }}>
-            {showImageLabel ? (
+            {isDisabledAllFields ? (
+              <Label
+                className="mb-0"
+                style={
+                  typeof candidate?.image === "string" && candidate.image
+                    ? {
+                        cursor: "pointer",
+                        textDecoration: "underline",
+                        color: themecolor || "#323D76",
+                      }
+                    : undefined
+                }
+                onClick={() => {
+                  if (typeof candidate?.image === "string" && candidate.image) {
+                    openStoredAsset(candidate.image);
+                  }
+                }}
+              >
+                {imageName
+                  ? `${imageName.slice(0, 40)}${imageName.length > 40 ? "…" : ""}`
+                  : "—"}
+              </Label>
+            ) : showImageLabel ? (
               <Label className="mb-0">
                 {imageName ? `${imageName.slice(0, 40)}${imageName.length > 40 ? "…" : ""}` : ""}
               </Label>
@@ -522,12 +568,11 @@ const Attachment_File = ({
                 accept="image/png, image/jpeg, image/jpg"
                 id="image"
                 name="customFile"
-                disabled={isDisabledAllFields}
                 onChange={(e) => fileOnChangeHandler(e)}
               />
             )}
 
-            {imageReady ? (
+            {!isDisabledAllFields && imageReady ? (
               <Button
                 type="button"
                 className="add-new-user"
@@ -538,7 +583,10 @@ const Attachment_File = ({
               </Button>
             ) : null}
 
-            {update && typeof candidate?.image === "string" && candidate.image.length > 0 ? (
+            {!isDisabledAllFields &&
+            update &&
+            typeof candidate?.image === "string" &&
+            candidate.image.length > 0 ? (
               <Button
                 type="button"
                 className="add-new-user"

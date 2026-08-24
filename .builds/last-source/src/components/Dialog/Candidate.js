@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Button,
   Col,
@@ -166,8 +166,40 @@ const Candidate = ({
         toggle={() => {
           setShow(show);
         }}
-        className={`modal-dialog-centered ${resumeUploadOnly ? "modal-md" : "modal-xl"}`}
+        className={`modal-dialog-centered ${resumeUploadOnly ? "modal-md" : "modal-xl"}${
+          isDisabledAllFields ? " candidate-profile-view" : ""
+        }`}
       >
+        {isDisabledAllFields ? (
+          <style>{`
+            .candidate-profile-view .select__dropdown-indicator,
+            .candidate-profile-view .select__indicator-separator,
+            .candidate-profile-view .select__clear-indicator,
+            .candidate-profile-view .select__indicators,
+            .candidate-profile-view .select__multi-value__remove {
+              display: none !important;
+            }
+            .candidate-profile-view label span {
+              display: none !important;
+            }
+            .candidate-profile-view .select__placeholder {
+              display: none !important;
+            }
+            .candidate-profile-view input:disabled,
+            .candidate-profile-view textarea:disabled {
+              cursor: default;
+            }
+            .candidate-profile-view input::placeholder,
+            .candidate-profile-view textarea::placeholder {
+              color: transparent !important;
+            }
+            .candidate-profile-view .is-invalid {
+              background-image: none !important;
+              border-color: #d8d6de !important;
+              box-shadow: none !important;
+            }
+          `}</style>
+        ) : null}
         <ModalHeader
           className="bg-transparent"
           // onClick={() => onClickHandler()}
@@ -317,7 +349,7 @@ const Candidate = ({
                 maxLength={250}
                 disabled={isDisabledAllFields}
                 value={candidate?.comments}
-                placeholder="Enter Comments"
+                placeholder={isDisabledAllFields ? "" : "Enter Comments"}
                 onChange={(e) => {
                   setCandidate({
                     ...candidate,

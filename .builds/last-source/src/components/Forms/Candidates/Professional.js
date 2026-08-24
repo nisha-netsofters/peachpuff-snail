@@ -44,7 +44,7 @@ const Professional = ({
   /** Prefer live form value so highlight matches what the user sees */
   const LIVE_UNSET = Symbol("live-unset");
   const isUnfilled = (key, liveValue = LIVE_UNSET, opts = {}) => {
-    if (!highlightUnfilled) return false;
+    if (isDisabledAllFields || !highlightUnfilled) return false;
     // When a live value is passed (incl. undefined/""), judge from what the UI shows
     if (liveValue !== LIVE_UNSET) {
       return !isFilled(liveValue, opts);
@@ -448,9 +448,11 @@ const Professional = ({
                           } else toast.warn("Only 3 industries can select");
                         }}
                       />
+                      {!isDisabledAllFields && (
                       <p style={{ color: "red", fontSize: "12px" }}>
                         *You Can select 3 industries
                       </p>
+                      )}
                     </div>
                   </Col>
                   <Col lg={6} xs={12} xl={4}>

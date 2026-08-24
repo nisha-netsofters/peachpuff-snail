@@ -3,7 +3,6 @@ import { ArrowLeft, ChevronDown, ChevronUp } from "react-feather";
 import { useDispatch, useSelector } from "react-redux";
 import { useHistory } from "react-router-dom/cjs/react-router-dom.min";
 import {
-  Badge,
   Button,
   Card,
   CardBody,
@@ -19,7 +18,6 @@ import jobOpeningMatchesActions from "../../redux/jobOpeningMatches/actions";
 import { useParams } from "react-router-dom/cjs/react-router-dom";
 import DataTable from "react-data-table-component";
 import ComponentSpinner from "../../@core/components/spinner/Loading-spinner";
-import moment from "moment/moment";
 // import clientActions from "../../redux/client/actions";
 import subscriptionActions from "../../redux/subscription/actions";
 import InterviewDialog from "../../components/Dialog/interviewDialog";
@@ -343,47 +341,6 @@ const JobOpeningMatches = () => {
 
   const columnsClients = [
     {
-      name: "Status",
-      minWidth: "110px",
-      cell: (row) => {
-        const createdDate = moment(row.created_at);
-        const fiveDaysAgo = moment().subtract(5, "days");
-
-        // if (user?.email != 'gunjan@growworkinfotech.com') {
-        //   return null
-        // }
-
-        if (createdDate.isAfter(fiveDaysAgo)) {
-          return (
-            <Badge
-              pill
-              color="default"
-              style={{ backgroundColor: themeColor }}
-              className="column-action d-flex align-items-center"
-            >
-              {"New"}
-            </Badge>
-          );
-        } else {
-          return null;
-        }
-      },
-    },
-    {
-      name: "Match Score",
-      selector: (row) =>
-        row?.matchScore != null ? `${row.matchScore}%` : "0%",
-      minWidth: "110px",
-    },
-    {
-      name: "Profile Completion",
-      selector: (row) =>
-        row?.profileCompleteness != null
-          ? `${row.profileCompleteness}%`
-          : "-",
-      minWidth: "120px",
-    },
-    {
       name: "First Name",
       selector: (row) => row?.firstname,
     },
@@ -394,10 +351,6 @@ const JobOpeningMatches = () => {
     {
       name: "Job Category",
       selector: (row) => row?.professional?.jobCategory?.jobCategory,
-    },
-    {
-      name: "gender",
-      selector: (row) => row?.gender,
     },
     {
       name: "Qualification Held",
@@ -438,43 +391,6 @@ const JobOpeningMatches = () => {
   ];
   const subscriptionColumnsClients = [
     {
-      name: "Status",
-      minWidth: "110px",
-      cell: (row) => {
-        const createdDate = moment(row.created_at);
-        const fiveDaysAgo = moment().subtract(5, "days");
-
-        if (createdDate.isAfter(fiveDaysAgo)) {
-          return (
-            <Badge
-              pill
-              color="default"
-              style={{ backgroundColor: themeColor }}
-              className="column-action d-flex align-items-center"
-            >
-              {"New"}
-            </Badge>
-          );
-        } else {
-          return null;
-        }
-      },
-    },
-    {
-      name: "Match Score",
-      selector: (row) =>
-        row?.matchScore != null ? `${row.matchScore}%` : "0%",
-      minWidth: "110px",
-    },
-    {
-      name: "Profile Completion",
-      selector: (row) =>
-        row?.profileCompleteness != null
-          ? `${row.profileCompleteness}%`
-          : "-",
-      minWidth: "120px",
-    },
-    {
       name: "First Name",
       selector: (row) => row?.firstname,
     },
@@ -493,10 +409,6 @@ const JobOpeningMatches = () => {
     {
       name: "Job Category",
       selector: (row) => row?.professional?.jobCategory?.jobCategory,
-    },
-    {
-      name: "gender",
-      selector: (row) => row?.gender,
     },
     {
       name: "Qualification Held",
