@@ -21,7 +21,7 @@ import {
 } from "reactstrap";
 import { Button } from "reactstrap";
 import { useDispatch, useSelector } from "react-redux";
-import { useParams } from "react-router-dom";
+import { useParams, useLocation, useHistory } from "react-router-dom";
 import candidateActions from "../../redux/candidate/actions";
 import { Info } from "react-feather";
 import jobsApplyActions from "../../redux/jobsapply/actions";
@@ -87,6 +87,8 @@ const getAgencyBannerImageUrl = (agency = {}) => {
 const JobMatches = () => {
   const dispatch = useDispatch();
   const { slug } = useParams();
+  const location = useLocation();
+  const history = useHistory();
   const themecolor = useSelector(
     (state) => state?.agency?.agencyDetail?.themecolor
   );
@@ -536,6 +538,28 @@ const JobMatches = () => {
       payload: { page: 1, perPage: 10 }
     });
   }, [dispatch]);
+
+  // Email / WhatsApp "View Job" → /{slug}/jobmatches?jobId=xxx
+  // After login, auto-open that job's View/Apply modal
+  useEffect(() => {
+    const params = new URLSearchParams(location.search || "");
+    const jobId = String(params.get("jobId") || "").trim();
+    if (!jobId || !results.length || jobModalOpen) return;
+
+    const match = results.find(
+      (job) =>
+        String(job?.id || "") === jobId || String(job?._id || "") === jobId
+    );
+    if (!match) return;
+
+    handleViewJob(match);
+    params.delete("jobId");
+    const nextSearch = params.toString();
+    history.replace({
+      pathname: location.pathname,
+      search: nextSearch ? `?${nextSearch}` : "",
+    });
+  }, [results, location.search, jobModalOpen]);
 
   const handlePageChange = (newPage) => {
     if (newPage < 1 || newPage > totalPages) return;
