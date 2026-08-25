@@ -58,6 +58,22 @@ const MATCH_OPTIONS = [
   { label: "Company Owner", value: "companyowner" },
 ];
 
+const JOB_MATCH_OPTIONS = [
+  { label: "Use Input Value", value: "input" },
+  { label: "First Name", value: "firstname" },
+  { label: "Last Name", value: "lastname" },
+  { label: "Contact Name", value: "fullname" },
+  { label: "Mobile", value: "mobile" },
+  { label: "Email", value: "email" },
+  { label: "City", value: "city" },
+  { label: "Job Title", value: "jobTitle" },
+  { label: "Job Location", value: "jobLocation" },
+  { label: "Experience Required", value: "minExperienceYears" },
+  { label: "Salary Start", value: "salaryRangeStart" },
+  { label: "Salary End", value: "salaryRangeEnd" },
+  { label: "Job Details Link", value: "jobDetailsLink" },
+];
+
 const MATCH_TO_PLACEHOLDER = {
   firstname: "{{firstname}}",
   lastname: "{{lastname}}",
@@ -78,6 +94,12 @@ const MATCH_TO_PLACEHOLDER = {
   planPrice: "{{planPrice}}",
   planDuration: "{{planDuration}}",
   planExpiry: "{{planExpiry}}",
+  jobTitle: "{{jobTitle}}",
+  jobLocation: "{{jobLocation}}",
+  minExperienceYears: "{{minExperienceYears}}",
+  salaryRangeStart: "{{salaryRangeStart}}",
+  salaryRangeEnd: "{{salaryRangeEnd}}",
+  jobDetailsLink: "{{jobDetailsLink}}",
 };
 
 const PLAN_MATCH_OPTIONS = [
@@ -97,7 +119,7 @@ const PLAN_MATCH_OPTIONS = [
 const newApiId = () =>
   `api_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
-/** Fixed API slots — Client welcome + Customer (2) + Plan assign. */
+/** Fixed API slots — Client + Customer + Plan + New Job Best Match. */
 const MSG_CONFIG_SLOTS = [
   {
     id: "msg-client-welcome",
@@ -135,6 +157,15 @@ const MSG_CONFIG_SLOTS = [
     badge: "Plan",
     badgeColor: "success",
   },
+  {
+    id: "msg-new-job-bestmatch",
+    audience: "job",
+    section: "job",
+    title: "New Job Best Match",
+    subtitle: "on new job add — all candidates on Best Match list get this WhatsApp",
+    badge: "Job",
+    badgeColor: "primary",
+  },
 ];
 
 const MSG_SECTIONS = [
@@ -161,6 +192,14 @@ const MSG_SECTIONS = [
     badge: "Plan",
     badgeColor: "success",
     slotIds: ["msg-client-plan"],
+  },
+  {
+    key: "job",
+    title: "4. New Job Best Match",
+    subtitle: "1 WhatsApp when a new job is added — sent to every Best Match candidate",
+    badge: "Job",
+    badgeColor: "primary",
+    slotIds: ["msg-new-job-bestmatch"],
   },
 ];
 
@@ -625,7 +664,7 @@ const normalizeApis = (data) => {
     }
 
     const match = pickUnused();
-    if (slot.audience === "plan") {
+    if (slot.audience === "plan" || slot.audience === "job") {
       return mergeSavedApi(slot, null);
     }
     return mergeSavedApi(slot, match);
@@ -653,6 +692,9 @@ const faqHeaderStyle = {
 const getMatchOptions = (audience) => {
   if (audience === "plan") {
     return PLAN_MATCH_OPTIONS;
+  }
+  if (audience === "job") {
+    return JOB_MATCH_OPTIONS;
   }
   const base = MATCH_OPTIONS.filter((o) => o.value !== "image");
   if (audience === "client") {
@@ -1146,7 +1188,7 @@ const Msg = () => {
           {openFaq.config ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
           <strong className="flex-grow-1">1. API Configuration (cURL)</strong>
           <Badge color="primary" pill>
-            3 sections
+            4 sections
           </Badge>
         </div>
         <Collapse isOpen={openFaq.config}>
