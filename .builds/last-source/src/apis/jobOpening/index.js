@@ -52,6 +52,8 @@ export const generateJobDescriptionAPI = async (payload) => {
 export const updateJobPostingStatusAPI = async (payload) => {
   return await apiCall.put(`/jobOpening/${payload.id}/posting-status`, {
     postingStatus: payload.postingStatus,
+    notifyEmail: payload.notifyEmail === true,
+    notifyWhatsapp: payload.notifyWhatsapp === true,
   });
 };
 

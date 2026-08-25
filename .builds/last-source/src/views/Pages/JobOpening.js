@@ -26,6 +26,9 @@ import {
   DropdownItem,
   DropdownMenu,
   DropdownToggle,
+  FormGroup,
+  Input,
+  Label,
   Modal,
   ModalBody,
   ModalFooter,
@@ -225,13 +228,19 @@ const JobOpening = () => {
     })();
   }, []);
 
-  const handlePostingStatus = async (row, postingStatus) => {
+  const handlePostingStatus = async (
+    row,
+    postingStatus,
+    notifyOptions = {}
+  ) => {
     if (!row?.id) return;
     try {
       setLoading(true);
       const res = await updateJobPostingStatusAPI({
         id: row.id,
         postingStatus,
+        notifyEmail: notifyOptions.notifyEmail === true,
+        notifyWhatsapp: notifyOptions.notifyWhatsapp === true,
       });
       // axios interceptor unwraps resp.data → body is { success, msg, postingStatus }
       const body = res?.success !== undefined ? res : res?.data;
@@ -260,6 +269,26 @@ const JobOpening = () => {
     }
   };
 
+  const openPublishConfirm = (row) => {
+    setPublishJobRow(row);
+    setPublishNotifyEmail(true);
+    setPublishNotifyWhatsapp(true);
+    setShowPublishModal(true);
+  };
+
+  const confirmPublish = async () => {
+    if (!publishJobRow) return;
+    const row = publishJobRow;
+    const notifyEmail = publishNotifyEmail;
+    const notifyWhatsapp = publishNotifyWhatsapp;
+    setShowPublishModal(false);
+    setPublishJobRow(null);
+    await handlePostingStatus(row, "published", {
+      notifyEmail,
+      notifyWhatsapp,
+    });
+  };
+
   const renderPostingActions = (row) => (
     <>
       {canOpenJob && row?.postingStatus !== "open" ? (
@@ -282,7 +311,7 @@ const JobOpening = () => {
           className="w-100"
           onClick={(e) => {
             e.preventDefault();
-            handlePostingStatus(row, "published");
+            openPublishConfirm(row);
           }}
         >
           <span className="align-middle">Publish</span>
@@ -891,6 +920,10 @@ const JobOpening = () => {
   };
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showPublishModal, setShowPublishModal] = useState(false);
+  const [publishJobRow, setPublishJobRow] = useState(null);
+  const [publishNotifyEmail, setPublishNotifyEmail] = useState(true);
+  const [publishNotifyWhatsapp, setPublishNotifyWhatsapp] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [onBoardingToDelete, setOnBoardingToDelete] = useState(null);
 
@@ -1394,6 +1427,74 @@ const JobOpening = () => {
           </Button>
         </ModalFooter>
       </Modal >
+
+      {/* Publish Job — notify Best Match? */}
+      <Modal
+        className="modal-dialog-centered"
+        isOpen={showPublishModal}
+        toggle={() => {
+          setShowPublishModal(false);
+          setPublishJobRow(null);
+        }}
+      >
+        <ModalHeader
+          toggle={() => {
+            setShowPublishModal(false);
+            setPublishJobRow(null);
+          }}
+        >
+          Publish Job
+        </ModalHeader>
+        <ModalBody>
+          <p className="mb-1">
+            Publish{" "}
+            <strong>{publishJobRow?.designation || "this job"}</strong>?
+          </p>
+          <p className="mb-2 text-muted" style={{ fontSize: "0.9rem" }}>
+            Best Match candidates ne email / WhatsApp moklva mango cho?
+          </p>
+          <FormGroup check className="mb-1">
+            <Input
+              type="checkbox"
+              id="publish-notify-email"
+              checked={publishNotifyEmail}
+              onChange={(e) => setPublishNotifyEmail(e.target.checked)}
+            />
+            <Label check for="publish-notify-email">
+              Email moklo
+            </Label>
+          </FormGroup>
+          <FormGroup check>
+            <Input
+              type="checkbox"
+              id="publish-notify-whatsapp"
+              checked={publishNotifyWhatsapp}
+              onChange={(e) => setPublishNotifyWhatsapp(e.target.checked)}
+            />
+            <Label check for="publish-notify-whatsapp">
+              WhatsApp moklo
+            </Label>
+          </FormGroup>
+        </ModalBody>
+        <ModalFooter>
+          <Button
+            color="default"
+            style={{ backgroundColor: themecolor, color: "white" }}
+            onClick={confirmPublish}
+          >
+            Publish
+          </Button>
+          <Button
+            color="secondary"
+            onClick={() => {
+              setShowPublishModal(false);
+              setPublishJobRow(null);
+            }}
+          >
+            Cancel
+          </Button>
+        </ModalFooter>
+      </Modal>
 
 
       {show === true ? (
