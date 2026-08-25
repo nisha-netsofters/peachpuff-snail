@@ -1451,7 +1451,7 @@ const JobOpening = () => {
             <strong>{publishJobRow?.designation || "this job"}</strong>?
           </p>
           <p className="mb-2 text-muted" style={{ fontSize: "0.9rem" }}>
-            Best Match candidates ne email / WhatsApp moklva mango cho?
+            Do you want to notify Best Match candidates by Email and/or WhatsApp?
           </p>
           <FormGroup check className="mb-1">
             <Input
@@ -1461,7 +1461,7 @@ const JobOpening = () => {
               onChange={(e) => setPublishNotifyEmail(e.target.checked)}
             />
             <Label check for="publish-notify-email">
-              Email moklo
+              Send Email
             </Label>
           </FormGroup>
           <FormGroup check>
@@ -1472,7 +1472,7 @@ const JobOpening = () => {
               onChange={(e) => setPublishNotifyWhatsapp(e.target.checked)}
             />
             <Label check for="publish-notify-whatsapp">
-              WhatsApp moklo
+              Send WhatsApp
             </Label>
           </FormGroup>
         </ModalBody>
