@@ -295,16 +295,19 @@ const Router = () => {
               storedUser = null;
             }
 
-            // Old WhatsApp profile links: /{slug}/candidate?id=...
-            // Candidates cannot open the recruiter candidate page → send to Profile
+            // WhatsApp job "View Job" often points at /{slug}/candidate (recruiter page).
+            // Candidates cannot open that list — send Job Matches instead.
+            // Old welcome links /{slug}/candidate?id=... still go to Profile.
             const candidateDeepLink = (location.pathname || "").match(
               /^\/([^/]+)\/candidate\/?$/
             );
-            const hasCandidateId = new URLSearchParams(
-              location.search || ""
-            ).has("id");
-            if (candidateDeepLink && hasCandidateId) {
-              const profilePath = `/${candidateDeepLink[1]}/profile`;
+            if (candidateDeepLink) {
+              const hasCandidateId = new URLSearchParams(
+                location.search || ""
+              ).has("id");
+              const dest = hasCandidateId
+                ? `/${candidateDeepLink[1]}/profile`
+                : `/${candidateDeepLink[1]}/jobmatches`;
               if (
                 !token ||
                 token === "null" ||
@@ -312,12 +315,12 @@ const Router = () => {
               ) {
                 return (
                   <Redirect
-                    to={`/login?redirect=${encodeURIComponent(profilePath)}`}
+                    to={`/login?redirect=${encodeURIComponent(dest)}`}
                   />
                 );
               }
               if (storedUser?.role?.name === "Candidate") {
-                return <Redirect to={profilePath} />;
+                return <Redirect to={dest} />;
               }
             }
 

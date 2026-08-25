@@ -79,28 +79,36 @@ const LoginCover = (props) => {
 
       const slugId = localStorage.getItem("slug") || "uniqueworld";
 
-      // Candidates: old WhatsApp links (/slug/candidate?id=) → Profile page
+      // Candidates: WhatsApp job "View Job" is often a static /{slug}/candidate URL.
+      // That is the recruiter list — send them to Job Matches instead.
+      // Old profile deep-links /{slug}/candidate?id= still go to Profile.
       if (user?.role?.name === "Candidate" && safeRedirect) {
         const pathOnly = safeRedirect.split("?")[0];
+        const qs = safeRedirect.includes("?")
+          ? safeRedirect.slice(safeRedirect.indexOf("?"))
+          : "";
         const candMatch = pathOnly.match(/^\/([^/]+)\/candidate\/?$/);
         if (candMatch) {
-          safeRedirect = `/${candMatch[1]}/profile`;
+          const hasId = new URLSearchParams(qs.replace(/^\?/, "")).has("id");
+          safeRedirect = hasId
+            ? `/${candMatch[1]}/profile`
+            : `/${candMatch[1]}/jobmatches`;
         }
         // WhatsApp URL button appended the path twice:
         // /uniqueworld/profile/uniqueworld/profile → /uniqueworld/profile
         const dup = pathOnly.match(/^\/([^/]+)\/profile\/\1\/profile\/?$/);
         if (dup) {
-          const qs = safeRedirect.includes("?")
+          const q = safeRedirect.includes("?")
             ? safeRedirect.slice(safeRedirect.indexOf("?"))
             : "";
-          safeRedirect = `/${dup[1]}/profile${qs}`;
+          safeRedirect = `/${dup[1]}/profile${q}`;
         } else {
           const profileSlash = pathOnly.match(/^\/([^/]+)\/profile\/?$/);
-          if (profileSlash) {
-            const qs = safeRedirect.includes("?")
+          if (profileSlash && !candMatch) {
+            const q = safeRedirect.includes("?")
               ? safeRedirect.slice(safeRedirect.indexOf("?"))
               : "";
-            safeRedirect = `/${profileSlash[1]}/profile${qs}`;
+            safeRedirect = `/${profileSlash[1]}/profile${q}`;
           }
         }
       }
