@@ -8,7 +8,23 @@ import moment from "moment";
 import { useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { getCandidateAPI } from "../../../apis/candidate";
+import { getClientAPI, getAllClientsAPI } from "../../../apis/client";
 import AsyncSelect from "react-select/async";
+
+const toCompanyOption = (ele) => {
+  if (!ele) return null;
+  const id = ele.id || ele._id || ele.value;
+  if (!id) return null;
+  const companyName = ele.companyName || ele.label || "-";
+  const jobCat = ele?.jobCategory?.jobCategory;
+  return {
+    id: String(id),
+    value: String(id),
+    key: "onBoardingId",
+    companyName,
+    label: jobCat ? `${companyName} (${jobCat})` : String(companyName),
+  };
+};
 
 const InterviewForm = ({
   interview,
@@ -49,6 +65,25 @@ const InterviewForm = ({
       ...fields,
     }));
 
+  const applyCompanySelection = (option) => {
+    if (!option) {
+      setSelectCompany(null);
+      setSelectCompanyValidation(null);
+      patchInterview({ onBoardingId: undefined });
+      return;
+    }
+    const opt = toCompanyOption(option) || option;
+    setSelectCompany(opt);
+    setSelectCompanyValidation(opt.value || opt.id);
+    patchInterview({
+      onBoardingId: opt.value || opt.id,
+      client: {
+        id: opt.value || opt.id,
+        companyName: opt.companyName || opt.label,
+      },
+    });
+  };
+
   const getCandidate = async (text) => {
     const payload = {
       filterData: {
@@ -75,8 +110,16 @@ const InterviewForm = ({
     }
 
     if (interview?.candidateId) {
+      const nameFromCandidate = [
+        interview?.candidate?.firstname,
+        interview?.candidate?.lastname,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .trim();
+      const nameFromUrl = [first, last].filter(Boolean).join(" ").trim();
       setSelectCandidate({
-        label: first + last,
+        label: nameFromCandidate || nameFromUrl || "Selected Candidate",
         value: interview?.candidateId,
       });
       setSelectCandidateValidation(interview?.candidateId);
@@ -108,19 +151,15 @@ const InterviewForm = ({
   ];
 
   useEffect(() => {
-    if (
-      interview?.onBoarding?.companyName !== undefined ||
-      interview?.client?.companyName !== undefined
-    ) {
-      let label = interview?.onBoarding?.companyName;
-      if (interview?.client?.companyName)
-        label = interview?.client?.companyName;
-      setSelectCompany({ label });
-      setSelectCompanyValidation({ label: interview?.onBoarding?.companyName });
-    }
-    if (interview?.candidate?.firstname !== undefined) {
-      setSelectCandidate({ label: interview?.candidate?.firstname });
-      setSelectCandidateValidation({ label: interview?.candidate?.firstname });
+    if (interview?.candidate?.firstname !== undefined || interview?.candidate?.lastname) {
+      const label = `${interview?.candidate?.firstname || ""} ${
+        interview?.candidate?.lastname || ""
+      }`.trim();
+      setSelectCandidate({
+        label: label || "Selected Candidate",
+        value: interview?.candidateId,
+      });
+      setSelectCandidateValidation(interview?.candidateId || { label });
     }
     if (interview?.interviewStatus !== undefined) {
       const matchedStatus = statusOptions.find(
@@ -143,24 +182,114 @@ const InterviewForm = ({
     }
   }, [interview]);
 
+  // Load company list when dialog opens
   useEffect(() => {
-    const company = [];
+    if (!show) return;
+    let cancelled = false;
 
-    clients?.forEach((ele) => {
-      ele.label = ` ${ele.companyName} (${ele?.jobCategory?.jobCategory})`;
-      ele.key = "onBoardingId";
-      company.push(ele);
-    });
-
-    if (getCompany?.length > 0) {
-      getCompany?.filter((ele) => {
-        ele.label = ` ${ele.companyName}`;
-        ele.key = "onBoardingId";
-        company.push(ele);
+    const buildOptions = (list) => {
+      const unique = [];
+      const seen = new Set();
+      (list || []).forEach((ele) => {
+        const opt = toCompanyOption(ele);
+        if (!opt || seen.has(opt.value)) return;
+        seen.add(opt.value);
+        unique.push(opt);
       });
+      return unique;
+    };
+
+    const mergeLocal = () => {
+      const fromProps = Array.isArray(clients) ? clients : [];
+      const fromStore = Array.isArray(getCompany?.results)
+        ? getCompany.results
+        : Array.isArray(getCompany)
+          ? getCompany
+          : [];
+      return buildOptions([...fromProps, ...fromStore]);
+    };
+
+    (async () => {
+      if (!cancelled) setClientOptions(mergeLocal());
+      try {
+        let resp = await getClientAPI({
+          page: 1,
+          perPage: 100,
+          filterData: {},
+        });
+        let rows = resp?.results || resp?.data?.results || [];
+        if (!Array.isArray(rows) || !rows.length) {
+          const allResp = await getAllClientsAPI();
+          rows = Array.isArray(allResp)
+            ? allResp
+            : allResp?.results || allResp?.data || [];
+        }
+        const next = buildOptions([
+          ...(Array.isArray(rows) ? rows : []),
+          ...(Array.isArray(clients) ? clients : []),
+        ]);
+        if (!cancelled) setClientOptions(next);
+      } catch (err) {
+        console.error("InterviewForm company load error =>", err);
+        if (!cancelled) setClientOptions(mergeLocal());
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [show, clients, getCompany]);
+
+  // Sync selected company only when editing / company already saved on interview
+  useEffect(() => {
+    // Create flow: always show placeholder until user picks a company
+    if (create && !update) {
+      if (!interview?.onBoardingId && !interview?.client?.id) {
+        setSelectCompany(null);
+        setSelectCompanyValidation(null);
+      }
+      return;
     }
-    setClientOptions(company);
-  }, [candidates, clients, show, getCompany]);
+
+    const companyId = String(
+      interview?.onBoardingId ||
+        interview?.client?.id ||
+        interview?.onBoarding?.id ||
+        ""
+    );
+    if (!companyId) return;
+
+    const matched = clientOptions.find(
+      (o) => String(o.value) === companyId || String(o.id) === companyId
+    );
+    if (matched) {
+      setSelectCompany(matched);
+      setSelectCompanyValidation(matched.value);
+      return;
+    }
+
+    const label =
+      interview?.client?.companyName ||
+      interview?.onBoarding?.companyName ||
+      interview?.companyName ||
+      "Selected Company";
+    setSelectCompany({
+      id: companyId,
+      value: companyId,
+      key: "onBoardingId",
+      companyName: label,
+      label,
+    });
+    setSelectCompanyValidation(companyId);
+  }, [
+    create,
+    update,
+    interview?.onBoardingId,
+    interview?.client,
+    interview?.onBoarding,
+    interview?.companyName,
+    clientOptions,
+  ]);
 
   const candidateOptions =
     candidates?.map((ele) => ({
@@ -221,22 +350,41 @@ const InterviewForm = ({
         <Col lg={6} xs={12} xl={4}>
           <div>
             <Label id="candidateId">
-              Select Candidate<span style={{ color: "red" }}>*</span>
+              Candidate<span style={{ color: "red" }}>*</span>
             </Label>
-            <AsyncSelect
-              id="candidateId"
-              isDisabled={disableField}
-              value={selectCandidate}
-              isClearable={false}
-              className="react-select"
-              classNamePrefix="select"
-              name="callback-react-select"
-              loadOptions={loadOptions}
-              defaultOptions={candidateOptions}
-              onInputChange={handleInputChange}
-              theme={selectThemeColors}
-              onChange={debouncedHandleChange}
-            />
+            {disableField || interview?.candidateId ? (
+              <Input
+                id="candidateId"
+                type="text"
+                readOnly
+                disabled
+                value={
+                  selectCandidate?.label ||
+                  [
+                    interview?.candidate?.firstname,
+                    interview?.candidate?.lastname,
+                  ]
+                    .filter(Boolean)
+                    .join(" ")
+                    .trim() ||
+                  ""
+                }
+              />
+            ) : (
+              <AsyncSelect
+                id="candidateId"
+                value={selectCandidate}
+                isClearable={false}
+                className="react-select"
+                classNamePrefix="select"
+                name="callback-react-select"
+                loadOptions={loadOptions}
+                defaultOptions={candidateOptions}
+                onInputChange={handleInputChange}
+                theme={selectThemeColors}
+                onChange={debouncedHandleChange}
+              />
+            )}
           </div>
         </Col>
         <Col lg={6} xs={12} xl={4}>
@@ -245,19 +393,20 @@ const InterviewForm = ({
               Select Company<span style={{ color: "red" }}>*</span>
             </Label>
             <Select
-              isDisabled={update}
               id="companyId"
               value={selectCompany}
-              placeholder="Select Company"
+              placeholder={
+                clientOptions.length ? "Select Company" : "Loading companies..."
+              }
               options={clientOptions}
+              isDisabled={false}
+              isClearable={false}
               className="react-select"
               classNamePrefix="select"
               theme={selectThemeColors}
-              onChange={(e) => {
-                setSelectCompany(e);
-                handleChange(e);
-                setSelectCompanyValidation(e.value);
-              }}
+              getOptionValue={(opt) => String(opt?.value || opt?.id || "")}
+              getOptionLabel={(opt) => opt?.label || opt?.companyName || ""}
+              onChange={(e) => applyCompanySelection(e)}
             />
           </div>
         </Col>

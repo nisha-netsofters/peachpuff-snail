@@ -18,7 +18,12 @@ export const getInterviewStatusBadgeColor = (status) => {
 };
 
 export const InterviewStatusCell = ({ row }) => {
-  const status = row?.interviewStatus || "available";
+  // Job-scoped: without an interview for THIS job, show available
+  const status = row?.latestInterview?.id
+    ? row?.latestInterview?.interviewStatus ||
+      row?.interviewStatus ||
+      "scheduled"
+    : "available";
   return (
     <Badge
       pill
@@ -31,12 +36,9 @@ export const InterviewStatusCell = ({ row }) => {
   );
 };
 
+/** Only count interview linked to this job (latestInterview from match API). */
 export const hasExistingInterview = (row) =>
-  Boolean(row?.latestInterview?.id) ||
-  Boolean(row?.interviews?.id) ||
-  Boolean(row?.interviewerId) ||
-  (row?.interviewStatus &&
-    String(row.interviewStatus).toLowerCase() !== "available");
+  Boolean(row?.latestInterview?.id);
 
 export const hasViewedByCurrentUser = (row) =>
   row?.viewedByCurrentUser === true;

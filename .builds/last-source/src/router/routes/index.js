@@ -34,6 +34,27 @@ const Routes = [
     permission: ["Candidate"],
   },
   {
+    path: "/:slug/my-interviews",
+    exact: true,
+    component: lazy(() => import("../../views/Pages/CandidateInterviews")),
+    permission: ["Candidate"],
+  },
+  {
+    path: "/:slug/resume-viewer",
+    exact: true,
+    component: lazy(() => import("../../views/Pages/ResumeViewer")),
+    layout: "BlankLayout",
+    permission: [
+      "Admin",
+      "Team Leader",
+      "BDM",
+      "Recruiter",
+      "Staff",
+      "Client",
+      "Candidate",
+    ],
+  },
+  {
     path: "/superadmin/agency",
     exact: true,
     component: lazy(() => import("../../views/Pages/superAdminPages/Agency")),

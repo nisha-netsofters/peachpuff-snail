@@ -24,6 +24,16 @@ const Filter = ({
   const jobCategories = useSelector((state) => state.jobCategory.results);
   const [selectTempUser, setSelectTempUser] = useState(null);
   const [jobCategory, setjobCategory] = useState(null);
+  const [createdWithin, setCreatedWithin] = useState(null);
+
+  const createdWithinOptions = [
+    { value: "1day", label: "Last 1 Day" },
+    { value: "7days", label: "Last 7 Days" },
+    { value: "30days", label: "Last 30 Days" },
+    { value: "3months", label: "Last 3 Months" },
+    { value: "6months", label: "Last 6 Months" },
+    { value: "12months", label: "Last 12 Months" },
+  ];
 
   const jobCategoryOptions = (jobCategories || []).map((item) => ({
     label: item.jobCategory,
@@ -43,6 +53,9 @@ const Filter = ({
     if (jobCategory?.value) {
       filterdata.jobCategoryId = jobCategory.value;
     }
+    if (createdWithin?.value) {
+      filterdata.createdWithin = createdWithin.value;
+    }
     handleFilter(filterdata);
     handleFilterToggleMode(false);
   };
@@ -50,6 +63,7 @@ const Filter = ({
   const handleClear = () => {
     setSelectTempUser(null);
     setjobCategory(null);
+    setCreatedWithin(null);
     handleFilter({});
     handleFilterToggleMode(false);
     setclear(false);
@@ -59,6 +73,7 @@ const Filter = ({
     if (clear === true) {
       setSelectTempUser(null);
       setjobCategory(null);
+      setCreatedWithin(null);
       setclear(false);
     }
   }, [clear, setclear]);
@@ -140,6 +155,20 @@ const Filter = ({
               theme={selectThemeColors}
               isClearable
               onChange={(e) => setjobCategory(e)}
+            />
+          </Col>
+          <Col md="12" className="mt-1">
+            <Label>Created Within</Label>
+            <Select
+              menuPlacement="auto"
+              value={createdWithin}
+              placeholder="Select days / period"
+              options={createdWithinOptions}
+              className="react-select"
+              classNamePrefix="select"
+              theme={selectThemeColors}
+              isClearable
+              onChange={(e) => setCreatedWithin(e)}
             />
           </Col>
         </Row>

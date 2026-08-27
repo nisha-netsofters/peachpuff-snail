@@ -21,7 +21,7 @@ import DataTable from "react-data-table-component";
 import ComponentSpinner from "../../@core/components/spinner/Loading-spinner";
 import moment from "moment/moment";
 import whatsapp from "../../assets/images/whatsapp-svgrepo-com.svg";
-// import clientActions from "../../redux/client/actions";
+import clientActions from "../../redux/client/actions";
 import subscriptionActions from "../../redux/subscription/actions";
 import InterviewDialog from "../../components/Dialog/interviewDialog";
 import interviewActions from "../../redux/interview/actions";
@@ -56,7 +56,13 @@ const NewJobMatches = () => {
   );
   const user = useSelector((state) => state?.auth?.user);
   const loginUser = useSelector((state) => state?.auth?.user);
-  const clients = useSelector((state) => state.onBoarding.results);
+  const clientsState = useSelector((state) => state.client);
+  const onboardingState = useSelector((state) => state.onBoarding);
+  const clients = Array.isArray(clientsState?.results)
+    ? clientsState.results
+    : Array.isArray(onboardingState?.results)
+      ? onboardingState.results
+      : [];
   const candidates = useSelector((state) => state.candidate.results);
   const { isLoading, jobOpeningNewMatchCandidate, jobOpeningRow } = useSelector(
     (state) => state?.jobOpeningMatches
@@ -172,6 +178,14 @@ const NewJobMatches = () => {
         payload: { page: 1, perPage: 10, filterData: {} },
       });
       await dispatch({
+        type: clientActions.GET_CLIENT,
+        payload: {
+          page: 1,
+          perPage: 100,
+          filterData: {},
+        },
+      });
+      await dispatch({
         type: onBoardingActions.GET_ONBOARDING,
         payload: {
           filterData: {},
@@ -185,19 +199,21 @@ const NewJobMatches = () => {
 
   const openInterviewDialog = async (candidate) => {
     setInterviewLoading(true);
-    let existing =
-      candidate?.latestInterview?.id
-        ? candidate.latestInterview
-        : candidate?.interviews?.id
-          ? candidate.interviews
-          : null;
-    if (!existing?.id) {
+    const jobOpeningId = params?.id;
+    // Only use job-scoped interview — never fall back to candidate.interviews (global)
+    let existing = candidate?.latestInterview?.id
+      ? candidate.latestInterview
+      : null;
+    if (!existing?.id && jobOpeningId) {
       try {
         const resp = await getInterviewAPI({
           page: 1,
           perPage: 1,
           skipUserFilter: true,
-          filterData: { candidateId: candidate.id },
+          filterData: {
+            candidateId: candidate.id,
+            jobOpeningId,
+          },
         });
         existing = resp?.results?.[0];
       } catch (error) {
@@ -208,6 +224,7 @@ const NewJobMatches = () => {
       setInterview({
         ...existing,
         candidateId: existing.candidateId || candidate.id,
+        jobOpeningId: existing.jobOpeningId || jobOpeningId,
         candidate: existing.candidate || {
           firstname: candidate.firstname,
           lastname: candidate.lastname,
@@ -220,7 +237,14 @@ const NewJobMatches = () => {
       setInterview({
         candidateId: candidate?.id,
         userId: loginUser?.id,
+        jobOpeningId,
+        candidate: {
+          firstname: candidate?.firstname,
+          lastname: candidate?.lastname,
+          interviewStatus: candidate?.interviewStatus,
+        },
       });
+      setSelectCompanyValidation(null);
       setCreateInterview(true);
       setUpdateInterview(false);
     }
@@ -233,6 +257,7 @@ const NewJobMatches = () => {
     const payload = {
       ...(Array.isArray(interview) ? {} : interview || {}),
       userId: interview?.userId || loginUser?.id,
+      jobOpeningId: interview?.jobOpeningId || params?.id,
     };
     await dispatch({
       type: interviewActions.CREATE_INTERVIEW,

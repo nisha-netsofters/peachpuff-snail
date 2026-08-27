@@ -14,7 +14,7 @@ export function* loading(state) {
 export function* WATCH_GET_JOB_OPENING_ROW(action) {
     const resp = yield getJobOpeningRow(action?.payload)
     console.info('--------------------')
-    console.info('resp => ', resp )
+    console.info('resp => ', resp)
     console.info('--------------------')
     if (resp) {
         yield put({
@@ -27,35 +27,53 @@ export function* WATCH_GET_JOB_OPENING_ROW(action) {
 }
 
 export function* WATCH_GET_JOB_OPENING_MATCH_CANDIDATE(action) {
-    const resp = yield getJobOpeningMatchCandidate(action?.payload)
-    console.info('--------------------')
-    console.info('resp => ', resp )
-    console.info('--------------------')
-    if (resp) {
+    yield loading(true)
+    try {
+        // Clear previous rows so empty "no records" does not flash while loading
         yield put({
             type: jobOpeningMatchesActions.SET_JOB_MATCHES_STATE,
             payload: {
-                jobOpeningMatchCandidate : resp
-            }
+                jobOpeningMatchCandidate: { results: [], total: 0 },
+            },
         })
+        const resp = yield getJobOpeningMatchCandidate(action?.payload)
+        console.info('--------------------')
+        console.info('resp => ', resp)
+        console.info('--------------------')
+        if (resp) {
+            yield put({
+                type: jobOpeningMatchesActions.SET_JOB_MATCHES_STATE,
+                payload: {
+                    jobOpeningMatchCandidate: resp,
+                },
+            })
+        }
+    } finally {
+        yield loading(false)
     }
-    // const resp = yield findByIdjobOpeningAPI(action.payload)
-    // yield put({
-    //     type: actions.SET_JOBOPENING,
-    //     payload: resp
-    // })
 }
 
 
 export function* WATCH_GET_JOB_OPENING_NEW_MATCH_CANDIDATE(action) {
-    const resp = yield getNewJobMatchCandidate(action?.payload)
-    if (resp) {
+    yield loading(true)
+    try {
         yield put({
             type: jobOpeningMatchesActions.SET_JOB_MATCHES_STATE,
             payload: {
-                jobOpeningNewMatchCandidate: resp
-            }
+                jobOpeningNewMatchCandidate: { results: [], total: 0 },
+            },
         })
+        const resp = yield getNewJobMatchCandidate(action?.payload)
+        if (resp) {
+            yield put({
+                type: jobOpeningMatchesActions.SET_JOB_MATCHES_STATE,
+                payload: {
+                    jobOpeningNewMatchCandidate: resp,
+                },
+            })
+        }
+    } finally {
+        yield loading(false)
     }
 }
 

@@ -30,6 +30,13 @@ export default [
     navLink: `/jobmatches`,
     permission: ["Candidate"],
   },
+  {
+    id: "my-interviews",
+    title: "My Interviews",
+    icon: <UserCheck size={20} />,
+    navLink: `/my-interviews`,
+    permission: ["Candidate"],
+  },
   // {
   //   id: "upload-resume",
   //   title: "Upload Resume",

@@ -161,6 +161,14 @@ export const getCandidateStatisticsAPI = async () => {
   });
 };
 
+export const getCandidateMyInterviewsAPI = async (payload = {}) => {
+  const page = payload.page || 1;
+  const perPage = payload.perPage || 10;
+  return await apiCall
+    .get(`/candidate/my-interviews?page=${page}&perPage=${perPage}`)
+    .then((res) => res);
+};
+
 export const getCandidateJobMatchingAPI = async (payload) => {
   return await apiCall.post(`/candidate/jobmatching`, payload).then((res) => { 
     return res;

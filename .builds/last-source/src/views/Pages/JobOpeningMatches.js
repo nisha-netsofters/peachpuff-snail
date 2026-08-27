@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { ArrowLeft, ChevronDown, ChevronUp } from "react-feather";
+import { ArrowLeft, Menu } from "react-feather";
 import { useDispatch, useSelector } from "react-redux";
 import { useHistory } from "react-router-dom/cjs/react-router-dom.min";
 import {
@@ -18,12 +18,12 @@ import jobOpeningMatchesActions from "../../redux/jobOpeningMatches/actions";
 import { useParams } from "react-router-dom/cjs/react-router-dom";
 import DataTable from "react-data-table-component";
 import ComponentSpinner from "../../@core/components/spinner/Loading-spinner";
-// import clientActions from "../../redux/client/actions";
 import subscriptionActions from "../../redux/subscription/actions";
 import InterviewDialog from "../../components/Dialog/interviewDialog";
 import interviewActions from "../../redux/interview/actions";
 import candidateActions from "../../redux/candidate/actions";
 import onBoardingActions from "../../redux/onBoarding/actions";
+import clientActions from "../../redux/client/actions";
 import { tostify } from "../../components/Tostify";
 import { getInterviewAPI } from "../../apis/interview";
 import Avatar from "@components/avatar";
@@ -52,7 +52,13 @@ const JobOpeningMatches = () => {
   );
   const user = useSelector((state) => state?.auth?.user);
   const loginUser = useSelector((state) => state?.auth?.user);
-  const clients = useSelector((state) => state.onBoarding.results);
+  const clientsState = useSelector((state) => state.client);
+  const onboardingState = useSelector((state) => state.onBoarding);
+  const clients = Array.isArray(clientsState?.results)
+    ? clientsState.results
+    : Array.isArray(onboardingState?.results)
+      ? onboardingState.results
+      : [];
   const candidates = useSelector((state) => state.candidate.results);
   const { isLoading, jobOpeningMatchCandidate, jobOpeningRow } = useSelector(
     (state) => state?.jobOpeningMatches
@@ -84,11 +90,16 @@ const JobOpeningMatches = () => {
   const [gender, setGender] = useState("");
   const [, setProfileEmail] = useState("");
   const [viewedCandidateIds, setViewedCandidateIds] = useState(() => new Set());
+  // Local gate so first paint never shows "no records" before saga sets isLoading
+  const [initialLoad, setInitialLoad] = useState(true);
+  const sawLoadingRef = React.useRef(false);
 
   console.info("--------------------");
   console.info("jobOpeningMatchCandidate => ", jobOpeningMatchCandidate);
   console.info("jobOpeningRow => ", jobOpeningRow);
   console.info("--------------------");
+
+  const showTableLoader = isLoading || interviewLoading || initialLoad;
 
   const getJobOpeningRow = async () => {
     await dispatch({
@@ -104,6 +115,11 @@ const JobOpeningMatches = () => {
     score = matchScore,
     duration = matchDuration
   ) => {
+    // Sync loader before saga runs so empty table never flashes
+    dispatch({
+      type: jobOpeningMatchesActions.JOB_MATCHES_LOADER,
+      payload: true,
+    });
     await dispatch({
       type: jobOpeningMatchesActions.GET_JOB_OPENING_MATCH_CANDIDATE,
       payload: {
@@ -116,6 +132,17 @@ const JobOpeningMatches = () => {
       },
     });
   };
+
+  useEffect(() => {
+    if (isLoading) sawLoadingRef.current = true;
+  }, [isLoading]);
+
+  // Drop local gate only after we actually entered a loading cycle
+  useEffect(() => {
+    if (initialLoad && sawLoadingRef.current && !isLoading) {
+      setInitialLoad(false);
+    }
+  }, [initialLoad, isLoading]);
 
   const reloadMatches = () =>
     getJobOpeningMatchCandidate(page, perPage, sortBy, matchScore, matchDuration);
@@ -163,6 +190,15 @@ const JobOpeningMatches = () => {
         type: candidateActions.GET_CANDIDATE,
         payload: { page: 1, perPage: 10, filterData: {} },
       });
+      // Interview company dropdown uses Clients (onBoardingId field stores client id)
+      await dispatch({
+        type: clientActions.GET_CLIENT,
+        payload: {
+          page: 1,
+          perPage: 100,
+          filterData: {},
+        },
+      });
       await dispatch({
         type: onBoardingActions.GET_ONBOARDING,
         payload: {
@@ -177,19 +213,21 @@ const JobOpeningMatches = () => {
 
   const openInterviewDialog = async (candidate) => {
     setInterviewLoading(true);
-    let existing =
-      candidate?.latestInterview?.id
-        ? candidate.latestInterview
-        : candidate?.interviews?.id
-          ? candidate.interviews
-          : null;
-    if (!existing?.id) {
+    const jobOpeningId = params?.id;
+    // Only use job-scoped interview — never fall back to candidate.interviews (global)
+    let existing = candidate?.latestInterview?.id
+      ? candidate.latestInterview
+      : null;
+    if (!existing?.id && jobOpeningId) {
       try {
         const resp = await getInterviewAPI({
           page: 1,
           perPage: 1,
           skipUserFilter: true,
-          filterData: { candidateId: candidate.id },
+          filterData: {
+            candidateId: candidate.id,
+            jobOpeningId,
+          },
         });
         existing = resp?.results?.[0];
       } catch (error) {
@@ -200,6 +238,7 @@ const JobOpeningMatches = () => {
       setInterview({
         ...existing,
         candidateId: existing.candidateId || candidate.id,
+        jobOpeningId: existing.jobOpeningId || jobOpeningId,
         candidate: existing.candidate || {
           firstname: candidate.firstname,
           lastname: candidate.lastname,
@@ -212,7 +251,14 @@ const JobOpeningMatches = () => {
       setInterview({
         candidateId: candidate?.id,
         userId: loginUser?.id,
+        jobOpeningId,
+        candidate: {
+          firstname: candidate?.firstname,
+          lastname: candidate?.lastname,
+          interviewStatus: candidate?.interviewStatus,
+        },
       });
+      setSelectCompanyValidation(null);
       setCreateInterview(true);
       setUpdateInterview(false);
     }
@@ -225,6 +271,7 @@ const JobOpeningMatches = () => {
     const payload = {
       ...(Array.isArray(interview) ? {} : interview || {}),
       userId: interview?.userId || loginUser?.id,
+      jobOpeningId: interview?.jobOpeningId || params?.id,
     };
     await dispatch({
       type: interviewActions.CREATE_INTERVIEW,
@@ -498,6 +545,23 @@ const JobOpeningMatches = () => {
           }}
         >
           <Button
+            color="default"
+            className="btn-icon"
+            title="Job Details"
+            aria-label="Job Details"
+            style={{
+              color: themeColor,
+              border: `1px solid ${themeColor || "#7367f0"}`,
+              padding: "6px 10px",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+            onClick={() => setDetailsOpen((prev) => !prev)}
+          >
+            <Menu size={18} />
+          </Button>
+          <Button
             style={{
               color: themeColor,
               display: "flex",
@@ -515,18 +579,7 @@ const JobOpeningMatches = () => {
           </Button>
           <Button
             color="default"
-            style={{
-              backgroundColor: themeColor,
-              color: "white",
-              marginLeft: "auto",
-            }}
-            onClick={() => setDetailsOpen((prev) => !prev)}
-          >
-            Job Details {detailsOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-          </Button>
-          <Button
-            color="default"
-            style={{ backgroundColor: themeColor, color: "white", width: "145px" }}
+            style={{ backgroundColor: themeColor, color: "white", width: "145px", marginLeft: "auto" }}
             onClick={() => setFilterToggleMode((prev) => !prev)}
           >
             Filter Data
@@ -723,12 +776,24 @@ const JobOpeningMatches = () => {
                   paginationRowsPerPageOptions={[10, 20, 30, 50, 100]}
                   selectableRows={false}
                   fixedHeader={true}
-                  progressPending={isLoading || interviewLoading}
+                  progressPending={showTableLoader}
                   progressComponent={
                     <ComponentSpinner
                       isClientCandidate={true}
                       theamcolour={themeColor}
                     />
+                  }
+                  noDataComponent={
+                    showTableLoader ? (
+                      <ComponentSpinner
+                        isClientCandidate={true}
+                        theamcolour={themeColor}
+                      />
+                    ) : (
+                      <div style={{ padding: "24px", color: "#6e6b7b" }}>
+                        No candidates found
+                      </div>
+                    )
                   }
                   fixedHeaderScrollHeight="500px"
                   noHeader
@@ -751,7 +816,11 @@ const JobOpeningMatches = () => {
                       : columnsClients
                   }
                   className="react-dataTable"
-                  data={jobOpeningMatchCandidate?.results || []}
+                  data={
+                    showTableLoader
+                      ? []
+                      : jobOpeningMatchCandidate?.results || []
+                  }
                 />
               </div>
             </Card>

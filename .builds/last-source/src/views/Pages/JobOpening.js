@@ -652,7 +652,7 @@ const JobOpening = () => {
     },
 
     {
-      name: "Create_AT",
+      name: "Created At",
       selector: (row) => row?.createdAt?.slice(0, 10),
       conditionalCellStyles: [
         {

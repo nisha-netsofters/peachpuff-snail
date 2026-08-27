@@ -884,71 +884,23 @@ const SecondPage = ({
     });
   };
 
-  const openCandidateResume = async (resumePath) => {
+  const openCandidateResume = (resumePath) => {
     const url = resolveAssetUrl(resumePath);
     if (!url) {
       tostify("Resume file not available");
       return;
     }
     const fileName = getResumeFileName(resumePath || url);
-    setResumePreview({
-      open: true,
+    const agencySlug = localStorage.getItem("slug") || slug || "uniqueworld";
+    // Open our viewer page synchronously on user click — avoids popup-blocker.
+    const qs = new URLSearchParams({
       url,
-      previewUrl: null,
-      blobUrl: null,
-      fileName,
-      loading: true,
-      error: null,
+      name: fileName,
     });
-    try {
-      const res = await fetch(url);
-      if (!res.ok) {
-        setResumePreview((prev) => ({
-          ...prev,
-          loading: false,
-          previewUrl: null,
-          error:
-            res.status === 404
-              ? "Resume file not found on server."
-              : "Unable to load resume preview.",
-        }));
-        return;
-      }
-      const blob = await res.blob();
-      // Avoid showing Express HTML error pages inside the iframe
-      if (
-        blob.type &&
-        blob.type.includes("text/html") &&
-        (isPdfResume(fileName) || isOfficeResume(fileName))
-      ) {
-        setResumePreview((prev) => ({
-          ...prev,
-          loading: false,
-          previewUrl: null,
-          error: "Resume file not found on server.",
-        }));
-        return;
-      }
-      const typedBlob =
-        isPdfResume(fileName) || isPdfResume(url)
-          ? new Blob([blob], { type: "application/pdf" })
-          : blob;
-      const blobUrl = URL.createObjectURL(typedBlob);
-      setResumePreview((prev) => ({
-        ...prev,
-        previewUrl: blobUrl,
-        blobUrl,
-        loading: false,
-        error: null,
-      }));
-    } catch (e) {
-      setResumePreview((prev) => ({
-        ...prev,
-        loading: false,
-        previewUrl: null,
-        error: "Unable to load resume preview.",
-      }));
-    }
+    window.open(
+      `/${agencySlug}/resume-viewer?${qs.toString()}`,
+      "_blank"
+    );
   };
 
   const downloadResumeFromPreview = async () => {
