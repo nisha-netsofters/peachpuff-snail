@@ -40,6 +40,72 @@ export const InterviewStatusCell = ({ row }) => {
 export const hasExistingInterview = (row) =>
   Boolean(row?.latestInterview?.id);
 
+export const resolveInterviewStatus = (interview, fallback = "scheduled") =>
+  interview?.interviewStatus ||
+  interview?.candidate?.interviewStatus ||
+  fallback;
+
+export const buildInterviewEditState = (
+  full,
+  candidate,
+  jobOpeningId,
+  loginUserId
+) => {
+  const status = resolveInterviewStatus(full, candidate?.interviewStatus || "scheduled");
+  return {
+    ...full,
+    id: full?.id,
+    candidateId: full?.candidateId || candidate?.id,
+    jobOpeningId: full?.jobOpeningId || jobOpeningId,
+    interviewStatus: status,
+    userId: full?.userId || loginUserId,
+    candidate: {
+      ...(full?.candidate || {}),
+      firstname: full?.candidate?.firstname || candidate?.firstname,
+      lastname: full?.candidate?.lastname || candidate?.lastname,
+      interviewStatus: status,
+    },
+  };
+};
+
+export const buildInterviewUpdatePayload = (interview) => {
+  const status = resolveInterviewStatus(interview);
+  return {
+    id: interview?.id,
+    candidateId: interview?.candidateId,
+    jobOpeningId: interview?.jobOpeningId,
+    onBoardingId: interview?.onBoardingId,
+    userId: interview?.userId,
+    date: interview?.date,
+    joiningDate: interview?.joiningDate,
+    startingSalary: interview?.startingSalary,
+    time: interview?.time,
+    link: interview?.link,
+    interviewType: interview?.interviewType,
+    comments: interview?.comments,
+    candidate: { interviewStatus: status },
+  };
+};
+
+export const fetchJobScopedInterview = async (
+  getInterviewAPI,
+  candidateId,
+  jobOpeningId
+) => {
+  if (!candidateId || !jobOpeningId) return null;
+  try {
+    const resp = await getInterviewAPI({
+      page: 1,
+      perPage: 1,
+      skipUserFilter: true,
+      filterData: { candidateId, jobOpeningId },
+    });
+    return resp?.results?.[0] || null;
+  } catch (error) {
+    return null;
+  }
+};
+
 export const hasViewedByCurrentUser = (row) =>
   row?.viewedByCurrentUser === true;
 

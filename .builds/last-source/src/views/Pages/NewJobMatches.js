@@ -44,6 +44,9 @@ import {
   InterviewStatusCell,
   getInterviewButtonLabel,
   getViewProfileButtonLabel,
+  buildInterviewEditState,
+  buildInterviewUpdatePayload,
+  fetchJobScopedInterview,
 } from "../../components/JobOpening/jobMatchTableHelpers";
 
 const NewJobMatches = () => {
@@ -200,37 +203,20 @@ const NewJobMatches = () => {
   const openInterviewDialog = async (candidate) => {
     setInterviewLoading(true);
     const jobOpeningId = params?.id;
-    // Only use job-scoped interview — never fall back to candidate.interviews (global)
-    let existing = candidate?.latestInterview?.id
-      ? candidate.latestInterview
-      : null;
-    if (!existing?.id && jobOpeningId) {
-      try {
-        const resp = await getInterviewAPI({
-          page: 1,
-          perPage: 1,
-          skipUserFilter: true,
-          filterData: {
-            candidateId: candidate.id,
-            jobOpeningId,
-          },
-        });
-        existing = resp?.results?.[0];
-      } catch (error) {
-        existing = null;
-      }
-    }
+    const existing = await fetchJobScopedInterview(
+      getInterviewAPI,
+      candidate?.id,
+      jobOpeningId
+    );
     if (existing?.id) {
-      setInterview({
-        ...existing,
-        candidateId: existing.candidateId || candidate.id,
-        jobOpeningId: existing.jobOpeningId || jobOpeningId,
-        candidate: existing.candidate || {
-          firstname: candidate.firstname,
-          lastname: candidate.lastname,
-          interviewStatus: candidate.interviewStatus,
-        },
-      });
+      setInterview(
+        buildInterviewEditState(
+          existing,
+          candidate,
+          jobOpeningId,
+          loginUser?.id
+        )
+      );
       setCreateInterview(false);
       setUpdateInterview(true);
     } else {
@@ -272,10 +258,16 @@ const NewJobMatches = () => {
   };
 
   const interviewUpdateHandler = async () => {
+    const payload = buildInterviewUpdatePayload(interview);
+    if (!payload?.id) {
+      tostify("Interview not found — please close and try again");
+      setInterviewLoading(false);
+      return;
+    }
     setInterviewLoading(true);
     await dispatch({
       type: interviewActions.UPDATE_INTERVIEW,
-      payload: { data: interview, page: 1, perPage: 10 },
+      payload: { data: payload, page: 1, perPage: 10 },
     });
     setInterviewLoading(false);
     setShowInterview(false);

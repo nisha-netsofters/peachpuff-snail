@@ -161,24 +161,52 @@ const InterviewForm = ({
       });
       setSelectCandidateValidation(interview?.candidateId || { label });
     }
-    if (interview?.interviewStatus !== undefined) {
+    const statusValue =
+      interview?.candidate?.interviewStatus ?? interview?.interviewStatus;
+    if (statusValue !== undefined) {
       const matchedStatus = statusOptions.find(
-        (opt) => opt.value === interview?.interviewStatus
+        (opt) => opt.value === statusValue
       );
-      // Ensure the select has a full option object (value + label + id)
       setStatusOp(
         matchedStatus || {
-          value: interview?.interviewStatus,
-          label: interview?.interviewStatus,
+          value: statusValue,
+          label: statusValue,
           id: "interviewStatus",
         }
       );
     }
     if (interview?.interviewType !== undefined) {
-      setInterviewOp({ label: interview?.interviewType });
+      const matchedType = interviewOptions.find(
+        (opt) => opt.value === interview.interviewType
+      );
+      setInterviewOp(
+        matchedType || {
+          value: interview.interviewType,
+          label: interview.interviewType,
+          id: "interviewType",
+        }
+      );
     }
-    if (interview?.time !== undefined) {
-      setStartTime(new Date(interview?.time));
+    if (interview?.time !== undefined && interview?.time !== null) {
+      setStartTime(new Date(interview.time));
+      setInterviewStartValidation(new Date(interview.time));
+    }
+    if (interview?.date && interview.date !== "Invalid date") {
+      const parsed = moment(
+        interview.date,
+        ["L", "l", "D-MMM-YY", "D-M-YY", "DD-MMM-YYYY", moment.ISO_8601],
+        true
+      );
+      const dateObj = parsed.isValid() ? parsed.toDate() : new Date(interview.date);
+      if (!Number.isNaN(dateObj?.getTime?.())) {
+        setDate(dateObj);
+        setDateValidation(dateObj);
+      }
+    }
+    if (interview?.onBoardingId || interview?.client?.id) {
+      setSelectCompanyValidation(
+        interview?.onBoardingId || interview?.client?.id
+      );
     }
   }, [interview]);
 
@@ -410,7 +438,8 @@ const InterviewForm = ({
             />
           </div>
         </Col>
-        {interview?.interviewStatus !== "shortlisted" && (
+        {interview?.candidate?.interviewStatus !== "shortlisted" &&
+        interview?.interviewStatus !== "shortlisted" && (
           <Col lg={6} xs={12} xl={4}>
             <div>
               <Label id="date">
