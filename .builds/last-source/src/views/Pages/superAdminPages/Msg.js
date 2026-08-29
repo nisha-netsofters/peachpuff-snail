@@ -201,7 +201,7 @@ const MSG_CONFIG_SLOTS = [
   -H 'Accept: application/json' \\
   -H 'Content-Type: application/json' \\
   -H 'x-security-key: YOUR_KEY' \\
-  -d '{"messaging_product":"whatsapp","recipient_type":"individual","to":"919999999999","type":"template","template":{"name":"job_create_3","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","parameter_name":"body_1","text":"{{fullname}}"},{"type":"text","parameter_name":"body_2","text":"{{jobTitle}}"},{"type":"text","parameter_name":"body_3","text":"{{jobLocation}}"},{"type":"text","parameter_name":"body_4","text":"Salary: {{job_salary}}"},{"type":"text","parameter_name":"body_5","text":"Experience: {{job_experience}}"}]}]}}'`,
+  -d '{"messaging_product":"whatsapp","recipient_type":"individual","to":"919999999999","type":"template","template":{"name":"job_create_3","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","parameter_name":"body_1","text":"{{fullname}}"},{"type":"text","parameter_name":"body_2","text":"{{jobTitle}}"},{"type":"text","parameter_name":"body_3","text":"{{jobLocation}}"},{"type":"text","parameter_name":"body_4","text":"{{job_salary}}"},{"type":"text","parameter_name":"body_5","text":"{{job_experience}}"}]}]}}'`,
   },
   {
     id: "msg-interview-scheduled",
