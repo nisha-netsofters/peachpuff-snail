@@ -100,7 +100,33 @@ const MATCH_TO_PLACEHOLDER = {
   salaryRangeStart: "{{salaryRangeStart}}",
   salaryRangeEnd: "{{salaryRangeEnd}}",
   jobDetailsLink: "{{jobDetailsLink}}",
+  interview_company: "{{interview_company}}",
+  interview_date: "{{interview_date}}",
+  interview_time: "{{interview_time}}",
+  interview_type: "{{interview_type}}",
+  interview_status: "{{interview_status}}",
+  my_interviews_link: "{{my_interviews_link}}",
+  my_interviews_button: "{{my_interviews_button}}",
 };
+
+const INTERVIEW_SCHEDULED_MATCH_OPTIONS = [
+  { label: "Use Input Value", value: "input" },
+  { label: "Candidate Name", value: "fullname" },
+  { label: "Company", value: "interview_company" },
+  { label: "Interview Date", value: "interview_date" },
+  { label: "Interview Time", value: "interview_time" },
+  { label: "Interview Type", value: "interview_type" },
+  { label: "My Interviews Button", value: "my_interviews_button" },
+  { label: "My Interviews Link", value: "my_interviews_link" },
+];
+
+const INTERVIEW_STATUS_MATCH_OPTIONS = [
+  { label: "Use Input Value", value: "input" },
+  { label: "Candidate Name", value: "fullname" },
+  { label: "New Status", value: "interview_status" },
+  { label: "Company", value: "interview_company" },
+  { label: "Interview Date", value: "interview_date" },
+];
 
 const PLAN_MATCH_OPTIONS = [
   { label: "Use Input Value", value: "input" },
@@ -166,6 +192,36 @@ const MSG_CONFIG_SLOTS = [
     badge: "Job",
     badgeColor: "primary",
   },
+  {
+    id: "msg-interview-scheduled",
+    audience: "interview_schedule",
+    section: "interview",
+    title: "Interview Scheduled",
+    subtitle:
+      "on interview create — body: name, company, date, time, type + My Interviews button",
+    badge: "Interview",
+    badgeColor: "danger",
+    defaultCurl: `curl -s -X POST 'https://wa2.netsofters.com/api/external-api-bridge/send-template-v2' \\
+  -H 'Accept: application/json' \\
+  -H 'Content-Type: application/json' \\
+  -H 'x-security-key: YOUR_KEY' \\
+  -d '{"messaging_product":"whatsapp","recipient_type":"individual","to":"919999999999","type":"template","template":{"name":"interview_scheduled","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","parameter_name":"body_1","text":"{{fullname}}"},{"type":"text","parameter_name":"body_2","text":"{{interview_company}}"},{"type":"text","parameter_name":"body_3","text":"{{interview_date}}"},{"type":"text","parameter_name":"body_4","text":"{{interview_time}}"},{"type":"text","parameter_name":"body_5","text":"{{interview_type}}"}]},{"type":"button","sub_type":"url","index":"0","parameters":[{"type":"text","text":"{{my_interviews_button}}"}]}]}}'`,
+  },
+  {
+    id: "msg-interview-status",
+    audience: "interview_status",
+    section: "interview",
+    title: "Interview Status Updated",
+    subtitle:
+      "on interview status change — body: name, new status, company, date (no button)",
+    badge: "Interview",
+    badgeColor: "danger",
+    defaultCurl: `curl -s -X POST 'https://wa2.netsofters.com/api/external-api-bridge/send-template-v2' \\
+  -H 'Accept: application/json' \\
+  -H 'Content-Type: application/json' \\
+  -H 'x-security-key: YOUR_KEY' \\
+  -d '{"messaging_product":"whatsapp","recipient_type":"individual","to":"919999999999","type":"template","template":{"name":"interview_status_updated","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","parameter_name":"body_1","text":"{{fullname}}"},{"type":"text","parameter_name":"body_2","text":"{{interview_status}}"},{"type":"text","parameter_name":"body_3","text":"{{interview_company}}"},{"type":"text","parameter_name":"body_4","text":"{{interview_date}}"}]}]}}'`,
+  },
 ];
 
 const MSG_SECTIONS = [
@@ -200,6 +256,15 @@ const MSG_SECTIONS = [
     badge: "Job",
     badgeColor: "primary",
     slotIds: ["msg-new-job-bestmatch"],
+  },
+  {
+    key: "interview",
+    title: "5. Interview",
+    subtitle:
+      "2 messages — scheduled on interview create (with My Interviews button), status update on status change",
+    badge: "Interview",
+    badgeColor: "danger",
+    slotIds: ["msg-interview-scheduled", "msg-interview-status"],
   },
 ];
 
@@ -241,17 +306,35 @@ const createEmptyApi = (index = 0) => ({
   parameterMode: "auto",
 });
 
-const createSlotApi = (slot) => ({
-  ...createEmptyApi(0),
-  id: slot.id,
-  audience: slot.audience,
-  name: slot.title,
-  apiUrl: "",
-  curlText: "",
-  isEnabled: false,
-  bodyParams: [],
-  headers: DEFAULT_HEADERS.map((h) => ({ ...h })),
-});
+const createSlotApi = (slot) => {
+  const base = {
+    ...createEmptyApi(0),
+    id: slot.id,
+    audience: slot.audience,
+    name: slot.title,
+    apiUrl: "",
+    curlText: "",
+    isEnabled: false,
+    bodyParams: [],
+    headers: DEFAULT_HEADERS.map((h) => ({ ...h })),
+  };
+  if (slot.defaultCurl) {
+    try {
+      const parsed = parseCurlCommand(slot.defaultCurl);
+      base.apiUrl = parsed.apiUrl || base.apiUrl;
+      base.method = parsed.method || base.method;
+      base.headers =
+        parsed.headers?.length > 0
+          ? parsed.headers
+          : DEFAULT_HEADERS.map((h) => ({ ...h }));
+      base.bodyParams = parsed.bodyParams || [];
+      base.curlText = slot.defaultCurl;
+    } catch (e) {
+      base.curlText = slot.defaultCurl;
+    }
+  }
+  return base;
+};
 
 const flattenObject = (obj, prefix = "") => {
   const rows = [];
@@ -664,7 +747,12 @@ const normalizeApis = (data) => {
     }
 
     const match = pickUnused();
-    if (slot.audience === "plan" || slot.audience === "job") {
+    if (
+      slot.audience === "plan" ||
+      slot.audience === "job" ||
+      slot.audience === "interview_schedule" ||
+      slot.audience === "interview_status"
+    ) {
       return mergeSavedApi(slot, null);
     }
     return mergeSavedApi(slot, match);
@@ -695,6 +783,12 @@ const getMatchOptions = (audience) => {
   }
   if (audience === "job") {
     return JOB_MATCH_OPTIONS;
+  }
+  if (audience === "interview_schedule") {
+    return INTERVIEW_SCHEDULED_MATCH_OPTIONS;
+  }
+  if (audience === "interview_status") {
+    return INTERVIEW_STATUS_MATCH_OPTIONS;
   }
   const base = MATCH_OPTIONS.filter((o) => o.value !== "image");
   if (audience === "client") {
