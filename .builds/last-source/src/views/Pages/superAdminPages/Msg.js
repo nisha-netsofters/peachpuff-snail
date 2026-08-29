@@ -69,6 +69,7 @@ const JOB_MATCH_OPTIONS = [
   { label: "Job Title", value: "jobTitle" },
   { label: "Job Location", value: "jobLocation" },
   { label: "Experience Required", value: "minExperienceYears" },
+  { label: "Experience (formatted)", value: "job_experience" },
   { label: "Salary Start", value: "salaryRangeStart" },
   { label: "Salary End", value: "salaryRangeEnd" },
   { label: "Salary (formatted range)", value: "job_salary" },
@@ -98,6 +99,7 @@ const MATCH_TO_PLACEHOLDER = {
   jobTitle: "{{jobTitle}}",
   jobLocation: "{{jobLocation}}",
   minExperienceYears: "{{minExperienceYears}}",
+  job_experience: "{{job_experience}}",
   salaryRangeStart: "{{salaryRangeStart}}",
   salaryRangeEnd: "{{salaryRangeEnd}}",
   job_salary: "{{job_salary}}",
@@ -192,14 +194,14 @@ const MSG_CONFIG_SLOTS = [
     section: "job",
     title: "New Job Best Match",
     subtitle:
-      "on new job add — template job_create_3 (name, title, location, experience, salary)",
+      "on new job add — template job_create_3 (name, title, location, salary, experience)",
     badge: "Job",
     badgeColor: "primary",
     defaultCurl: `curl -s -X POST 'https://wa2.netsofters.com/api/external-api-bridge/send-template-v2' \\
   -H 'Accept: application/json' \\
   -H 'Content-Type: application/json' \\
   -H 'x-security-key: YOUR_KEY' \\
-  -d '{"messaging_product":"whatsapp","recipient_type":"individual","to":"919999999999","type":"template","template":{"name":"job_create_3","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","parameter_name":"body_1","text":"{{fullname}}"},{"type":"text","parameter_name":"body_2","text":"{{jobTitle}}"},{"type":"text","parameter_name":"body_3","text":"{{jobLocation}}"},{"type":"text","parameter_name":"body_4","text":"{{minExperienceYears}}"},{"type":"text","parameter_name":"body_5","text":"Salary: {{job_salary}}"}]}]}}'`,
+  -d '{"messaging_product":"whatsapp","recipient_type":"individual","to":"919999999999","type":"template","template":{"name":"job_create_3","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","parameter_name":"body_1","text":"{{fullname}}"},{"type":"text","parameter_name":"body_2","text":"{{jobTitle}}"},{"type":"text","parameter_name":"body_3","text":"{{jobLocation}}"},{"type":"text","parameter_name":"body_4","text":"Salary: {{job_salary}}"},{"type":"text","parameter_name":"body_5","text":"Experience: {{job_experience}}"}]}]}}'`,
   },
   {
     id: "msg-interview-scheduled",
