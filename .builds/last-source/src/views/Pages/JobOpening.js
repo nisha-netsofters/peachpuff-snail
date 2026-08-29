@@ -61,7 +61,11 @@ import Loader from "./../../components/Dialog/Loader";
 import userActions from "../../redux/user/actions";
 import useBreakpoint from "../../utility/hooks/useBreakpoints";
 import { useHistory } from "react-router-dom/cjs/react-router-dom.min";
-import { getJobApplyListAPI } from "../../apis/jobapplylist";
+import { fetchAllJobOpeningBestMatchCandidates } from "../../apis/jobOpeningMatches";
+import {
+  buildBestMatchCsvRows,
+  downloadBestMatchCsv,
+} from "../../components/JobOpening/jobMatchTableHelpers";
 import {
   updateJobPostingStatusAPI,
 } from "../../apis/jobOpening";
@@ -389,7 +393,7 @@ const JobOpening = () => {
     history.push(`/${slug}/applied-candidates/${jobId}`);
   };
 
-  // 🔹 Export CSV - Download all candidates for this job
+  // Export CSV — same best-match list as the "Best Match" button
   const handleExportCSV = async (job) => {
     try {
       setLoading(true);
@@ -399,78 +403,21 @@ const JobOpening = () => {
         return;
       }
 
-      // Fetch all applicants for this job
-      const response = await getJobApplyListAPI(jobId);
+      const matches = await fetchAllJobOpeningBestMatchCandidates(jobId);
 
-      if (response && response.results) {
-        const applicants = response.results;
+      if (!matches.length) {
+        toast.info("No best match candidates found for this job");
+        return;
+      }
 
-        if (applicants.length === 0) {
-          toast.info("No candidates found for this job");
-          return;
-        }
+      const csvData = buildBestMatchCsvRows(matches);
+      const filename = `BestMatch_${job.companyName || "Job"}_${new Date().toLocaleDateString()}.csv`;
+      const downloaded = downloadBestMatchCsv(csvData, filename);
 
-        // Format data for CSV
-        const csvData = applicants.map((app) => ({
-          Name: app.candidateName || "-",
-          Email: app.candidateEmail || "-",
-          Mobile: app.candidateMobile || "-",
-          Status: app.status || "-",
-          AppliedAt: new Date(app.appliedAt).toLocaleDateString() || "-",
-          Gender: app.candidateGender || "-",
-          Experience: app.candidateProfessional?.experience || "-",
-          JobCategory: app.candidateProfessional?.jobCategory?.jobCategory || "-",
-        }));
-
-        // Convert and Download
-        const convertArrayOfObjectsToCSV = (array) => {
-          let result;
-          const columnDelimiter = ",";
-          const lineDelimiter = "\n";
-          const keys = Object.keys(array[0]);
-
-          result = "";
-          result += keys.join(columnDelimiter);
-          result += lineDelimiter;
-
-          array.forEach((item) => {
-            let ctr = 0;
-            keys.forEach((key) => {
-              if (ctr > 0) result += columnDelimiter;
-              // Handle commas in values by wrapping in quotes
-              const val = String(item[key]).replace(/"/g, '""');
-              result += `"${val}"`;
-              ctr++;
-            });
-            result += lineDelimiter;
-          });
-
-          return result;
-        };
-
-        const downloadCSV = (array) => {
-          const csv = convertArrayOfObjectsToCSV(array);
-          if (!csv) return;
-
-          const filename = `Candidates_${job.companyName || "Job"}_${new Date().toLocaleDateString()}.csv`;
-          const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-          const link = document.createElement("a");
-
-          if (link.download !== undefined) {
-            const url = URL.createObjectURL(blob);
-            link.setAttribute("href", url);
-            link.setAttribute("download", filename);
-            link.style.visibility = "hidden";
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-          }
-        };
-
-        downloadCSV(csvData);
-        toast.success("CSV Exported successfully");
+      if (downloaded) {
+        toast.success("CSV exported successfully");
       } else {
-        toast.error("Failed to fetch candidates");
+        toast.error("Failed to download CSV");
       }
     } catch (error) {
       console.error("Export CSV Error:", error);

@@ -119,3 +119,67 @@ export const getViewProfileButtonLabel = (row, viewedIds = new Set()) => {
   if (hasViewedByCurrentUser(row)) return "View Again";
   return "View Profile";
 };
+
+export const buildBestMatchCsvRows = (candidates = []) =>
+  candidates.map((row) => ({
+    "First Name": row?.firstname || "-",
+    "Last Name": row?.lastname || "-",
+    "Match Score":
+      row?.matchScore != null ? `${row.matchScore}%` : "-",
+    "Profile Completion":
+      row?.profileCompleteness != null ? `${row.profileCompleteness}%` : "-",
+    Email: row?.email || "-",
+    Mobile: row?.mobile || "-",
+    Gender: row?.gender || "-",
+    City: row?.city || "-",
+    Experience: row?.professional?.experienceInyear || "-",
+    "Job Category": row?.professional?.jobCategory?.jobCategory || "-",
+    Qualification: row?.professional?.highestQualification || "-",
+    "Current Salary": row?.professional?.currentSalary || "-",
+    "Expected Salary": row?.professional?.expectedsalary || "-",
+    "Preferred Location": row?.professional?.preferedJobLocation || "-",
+    "Notice Period": row?.professional?.noticePeriod || "-",
+    "Currently Working": row?.professional?.currentlyWorking || "-",
+    "Interview Status":
+      row?.latestInterview?.interviewStatus || row?.interviewStatus || "available",
+  }));
+
+const convertArrayOfObjectsToCSV = (array) => {
+  if (!array?.length) return "";
+  const columnDelimiter = ",";
+  const lineDelimiter = "\n";
+  const keys = Object.keys(array[0]);
+  let result = keys.join(columnDelimiter) + lineDelimiter;
+
+  array.forEach((item) => {
+    let ctr = 0;
+    keys.forEach((key) => {
+      if (ctr > 0) result += columnDelimiter;
+      const val = String(item[key] ?? "").replace(/"/g, '""');
+      result += `"${val}"`;
+      ctr += 1;
+    });
+    result += lineDelimiter;
+  });
+
+  return result;
+};
+
+export const downloadBestMatchCsv = (rows, filename) => {
+  const csv = convertArrayOfObjectsToCSV(rows);
+  if (!csv) return false;
+
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const link = document.createElement("a");
+  if (link.download === undefined) return false;
+
+  const url = URL.createObjectURL(blob);
+  link.setAttribute("href", url);
+  link.setAttribute("download", filename);
+  link.style.visibility = "hidden";
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+  return true;
+};
