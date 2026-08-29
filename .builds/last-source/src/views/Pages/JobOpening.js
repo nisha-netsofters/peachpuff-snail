@@ -411,7 +411,7 @@ const JobOpening = () => {
       }
 
       const csvData = buildBestMatchCsvRows(matches);
-      const filename = `BestMatch_${job.companyName || "Job"}_${new Date().toLocaleDateString()}.csv`;
+      const filename = `Candidates_${job.companyName || "Job"}_${new Date().toLocaleDateString()}.csv`;
       const downloaded = downloadBestMatchCsv(csvData, filename);
 
       if (downloaded) {

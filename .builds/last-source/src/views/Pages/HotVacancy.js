@@ -130,7 +130,7 @@ const HotVacancy = () => {
       }
 
       const csvData = buildBestMatchCsvRows(matches);
-      const filename = `BestMatch_HotVacancy_${job.companyName || job.companyname || "Job"}_${new Date().toLocaleDateString()}.csv`;
+      const filename = `Candidates_HotVacancy_${job.companyName || job.companyname || "Job"}_${new Date().toLocaleDateString()}.csv`;
       const downloaded = downloadBestMatchCsv(csvData, filename);
 
       if (downloaded) {
