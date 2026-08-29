@@ -217,6 +217,18 @@ const TransactionTable = () => {
       },
     },
     {
+      name: "Performed By",
+      minWidth: "170px",
+      selector: (row) =>
+        row?.performedByDisplay ||
+        row?.performedByName ||
+        (row?.paymentMethod === "Online"
+          ? row?.users?.name ||
+            `${row?.firstname || ""} ${row?.lastname || ""}`.trim() ||
+            "Client"
+          : "—"),
+    },
+    {
       name:
         user?.email == "uniqueworldjobs@gmail.com"
           ? "Invoice To"
