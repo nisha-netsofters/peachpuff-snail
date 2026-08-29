@@ -71,6 +71,7 @@ const JOB_MATCH_OPTIONS = [
   { label: "Experience Required", value: "minExperienceYears" },
   { label: "Salary Start", value: "salaryRangeStart" },
   { label: "Salary End", value: "salaryRangeEnd" },
+  { label: "Salary (formatted range)", value: "job_salary" },
   { label: "Job Details Link", value: "jobDetailsLink" },
 ];
 
@@ -99,6 +100,8 @@ const MATCH_TO_PLACEHOLDER = {
   minExperienceYears: "{{minExperienceYears}}",
   salaryRangeStart: "{{salaryRangeStart}}",
   salaryRangeEnd: "{{salaryRangeEnd}}",
+  job_salary: "{{job_salary}}",
+  salary: "{{salary}}",
   jobDetailsLink: "{{jobDetailsLink}}",
   interview_company: "{{interview_company}}",
   interview_date: "{{interview_date}}",
@@ -188,9 +191,15 @@ const MSG_CONFIG_SLOTS = [
     audience: "job",
     section: "job",
     title: "New Job Best Match",
-    subtitle: "on new job add — all candidates on Best Match list get this WhatsApp",
+    subtitle:
+      "on new job add — template job_create_3 (name, title, location, experience, salary)",
     badge: "Job",
     badgeColor: "primary",
+    defaultCurl: `curl -s -X POST 'https://wa2.netsofters.com/api/external-api-bridge/send-template-v2' \\
+  -H 'Accept: application/json' \\
+  -H 'Content-Type: application/json' \\
+  -H 'x-security-key: YOUR_KEY' \\
+  -d '{"messaging_product":"whatsapp","recipient_type":"individual","to":"919999999999","type":"template","template":{"name":"job_create_3","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","parameter_name":"body_1","text":"{{fullname}}"},{"type":"text","parameter_name":"body_2","text":"{{jobTitle}}"},{"type":"text","parameter_name":"body_3","text":"{{jobLocation}}"},{"type":"text","parameter_name":"body_4","text":"{{minExperienceYears}}"},{"type":"text","parameter_name":"body_5","text":"Salary: {{job_salary}}"}]}]}}'`,
   },
   {
     id: "msg-interview-scheduled",
