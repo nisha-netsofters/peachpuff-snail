@@ -43,6 +43,7 @@ import {
   buildInterviewEditState,
   buildInterviewUpdatePayload,
   fetchJobScopedInterview,
+  isShortlistedInterview,
 } from "../../components/JobOpening/jobMatchTableHelpers";
 
 const JobOpeningMatches = () => {
@@ -299,7 +300,11 @@ const JobOpeningMatches = () => {
     if (!createInterview) return;
     if (selectCandidateValidation === null) tostify("Please Select Candidate");
     else if (selectCompanyValidation === null) tostify("Please Select Company");
-    else if (dateValidation === null) tostify("Please Select date");
+    else if (
+      dateValidation === null &&
+      !isShortlistedInterview(interview)
+    )
+      tostify("Please Select date");
     else if (
       interviewStartValidation === null &&
       (interview?.interviewStatus === "scheduled" ||
@@ -600,14 +605,6 @@ const JobOpeningMatches = () => {
                   style={{ color: themeColor }}
                 >
                   Job Description — Best Match
-                  <div
-                    style={{
-                      color: "#5e5873",
-                      fontWeight: "400",
-                      fontSize: "12px",
-                      marginTop: "1rem",
-                    }}
-                  >{`${jobOpeningMatchCandidate?.total || 0} Matches Found`}</div>
                 </h5>
                 <div
                   style={{
@@ -751,16 +748,6 @@ const JobOpeningMatches = () => {
                   }}
                 >
                   Best Matches Candidates
-                  <span
-                    style={{
-                      color: "#5e5873",
-                      fontWeight: "400",
-                      fontSize: "13px",
-                      marginLeft: "8px",
-                    }}
-                  >
-                    {`${jobOpeningMatchCandidate?.total || 0} Matches Found`}
-                  </span>
                 </h5>
               </CardBody>
               <div className="react-dataTable job-opening-match-table">

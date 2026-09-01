@@ -49,6 +49,7 @@ import "@styles/react/libs/react-select/_react-select.scss";
 import "@styles/react/libs/tables/react-dataTable-component.scss";
 import InterviewDialog from "../../components/Dialog/interviewDialog";
 import { tostify } from "../../components/Tostify";
+import { isShortlistedInterview } from "../../components/JobOpening/jobMatchTableHelpers";
 import { useHistory, useLocation } from "react-router-dom";
 import ReactCanvasConfetti from "react-canvas-confetti";
 import Loader from "./../../components/Dialog/Loader";
@@ -437,7 +438,11 @@ const Interview = () => {
         tostify("Please Select Candidate");
       else if (selectCompanyValidation === null)
         tostify("Please Select Company");
-      else if (dateValidation === null) tostify("Please Select date");
+      else if (
+        dateValidation === null &&
+        !isShortlistedInterview(interview)
+      )
+        tostify("Please Select date");
       else if (
         interviewStartValidation === null &&
         (interview?.interviewStatus === "scheduled" ||

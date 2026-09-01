@@ -448,22 +448,24 @@ const InterviewForm = ({
               <Flatpickr
                 className="form-control"
                 onFocus={() => setIsfocus("Shedule")}
-                onBlur={() => setIsfocus(null)}
                 style={{
                   borderColor: focus === "Shedule" && themecolor,
                 }}
-                placeholder={
-                  interview?.date !== "Invalid date"
-                    ? interview?.date
-                    : "Shedule Date"
-                }
+                placeholder="Schedule Date"
                 value={date}
-                options={{ dateFormat: "d-M-y", minDate: new Date() }}
+                options={{
+                  dateFormat: "d-M-y",
+                  minDate: new Date(),
+                  disableMobile: true,
+                  onClose: () => setIsfocus(null),
+                }}
                 id="default-picker"
-                onChange={(date) => {
-                  setDate(date[0]);
-                  const dateFormat = moment(date[0]).format("L");
-                  setDateValidation(date[0]);
+                onChange={(selectedDates) => {
+                  const picked = selectedDates?.[0];
+                  if (!picked) return;
+                  setDate(picked);
+                  const dateFormat = moment(picked).format("L");
+                  setDateValidation(picked);
                   patchInterview({ date: dateFormat });
                 }}
               />
@@ -506,6 +508,12 @@ const InterviewForm = ({
               onChange={(e) => {
                 setStatusOp(e);
                 const interviewStatusUpdate = new Date().toISOString();
+                if (e.value === "shortlisted") {
+                  setDate(undefined);
+                  setDateValidation(new Date());
+                  setInterviewStartValidation(new Date());
+                  setInterviewValidation("shortlisted");
+                }
                 setInterview((prev) => {
                   const base = Array.isArray(prev) ? {} : prev || {};
                   return {
@@ -553,22 +561,25 @@ const InterviewForm = ({
                 <Flatpickr
                   className="form-control"
                   onFocus={() => setIsfocus("interview")}
-                  onBlur={() => setIsfocus(null)}
                   style={{
                     borderColor: focus === "interview" && themecolor,
                   }}
-                  placeholder={"Select Start Time"}
-                  value={new Date(startTime)}
+                  placeholder="Select Start Time"
+                  value={startTime}
                   id="time"
                   options={{
                     enableTime: true,
                     noCalendar: true,
-                    dateFormat: "h:i:K",
+                    dateFormat: "h:i K",
+                    disableMobile: true,
+                    onClose: () => setIsfocus(null),
                   }}
                   onChange={(val) => {
-                    setStartTime(val[0]);
-                    patchInterview({ time: val[0] });
-                    setInterviewStartValidation(val[0]);
+                    const picked = val?.[0];
+                    if (!picked) return;
+                    setStartTime(picked);
+                    patchInterview({ time: picked });
+                    setInterviewStartValidation(picked);
                   }}
                 />
               </div>

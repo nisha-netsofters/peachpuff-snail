@@ -1,6 +1,10 @@
 import React from "react";
 import { Badge } from "reactstrap";
 
+export const isShortlistedInterview = (interview = {}) =>
+  interview?.interviewStatus === "shortlisted" ||
+  interview?.candidate?.interviewStatus === "shortlisted";
+
 export const getInterviewStatusBadgeColor = (status) => {
   if (status === "available") return "light-warning";
   if (status === "scheduled") return "light-info";

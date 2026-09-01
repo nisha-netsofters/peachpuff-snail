@@ -47,6 +47,7 @@ import {
   buildInterviewEditState,
   buildInterviewUpdatePayload,
   fetchJobScopedInterview,
+  isShortlistedInterview,
 } from "../../components/JobOpening/jobMatchTableHelpers";
 
 const NewJobMatches = () => {
@@ -285,7 +286,11 @@ const NewJobMatches = () => {
     if (!createInterview) return;
     if (selectCandidateValidation === null) tostify("Please Select Candidate");
     else if (selectCompanyValidation === null) tostify("Please Select Company");
-    else if (dateValidation === null) tostify("Please Select date");
+    else if (
+      dateValidation === null &&
+      !isShortlistedInterview(interview)
+    )
+      tostify("Please Select date");
     else if (
       interviewStartValidation === null &&
       (interview?.interviewStatus === "scheduled" ||
