@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Select from "react-select";
 import { Row, Col, Input, Label } from "reactstrap";
 import { selectThemeColors } from "@utils";
@@ -369,6 +369,25 @@ const InterviewForm = ({
   };
   const [focus, setIsfocus] = useState(null);
   const themecolor = localStorage.getItem("themecolor");
+  const scheduleDateOptions = useMemo(
+    () => ({
+      dateFormat: "d-M-y",
+      minDate: "today",
+      disableMobile: true,
+      onClose: () => setIsfocus(null),
+    }),
+    []
+  );
+  const interviewTimeOptions = useMemo(
+    () => ({
+      enableTime: true,
+      noCalendar: true,
+      dateFormat: "h:i K",
+      disableMobile: true,
+      onClose: () => setIsfocus(null),
+    }),
+    []
+  );
   return (
     <div>
       <Row className="gy-1 pt-75">
@@ -453,12 +472,7 @@ const InterviewForm = ({
                 }}
                 placeholder="Schedule Date"
                 value={date}
-                options={{
-                  dateFormat: "d-M-y",
-                  minDate: new Date(),
-                  disableMobile: true,
-                  onClose: () => setIsfocus(null),
-                }}
+                options={scheduleDateOptions}
                 id="default-picker"
                 onChange={(selectedDates) => {
                   const picked = selectedDates?.[0];
@@ -567,13 +581,7 @@ const InterviewForm = ({
                   placeholder="Select Start Time"
                   value={startTime}
                   id="time"
-                  options={{
-                    enableTime: true,
-                    noCalendar: true,
-                    dateFormat: "h:i K",
-                    disableMobile: true,
-                    onClose: () => setIsfocus(null),
-                  }}
+                  options={interviewTimeOptions}
                   onChange={(val) => {
                     const picked = val?.[0];
                     if (!picked) return;
