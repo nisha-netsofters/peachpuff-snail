@@ -3969,15 +3969,6 @@ const SecondPage = ({
                 </div>
               </div>
             )}
-            {/* Desktop message when there are no applied candidates */}
-            {width > 768 &&
-              isAppliedCandidates &&
-              !isAppliedCandidatesLoading &&
-              (!candidateList || candidateList.length === 0) && (
-                <div className="d-flex align-items-center justify-content-center text-muted" style={{ minHeight: 200 }}>
-                  No candidates have applied to this job yet.
-                </div>
-              )}
             {/* <Card
             className="overflow-hidden"
             style={width < 769 ? { display: "none" } : {}}
@@ -4090,9 +4081,11 @@ const SecondPage = ({
                     className="d-flex align-items-center justify-content-center text-muted"
                     style={{ minHeight: 200, width: "100%" }}
                   >
-                    {activeQuickFilter
-                      ? "No candidates found for this tab."
-                      : "No candidates found."}
+                    {isAppliedCandidates
+                      ? "No candidates have applied to this job yet."
+                      : activeQuickFilter
+                        ? "No candidates found for this tab."
+                        : "No candidates found."}
                   </div>
                 )}
                 {candidateList?.map((candidate, index) => {
