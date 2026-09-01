@@ -1,44 +1,49 @@
 / eslint-disable no-unused-vars /;
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useSelector } from "react-redux";
 import { getstatistics } from "../../../apis/statistics/statistics";
-// import bgimage from "../../../assets/images/landingpage/clientbg.png";
 import { useLocation } from "react-router-dom/cjs/react-router-dom.min";
+import { hasValidAuthToken } from "../../../utility/authSession";
+
 const FooterOfClient = () => {
   const [numberofemp, setNumberofemp] = useState(null);
   const role = useSelector((state) => state?.auth?.user?.role?.name);
   const slug = localStorage.getItem("slug");
-  useEffect(() => {
-    async function fetchData() {
-      let numberof = await getstatistics();
-      setNumberofemp(numberof);
-    }
-    if (role === "Client") {
-      fetchData();
-    }
-  }, []);
+  const fetchedRef = useRef(false);
   const location = useLocation().pathname;
+
+  useEffect(() => {
+    if (role !== "Client" || !hasValidAuthToken() || fetchedRef.current) {
+      return;
+    }
+
+    fetchedRef.current = true;
+    let cancelled = false;
+
+    async function fetchData() {
+      try {
+        const numberof = await getstatistics();
+        if (!cancelled) {
+          setNumberofemp(numberof);
+        }
+      } catch (error) {
+        fetchedRef.current = false;
+      }
+    }
+
+    fetchData();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [role]);
+
   return role === "Client" ? (
     <>
       {role === "Client" &&
       location !== `/${slug}/documentation` &&
       location !== `/${slug}/pricing` ? (
-        <>
-          {/* <div>
-            <a
-              href="https://www.my-co.app/enquiry/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-1 d-flex justify-content-center mb-1"
-            >
-              <img
-                style={{ maxWidth: "50%" }}
-                src={bgimage}
-                alt="Clickable Image"
-              />
-            </a>
-          </div> */}
-        </>
+        <></>
       ) : null}
       <div
         style={{

@@ -23,7 +23,6 @@ import {
 // import i1 from "../../assets/images/login/i1.jpg";
 import { FaFacebook, FaGoogle } from "react-icons/fa";
 import { useDispatch, useSelector } from "react-redux";
-import { useSkin } from "@hooks/useSkin";
 import { useEffect, useState } from "react";
 import Loader from "../../components/Dialog/Loader";
 import { loginEmailAPI } from "../../apis/auth/index";
@@ -31,9 +30,9 @@ import ComponentSpinner from "../../@core/components/spinner/Loading-spinner";
 import { tostifyError } from "../../components/Tostify";
 import authActions from "../../redux/auth/actions";
 import useBreakpoint from "../../utility/hooks/useBreakpoints";
+import { hasValidAuthToken } from "../../utility/authSession";
 const LoginCover = (props) => {
   const { width } = useBreakpoint();
-  const { skin } = useSkin();
   const dispatch = useDispatch();
   const { token, user, isLoading, isOpenInactivePopup } = useSelector(
     (state) => state.auth
@@ -54,10 +53,18 @@ const LoginCover = (props) => {
         isOpenInactivePopup: false,
       },
     });
+    if (!hasValidAuthToken() && token) {
+      dispatch({
+        type: authActions.SET_STATE,
+        payload: { token: null, user: null },
+      });
+    }
   }, []);
 
   useEffect(() => {
-    if (token) {
+    if (!hasValidAuthToken() || !token) {
+      return;
+    }
       const params = new URLSearchParams(props.location?.search || "");
       const redirectParam = params.get("redirect");
       const fromState = props.location?.state?.from;
@@ -128,7 +135,6 @@ const LoginCover = (props) => {
       } else {
         props.history.push(`/${slugId}/dashboard`);
       }
-    }
   }, [token, user, props.history, props.location]);
   useEffect(() => {
     setLoading(isLoading);
@@ -180,12 +186,6 @@ const LoginCover = (props) => {
     }
   };
 
-  let illustration = skin === "dark" ? "login-v2-dark.svg" : "login-v2.svg";
-
-  let source = require(`../../assets/images/pages/${illustration}`);
-  console.info("----------------------------");
-  console.info("source =>", source);
-  console.info("----------------------------");
   return (
     <>
       <section

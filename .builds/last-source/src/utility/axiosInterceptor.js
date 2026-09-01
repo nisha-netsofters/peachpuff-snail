@@ -1,6 +1,7 @@
 /*eslint-disable */
 import axios from "axios";
 import { persistor } from "../redux/store";
+import { clearAuthSession } from "./authSession";
 // import * as dotenv from 'dotenv'
 // dotenv.config()
 import { SERVER_URL } from '../configs/config'
@@ -62,9 +63,12 @@ apiCall.interceptors.request.use(
 apiCall.interceptors.response.use(
   async (resp) => {
     if (resp?.data?.msg === "invalid token or expired token") {
-      localStorage.clear();
-      window.localStorage.removeItem("persist:root");
-      persistor.pause();
+      clearAuthSession();
+      try {
+        persistor.pause();
+      } catch (_) {
+        /* ignore */
+      }
       if (
         typeof window !== "undefined" &&
         !window.location.pathname.includes("/login")

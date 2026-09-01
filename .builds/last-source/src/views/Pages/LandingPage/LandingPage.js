@@ -50,12 +50,27 @@ import { Check } from "react-feather";
 // import imgURL from "../../../assets/images/landingpage/intro1.png";
 const LandingPage = () => {
   const [numberofemp, setnumberofemp] = useState(null);
+  const statsFetchedRef = useRef(false);
   useEffect(() => {
+    if (statsFetchedRef.current) return;
+    statsFetchedRef.current = true;
+    let cancelled = false;
+
     async function fetchData() {
-      let numberof = await getstatistics();
-      setnumberofemp(numberof);
+      try {
+        const numberof = await getstatistics();
+        if (!cancelled) {
+          setnumberofemp(numberof);
+        }
+      } catch (error) {
+        statsFetchedRef.current = false;
+      }
     }
     fetchData();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
   const history = useHistory();
   const [activeServiceTab, setActiveServiceTab] = useState("1");
