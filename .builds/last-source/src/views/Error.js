@@ -11,48 +11,65 @@ import { useSkin } from "@hooks/useSkin";
 import "@styles/base/pages/page-misc.scss";
 
 import { useSelector } from "react-redux";
+import { hasValidAuthToken } from "../utility/authSession";
 
 const Error = () => {
   const { user } = useSelector((state) => state.auth);
 
   // ** Hooks
   const { skin } = useSkin();
-  const slugId = localStorage.getItem("slug") || "uniqueworld";
-  const token = localStorage.getItem("token");
-  const illustration = skin === "dark" ? "error-dark.svg" : "error.svg",
-    source = require(`@src/assets/images/pages/${illustration}`);
+  const illustration = skin === "dark" ? "error-dark.svg" : "error.svg";
+  const source = require(`@src/assets/images/pages/${illustration}`);
   const themecolor = localStorage.getItem("themecolor") || "#323D76";
 
   const getHomePath = () => {
-    if (
-      !token ||
-      token === "null" ||
-      token === "undefined" ||
-      !user?.role?.name
-    ) {
+    if (!hasValidAuthToken() || !user?.role?.name) {
       return "/login";
     }
+
+    const agencySlug = user?.agency?.slug || localStorage.getItem("slug");
+    if (!agencySlug) {
+      return "/login";
+    }
+
     if (user.role.name === "Client") {
-      return `/${slugId}/candidate`;
+      return `/${agencySlug}/candidate`;
     }
     if (user.role.name === "SuperAdmin") {
       return "/superadmin/dashboard";
     }
-    return `/${slugId}/dashboard`;
+    if (user.role.name === "Candidate") {
+      return `/${agencySlug}/dashboard`;
+    }
+    return `/${agencySlug}/dashboard`;
   };
 
-  const homePath = getHomePath();
+  const handleGoHome = () => {
+    const homePath = getHomePath();
+    if (homePath === "/login") {
+      window.location.href = "/login";
+      return;
+    }
+
+    const agencySlug = user?.agency?.slug;
+    if (agencySlug) {
+      localStorage.setItem("slug", agencySlug);
+      if (user?.agencyId) {
+        localStorage.setItem("agencyId", user.agencyId);
+      }
+    }
+
+    window.location.href = homePath;
+  };
+
   const isClient = user?.role?.name === "Client";
 
   return (
     <div className="misc-wrapper">
-      <a className="brand-logo" href={homePath}>
-        <Link
-          className="brand-logo"
-          to={homePath}
-          onClick={(e) => e.preventDefault()}
-        ></Link>
-      </a>
+      <Link className="brand-logo" to={getHomePath()} onClick={(e) => {
+        e.preventDefault();
+        handleGoHome();
+      }} />
       <div className="misc-inner p-2 p-sm-3">
         <div className="w-100 text-center">
           <h2 className="mb-1">Page Not Found 🕵🏻‍♀️</h2>
@@ -60,9 +77,7 @@ const Error = () => {
             Oops! 😖 The requested URL was not found on this server.
           </p>
           <Button
-            onClick={() => {
-              window.location.href = homePath;
-            }}
+            onClick={handleGoHome}
             color="defult"
             className="btn-sm-block mb-2"
             style={{ backgroundColor: themecolor, color: "white" }}

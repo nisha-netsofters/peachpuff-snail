@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import agencyActions from "./redux/agency/actions";
 import authActions from "./redux/auth/actions";
+import { clearAuthSession } from "./utility/authSession";
 
 const PrivateRoute = ({ component: Component, ...rest }) => {
   const token = localStorage.getItem("token");
@@ -115,7 +116,17 @@ const PrivateRoute = ({ component: Component, ...rest }) => {
   }
 
   if (agencyError === "slug") {
-    return <Redirect to="/error" />;
+    clearAuthSession();
+    try {
+      persistor.pause();
+    } catch (_) {
+      /* ignore */
+    }
+    dispatch({
+      type: authActions.SET_STATE,
+      payload: { token: null, user: null },
+    });
+    return <Redirect to="/login" />;
   }
 
   if (loading && params?.slug) {
