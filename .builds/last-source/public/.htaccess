@@ -1,6 +1,10 @@
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteBase /
+
+  # Always serve these root static files directly (Hostinger CDN/WAF safe)
+  RewriteRule ^(manifest\.json|site\.webmanifest|script\.js|asset-manifest\.json|favicon\.ico|favicon-uw\.png)$ - [L]
+
   RewriteRule ^index\.html$ - [L]
   RewriteCond %{REQUEST_FILENAME} !-f
   RewriteCond %{REQUEST_FILENAME} !-d
