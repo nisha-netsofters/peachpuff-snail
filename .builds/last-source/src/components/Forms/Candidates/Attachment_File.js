@@ -19,7 +19,7 @@ const AI_VALIDATION_MESSAGES = {
   AI_API_KEY_INVALID:
     "Invalid AI API key. Please ask your Super Admin to update the API key in OCR & API Configuration, then try again.",
   AI_MODEL_INVALID:
-    "Invalid AI model. Please ask your Super Admin to set a valid model in OCR & API Configuration.",
+    "Invalid or retired AI model. For Claude use claude-haiku-4-5-20251001 in Super Admin → OCR & API Configuration.",
   AI_RATE_LIMIT:
     "AI service rate limit reached. Please wait a moment and try again.",
   AI_SERVICE_BUSY:
@@ -53,6 +53,9 @@ const getFriendlyExtractError = (result) => {
     return AI_VALIDATION_MESSAGES.AI_SERVICE_BUSY;
   }
   if (lower.includes("model") && (lower.includes("invalid") || lower.includes("not found"))) {
+    return AI_VALIDATION_MESSAGES.AI_MODEL_INVALID;
+  }
+  if (lower.includes("status code 404") || lower.includes("not_found_error")) {
     return AI_VALIDATION_MESSAGES.AI_MODEL_INVALID;
   }
   if (/oauth|sign-in|developers\.google|access token/i.test(raw)) {

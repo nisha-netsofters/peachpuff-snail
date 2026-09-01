@@ -105,7 +105,7 @@ const defaultForm = {
       claude: {
         isEnabled: false,
         apiKey: "",
-        model: "claude-3-5-sonnet-20241022",
+        model: "claude-haiku-4-5-20251001",
         baseUrl: "https://api.anthropic.com/v1",
       },
     },
