@@ -190,6 +190,9 @@ const SecondPage = ({
   );
   const [gender, setGender] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [appliedListReady, setAppliedListReady] = useState(
+    () => !isAppliedCandidates
+  );
   const [bulkUploadProgress, setBulkUploadProgress] = useState({
     active: false,
     current: 0,
@@ -323,9 +326,21 @@ const SecondPage = ({
     }
   }, [bestMatchesCandidates]);
 
+  useEffect(() => {
+    if (isAppliedCandidates) {
+      setAppliedListReady(false);
+    }
+  }, [jobId, isAppliedCandidates]);
+
+  const appliedListPending =
+    isAppliedCandidates && (!appliedListReady || isAppliedCandidatesLoading);
+
   // Handle applied candidates list
   useEffect(() => {
-    if (isAppliedCandidates && appliedCandidatesList) {
+    if (!isAppliedCandidates) return;
+    if (isAppliedCandidatesLoading) return;
+
+    if (appliedCandidatesList) {
       // Convert applied candidates to the same format as regular candidates
       const formattedCandidates = Array.isArray(appliedCandidatesList)
         ? appliedCandidatesList.map((applied) => {
@@ -510,13 +525,14 @@ const SecondPage = ({
       setCandidateList(formattedCandidates);
       setTotalRows(formattedCandidates.length);
       setLoading(false);
+      setAppliedListReady(true);
       // Update isOpen state for collapse functionality
       setIsOpen(formattedCandidates.map(() => false));
-    } else if (isAppliedCandidates && !appliedCandidatesList && !isAppliedCandidatesLoading) {
-      // No candidates found
+    } else {
       setCandidateList([]);
       setTotalRows(0);
       setLoading(false);
+      setAppliedListReady(true);
       setIsOpen([]);
     }
   }, [appliedCandidatesList, isAppliedCandidates, isAppliedCandidatesLoading]);
@@ -3521,7 +3537,7 @@ const SecondPage = ({
           }
         >
           {" "}
-          {width < 786 && (isAppliedCandidates ? isAppliedCandidatesLoading : loading == true) ? (
+          {width < 786 && (isAppliedCandidates ? appliedListPending : loading == true) ? (
             <ComponentSpinner
               isClientCandidate={true}
               theamcolour={themecolor}
@@ -4066,7 +4082,7 @@ const SecondPage = ({
                   )
                 }
               /> */}
-            {loading === true && !bulkUploadProgress.active ? (
+            {(loading === true || appliedListPending) && !bulkUploadProgress.active ? (
               <ComponentSpinner
                 isClientCandidate={true}
                 theamcolour={themecolor}

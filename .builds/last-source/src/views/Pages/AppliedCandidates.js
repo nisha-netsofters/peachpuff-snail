@@ -31,6 +31,10 @@ const AppliedCandidates = () => {
   useEffect(() => {
     if (jobId) {
       dispatch({
+        type: jobApplyListActions.SET_JOB_APPLY_LIST_LOADER,
+        payload: true,
+      });
+      dispatch({
         type: jobApplyListActions.GET_JOB_APPLY_LIST,
         payload: { jobId },
       });
