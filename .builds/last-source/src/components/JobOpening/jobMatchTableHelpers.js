@@ -22,11 +22,8 @@ export const getInterviewStatusBadgeColor = (status) => {
 };
 
 export const InterviewStatusCell = ({ row }) => {
-  // Job-scoped: without an interview for THIS job, show available
   const status = row?.latestInterview?.id
-    ? row?.latestInterview?.interviewStatus ||
-      row?.interviewStatus ||
-      "scheduled"
+    ? row?.latestInterview?.interviewStatus || "scheduled"
     : "available";
   return (
     <Badge
@@ -45,9 +42,17 @@ export const hasExistingInterview = (row) =>
   Boolean(row?.latestInterview?.id);
 
 export const resolveInterviewStatus = (interview, fallback = "scheduled") =>
-  interview?.interviewStatus ||
-  interview?.candidate?.interviewStatus ||
-  fallback;
+  interview?.interviewStatus || fallback;
+
+export const buildInterviewCreateState = (candidate, jobOpeningId, loginUserId) => ({
+  candidateId: candidate?.id,
+  userId: loginUserId,
+  jobOpeningId,
+  candidate: {
+    firstname: candidate?.firstname,
+    lastname: candidate?.lastname,
+  },
+});
 
 export const buildInterviewEditState = (
   full,
@@ -55,7 +60,7 @@ export const buildInterviewEditState = (
   jobOpeningId,
   loginUserId
 ) => {
-  const status = resolveInterviewStatus(full, candidate?.interviewStatus || "scheduled");
+  const status = resolveInterviewStatus(full, "scheduled");
   return {
     ...full,
     id: full?.id,
@@ -145,7 +150,7 @@ export const buildBestMatchCsvRows = (candidates = []) =>
     "Notice Period": row?.professional?.noticePeriod || "-",
     "Currently Working": row?.professional?.currentlyWorking || "-",
     "Interview Status":
-      row?.latestInterview?.interviewStatus || row?.interviewStatus || "available",
+      row?.latestInterview?.interviewStatus || "available",
   }));
 
 const convertArrayOfObjectsToCSV = (array) => {

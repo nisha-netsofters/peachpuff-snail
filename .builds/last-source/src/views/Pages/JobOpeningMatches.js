@@ -41,6 +41,7 @@ import {
   getInterviewButtonLabel,
   getViewProfileButtonLabel,
   buildInterviewEditState,
+  buildInterviewCreateState,
   buildInterviewUpdatePayload,
   fetchJobScopedInterview,
   isShortlistedInterview,
@@ -236,16 +237,9 @@ const JobOpeningMatches = ({ jobIdOverride, embeddedMode = false }) => {
       setCreateInterview(false);
       setUpdateInterview(true);
     } else {
-      setInterview({
-        candidateId: candidate?.id,
-        userId: loginUser?.id,
-        jobOpeningId,
-        candidate: {
-          firstname: candidate?.firstname,
-          lastname: candidate?.lastname,
-          interviewStatus: candidate?.interviewStatus,
-        },
-      });
+      setInterview(
+        buildInterviewCreateState(candidate, jobOpeningId, loginUser?.id)
+      );
       setSelectCompanyValidation(null);
       setCreateInterview(true);
       setUpdateInterview(false);
