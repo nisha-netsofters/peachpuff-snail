@@ -46,10 +46,11 @@ import {
   isShortlistedInterview,
 } from "../../components/JobOpening/jobMatchTableHelpers";
 
-const JobOpeningMatches = () => {
+const JobOpeningMatches = ({ jobIdOverride, embeddedMode = false }) => {
   const history = useHistory();
   const dispatch = useDispatch();
   const params = useParams();
+  const activeJobId = jobIdOverride || params?.id;
   const slug = localStorage.getItem("slug");
   const themeColor = useSelector(
     (state) => state?.agency?.agencyDetail?.themecolor
@@ -108,7 +109,7 @@ const JobOpeningMatches = () => {
   const getJobOpeningRow = async () => {
     await dispatch({
       type: jobOpeningMatchesActions.GET_JOB_OPENING_ROW,
-      payload: params?.id,
+      payload: activeJobId,
     });
   };
 
@@ -127,7 +128,7 @@ const JobOpeningMatches = () => {
     await dispatch({
       type: jobOpeningMatchesActions.GET_JOB_OPENING_MATCH_CANDIDATE,
       payload: {
-        id: params?.id,
+        id: activeJobId,
         page: pageNum,
         perPage: perPageNum,
         sortBy: sort,
@@ -180,12 +181,12 @@ const JobOpeningMatches = () => {
 
   useEffect(() => {
     (async () => {
-      if (params?.id) {
+      if (activeJobId) {
         await getJobOpeningRow();
         await getJobOpeningMatchCandidate(page, perPage);
       }
     })();
-  }, []);
+  }, [activeJobId]);
 
   useEffect(() => {
     if (!showInterview) return;
@@ -217,7 +218,7 @@ const JobOpeningMatches = () => {
 
   const openInterviewDialog = async (candidate) => {
     setInterviewLoading(true);
-    const jobOpeningId = params?.id;
+    const jobOpeningId = activeJobId;
     const existing = await fetchJobScopedInterview(
       getInterviewAPI,
       candidate?.id,
@@ -258,7 +259,7 @@ const JobOpeningMatches = () => {
     const payload = {
       ...(Array.isArray(interview) ? {} : interview || {}),
       userId: interview?.userId || loginUser?.id,
-      jobOpeningId: interview?.jobOpeningId || params?.id,
+      jobOpeningId: interview?.jobOpeningId || activeJobId,
     };
     await dispatch({
       type: interviewActions.CREATE_INTERVIEW,
@@ -558,22 +559,24 @@ const JobOpeningMatches = () => {
           >
             <Menu size={18} />
           </Button>
-          <Button
-            style={{
-              color: themeColor,
-              display: "flex",
-              alignItems: "center",
-              gap: "5px",
-            }}
-            className="add-new-user"
-            color="default"
-            onClick={() => {
-              history.push(`/${slug}/jobopening`);
-            }}
-          >
-            <ArrowLeft size={17} />
-            Back
-          </Button>
+          {!embeddedMode && (
+            <Button
+              style={{
+                color: themeColor,
+                display: "flex",
+                alignItems: "center",
+                gap: "5px",
+              }}
+              className="add-new-user"
+              color="default"
+              onClick={() => {
+                history.push(`/${slug}/jobopening`);
+              }}
+            >
+              <ArrowLeft size={17} />
+              Back
+            </Button>
+          )}
           <Button
             color="default"
             style={{ backgroundColor: themeColor, color: "white", width: "145px", marginLeft: "auto" }}
@@ -739,17 +742,19 @@ const JobOpeningMatches = () => {
           </Col>
           <Col sm={12} md={detailsOpen ? 8 : 12} lg={detailsOpen ? 8 : 12} xl={detailsOpen ? 9 : 12}>
             <Card>
-              <CardBody className="pb-0">
-                <h5
-                  style={{
-                    color: themeColor,
-                    fontWeight: "600",
-                    margin: "0 0 8px 0",
-                  }}
-                >
-                  Best Matches Candidates
-                </h5>
-              </CardBody>
+              {!embeddedMode && (
+                <CardBody className="pb-0">
+                  <h5
+                    style={{
+                      color: themeColor,
+                      fontWeight: "600",
+                      margin: "0 0 8px 0",
+                    }}
+                  >
+                    Best Matches Candidates
+                  </h5>
+                </CardBody>
+              )}
               <div className="react-dataTable job-opening-match-table">
                 <DataTable
                   paginationRowsPerPageOptions={[10, 20, 30, 50, 100]}

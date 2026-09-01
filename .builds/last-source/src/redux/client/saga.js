@@ -132,25 +132,32 @@ export function* WATCH_FILTER_CLIENT(action) {
 export function* WATCH_APPROVE_CLIENT(action) {
   const clientResults = yield select((state) => state?.client);
   const resp = yield approveClient(action.payload);
+  if (resp?.error) {
+    action?.setLoading(false);
+    return;
+  }
   if (resp?.constraint) {
     yield put({
       type: actions.SET_CLIENT,
       payload: resp,
     });
-  } else if (resp) {
+  } else if (resp?.message) {
     const index = clientResults?.results?.findIndex(
       (item) => item.id === action.payload?.id
     );
     if (index !== -1) {
       clientResults.results[index].action = "approved";
+      if (resp?.user?.id) {
+        clientResults.results[index].userId = resp.user.id;
+      }
     }
     yield put({
       type: actions.SET_CLIENT,
       payload: clientResults,
     });
-    action?.setLoading(false)
+    action?.setLoading(false);
   }
-  action?.setLoading(false)
+  action?.setLoading(false);
 }
 export function* WATCH_DECLINED_CLIENT(action) {
   const clientResults = yield select((state) => state?.client);
