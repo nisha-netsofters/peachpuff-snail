@@ -329,13 +329,18 @@ const SecondPage = ({
       // Convert applied candidates to the same format as regular candidates
       const formattedCandidates = Array.isArray(appliedCandidatesList)
         ? appliedCandidatesList.map((applied) => {
-          // The applied candidate might be nested in a candidate object
-          const candidate = applied.candidate || applied;
+          // Prefer full candidate from applicants API (same shape as /candidate list)
+          const candidate = applied.candidate || applied.candidateDetails || applied;
 
           // Ensure all required fields are properly mapped
           // Handle different possible data structures from API
           const formattedCandidate = {
             ...candidate,
+            profileCompleteness:
+              applied.profileCompleteness ?? candidate.profileCompleteness,
+            profileCompletenessLabel:
+              applied.profileCompletenessLabel ??
+              candidate.profileCompletenessLabel,
             // Prefer real candidate id (applicants API returns application id as `id`)
             id:
               applied.candidateId ||
@@ -1058,18 +1063,10 @@ const SecondPage = ({
   };
 
   const renderProfileCompletion = (row) => {
-    const computed =
-      row?.profileCompleteness === undefined ||
-      row?.profileCompleteness === null
-        ? calculateProfileCompleteness(row)
-        : null;
-    const pct = Number(
-      row?.profileCompleteness ?? computed?.profileCompleteness ?? 0
-    );
+    const computed = calculateProfileCompleteness(row);
+    const pct = Number(computed?.profileCompleteness ?? 0);
     const label =
-      row?.profileCompletenessLabel ||
-      computed?.profileCompletenessLabel ||
-      `${pct}% Complete`;
+      computed?.profileCompletenessLabel || `${pct}% Complete`;
     return (
       <div style={{ width: "100%", minWidth: "120px", padding: "6px 0" }}>
         <div
