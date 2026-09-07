@@ -166,20 +166,19 @@ const SecondPage = ({
 
   const getCandidateJobCategoryLabel = (cand) => {
     const prof = cand?.professional || {};
-    const fromObj =
-      (typeof prof.jobCategory === "object" &&
-        prof.jobCategory?.jobCategory) ||
-      (typeof prof.jobCategory === "string" && prof.jobCategory) ||
-      prof.jobCategoryName ||
-      "";
-    if (fromObj && String(fromObj).trim()) return String(fromObj).trim();
-    const id = String(prof.jobCategoryId || "").trim();
-    if (id && Array.isArray(jobCategoryMaster)) {
+    const id = String(prof.jobCategoryId || prof.jobCategory?.id || "").trim();
+    // Only show categories that exist in master list (never free-text like "Receptionist")
+    if (id && Array.isArray(jobCategoryMaster) && jobCategoryMaster.length) {
       const found = jobCategoryMaster.find(
         (j) => String(j.id) === id || String(j._id) === id
       );
       if (found?.jobCategory) return found.jobCategory;
     }
+    const fromObj =
+      typeof prof.jobCategory === "object" && prof.jobCategory?.id
+        ? prof.jobCategory?.jobCategory
+        : "";
+    if (fromObj && String(fromObj).trim()) return String(fromObj).trim();
     return "-";
   };
 

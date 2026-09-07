@@ -254,9 +254,10 @@ const Professional = ({
               } else if (jobCatId) {
                 setJobCat({ label: jobCatName || "Selected", value: jobCatId, id: jobCatId });
                 setFieldValue("jobCategoryId", jobCatId);
-              } else if (jobCatName && jobCategoryOptions?.length > 0) {
-                // Set as custom label so user can see what AI extracted
-                setJobCat({ label: jobCatName, value: jobCatName });
+              } else {
+                // Free-text not in master list — leave empty
+                setJobCat(null);
+                setFieldValue("jobCategoryId", "");
               }
 
               // Notice Period

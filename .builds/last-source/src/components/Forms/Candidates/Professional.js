@@ -215,24 +215,29 @@ const Professional = ({
               setFieldValue("highestQualification", prof.highestQualification);
             }
 
+            const jobCategoryName =
+              (typeof prof?.jobCategory === "object"
+                ? prof?.jobCategory?.jobCategory
+                : prof?.jobCategory) ||
+              prof?.jobCategoryName ||
+              prof?.designation ||
+              "";
+
             const jobCategoryId =
               prof?.jobCategoryId ||
               prof?.jobCategory?._id ||
               prof?.jobCategory?.id ||
-              matchJobCategoryId(
-                prof?.jobCategory ||
-                  prof?.jobCategoryName ||
-                  prof?.designation,
-                jobCategory
-              );
+              matchJobCategoryId(jobCategoryName, jobCategory);
 
             if (jobCategoryId) {
               const label =
-                prof?.jobCategory?.jobCategory ||
-                prof?.jobCategoryName ||
                 jobCategory?.find(
                   (j) => j.id === jobCategoryId || j._id === jobCategoryId
                 )?.jobCategory ||
+                (typeof prof?.jobCategory === "object" &&
+                prof?.jobCategory?.id
+                  ? prof?.jobCategory?.jobCategory
+                  : "") ||
                 "Selected Category";
 
               setJobCat({
@@ -240,6 +245,10 @@ const Professional = ({
                 value: jobCategoryId,
               });
               setFieldValue("jobCategoryId", jobCategoryId);
+            } else {
+              // Not in master list — do not show free-text category in edit
+              setJobCat(null);
+              setFieldValue("jobCategoryId", "");
             }
 
             if (prof.noticePeriod) {

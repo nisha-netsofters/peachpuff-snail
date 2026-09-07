@@ -266,8 +266,14 @@ export function buildIndustriesRelation(industryStr, industriesList = []) {
 }
 
 export function matchJobCategoryId(raw, jobCategories = []) {
-  const str = String(raw || "").trim().toLowerCase();
-  if (!str || !Array.isArray(jobCategories)) return null;
+  const str = String(
+    typeof raw === "object" && raw !== null
+      ? raw.jobCategory || raw.label || ""
+      : raw || ""
+  )
+    .trim()
+    .toLowerCase();
+  if (!str || str === "[object object]" || !Array.isArray(jobCategories)) return null;
 
   const found = jobCategories.find((j) => {
     const name = String(j.jobCategory || j.label || "").toLowerCase();
