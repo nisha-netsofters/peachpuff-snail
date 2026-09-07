@@ -151,6 +151,69 @@ const SecondPage = ({
   );
   const clientUser = useSelector((state) => state?.auth?.user);
   const { user } = useSelector((state) => state.auth);
+  const jobCategoryMaster = useSelector((state) => {
+    const jc = state?.jobCategory;
+    if (Array.isArray(jc?.results)) return jc.results;
+    if (Array.isArray(jc)) return jc;
+    return [];
+  });
+  const industriesMaster = useSelector((state) => {
+    const ind = state?.industries;
+    if (Array.isArray(ind?.results)) return ind.results;
+    if (Array.isArray(ind)) return ind;
+    return [];
+  });
+
+  const getCandidateJobCategoryLabel = (cand) => {
+    const prof = cand?.professional || {};
+    const fromObj =
+      (typeof prof.jobCategory === "object" &&
+        prof.jobCategory?.jobCategory) ||
+      (typeof prof.jobCategory === "string" && prof.jobCategory) ||
+      prof.jobCategoryName ||
+      "";
+    if (fromObj && String(fromObj).trim()) return String(fromObj).trim();
+    const id = String(prof.jobCategoryId || "").trim();
+    if (id && Array.isArray(jobCategoryMaster)) {
+      const found = jobCategoryMaster.find(
+        (j) => String(j.id) === id || String(j._id) === id
+      );
+      if (found?.jobCategory) return found.jobCategory;
+    }
+    return "-";
+  };
+
+  const getCandidatePreferredLocation = (cand) => {
+    const prof = cand?.professional || {};
+    return (
+      prof.preferedJobLocation ||
+      prof.preferredJobLocation ||
+      prof.preferredLocation ||
+      cand?.preferedJobLocation ||
+      cand?.preferredLocation ||
+      "-"
+    );
+  };
+
+  const getCandidateIndustriesLabel = (cand) => {
+    const relations = Array.isArray(cand?.industries_relation)
+      ? cand.industries_relation
+      : [];
+    const labels = relations
+      .map((relation) => {
+        if (relation?.industries?.industryCategory) {
+          return relation.industries.industryCategory;
+        }
+        const id = String(relation?.industriesId || "").trim();
+        if (!id) return "";
+        const found = industriesMaster.find(
+          (i) => String(i.id) === id || String(i._id) === id
+        );
+        return found?.industryCategory || "";
+      })
+      .filter(Boolean);
+    return labels.length ? labels.join(" | ") : "-";
+  };
   const candidateId = new URLSearchParams(location).get("id");
   const dashboardSearchParams = new URLSearchParams(location);
   const urlQuickFilter = dashboardSearchParams.get("quickFilter");
@@ -1306,7 +1369,7 @@ const SecondPage = ({
     },
     {
       name: "Job Category",
-      selector: (row) => row?.professional?.jobCategory?.jobCategory,
+      selector: (row) => getCandidateJobCategoryLabel(row),
     },
     {
       name: "Experience",
@@ -1327,7 +1390,7 @@ const SecondPage = ({
     },
     {
       name: "Preferable Job Location",
-      selector: (row) => row?.professional?.preferedJobLocation,
+      selector: (row) => getCandidatePreferredLocation(row),
     },
     {
       name: "Notice Period",
@@ -1433,7 +1496,7 @@ const SecondPage = ({
     },
     {
       name: "Job Category",
-      selector: (row) => row?.professional?.jobCategory?.jobCategory,
+      selector: (row) => getCandidateJobCategoryLabel(row),
     },
     {
       name: "gender",
@@ -1458,7 +1521,7 @@ const SecondPage = ({
     },
     {
       name: "Preferable Job Location",
-      selector: (row) => row?.professional?.preferedJobLocation,
+      selector: (row) => getCandidatePreferredLocation(row),
     },
     {
       name: "Notice Period",
@@ -1587,7 +1650,7 @@ const SecondPage = ({
     },
     {
       name: "Job Category",
-      selector: (row) => row?.professional?.jobCategory?.jobCategory,
+      selector: (row) => getCandidateJobCategoryLabel(row),
     },
     {
       name: "gender",
@@ -1611,7 +1674,7 @@ const SecondPage = ({
     },
     {
       name: "Preferable Job Location",
-      selector: (row) => row?.professional?.preferedJobLocation,
+      selector: (row) => getCandidatePreferredLocation(row),
     },
     {
       name: "Notice Period",
@@ -2614,7 +2677,7 @@ const SecondPage = ({
       },
       {
         title: "Job Category",
-        value: candidate?.professional?.jobCategory?.jobCategory || "-",
+        value: getCandidateJobCategoryLabel(candidate),
       },
     ].filter(Boolean);
 
@@ -2720,7 +2783,7 @@ const SecondPage = ({
       },
       {
         title: "Preferable Job Location",
-        value: candidate?.professional?.preferedJobLocation || "-",
+        value: getCandidatePreferredLocation(candidate),
       },
     ];
 
@@ -2824,11 +2887,7 @@ const SecondPage = ({
   };
 
   const renderStatesTable = (candidate) => {
-    const industryCategories =
-      candidate?.industries_relation
-        ?.map((relation) => relation.industries?.industryCategory)
-        .filter(Boolean)
-        .join(" | ") || "-";
+    const industryCategories = getCandidateIndustriesLabel(candidate);
 
     const statesArr = [
       {
@@ -2837,7 +2896,7 @@ const SecondPage = ({
       },
       {
         title: "Job Category",
-        value: candidate?.professional?.jobCategory?.jobCategory || "-",
+        value: getCandidateJobCategoryLabel(candidate),
       },
       {
         title: "Education",
@@ -2847,7 +2906,7 @@ const SecondPage = ({
       },
       {
         title: "Pref. Location",
-        value: candidate?.professional?.preferedJobLocation || "-",
+        value: getCandidatePreferredLocation(candidate),
       },
       {
         title: "Skills",
