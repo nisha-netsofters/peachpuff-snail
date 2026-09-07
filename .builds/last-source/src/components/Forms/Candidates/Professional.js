@@ -219,7 +219,12 @@ const Professional = ({
               prof?.jobCategoryId ||
               prof?.jobCategory?._id ||
               prof?.jobCategory?.id ||
-              matchJobCategoryId(prof?.jobCategory || prof?.jobCategoryName, jobCategory);
+              matchJobCategoryId(
+                prof?.jobCategory ||
+                  prof?.jobCategoryName ||
+                  prof?.designation,
+                jobCategory
+              );
 
             if (jobCategoryId) {
               const label =

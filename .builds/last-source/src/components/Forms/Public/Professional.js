@@ -217,7 +217,10 @@ const Professional = ({
 
               // Job Category — match AI name to real options
               const jobCatName = String(
-                prof.jobCategory?.jobCategory || prof.jobCategory || ""
+                prof.jobCategory?.jobCategory ||
+                  prof.jobCategory ||
+                  prof.designation ||
+                  ""
               ).trim();
               const jobCatId = prof.jobCategoryId;
               const matchedJobCat =

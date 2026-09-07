@@ -275,11 +275,38 @@ export function matchJobCategoryId(raw, jobCategories = []) {
   });
   if (found) return found.id || found._id || found.value || null;
 
+  // Common title ↔ category aliases (lightweight, only for matching)
+  const aliases = {
+    receptionist: ["receptionist", "front desk", "front office", "admin", "administration"],
+    "front desk": ["receptionist", "front office", "admin"],
+    "software developer": ["software", "developer", "it software", "web developer", "programmer"],
+    developer: ["software", "developer", "programmer", "it"],
+    accountant: ["account", "accountant", "accounts", "finance"],
+    hr: ["human resource", "hr", "recruitment"],
+    "sales executive": ["sales", "business development", "bd"],
+    marketing: ["marketing", "digital marketing"],
+    teacher: ["teacher", "tutor", "education", "faculty"],
+    nurse: ["nurse", "nursing", "medical"],
+    designer: ["designer", "graphic", "ui", "ux"],
+  };
+  const aliasKeys = Object.keys(aliases);
+  const aliasHit = aliasKeys.find(
+    (k) => str === k || str.includes(k) || k.includes(str)
+  );
+  const expand = new Set(
+    str
+      .split(/[^a-z0-9]+/)
+      .filter((t) => t.length > 2)
+  );
+  if (aliasHit) {
+    aliases[aliasHit].forEach((a) =>
+      a.split(/\s+/).forEach((t) => t.length > 2 && expand.add(t))
+    );
+  }
+
   // Fuzzy: "IT Software - Developer" ↔ "Software Development"
   const stop = new Set(["and", "the", "for", "job", "jobs", "category", "it"]);
-  const tokens = str
-    .split(/[^a-z0-9]+/)
-    .filter((t) => t.length > 2 && !stop.has(t));
+  const tokens = [...expand].filter((t) => t.length > 2 && !stop.has(t));
   if (!tokens.length) return null;
 
   let best = null;
@@ -289,9 +316,11 @@ export function matchJobCategoryId(raw, jobCategories = []) {
     const nameTokens = name
       .split(/[^a-z0-9]+/)
       .filter((t) => t.length > 2 && !stop.has(t));
-    const score = tokens.filter((t) =>
+    let score = tokens.filter((t) =>
       nameTokens.some((n) => n.includes(t) || t.includes(n))
     ).length;
+    // Bonus for exact token equality
+    score += tokens.filter((t) => nameTokens.includes(t)).length * 0.5;
     if (score > bestScore) {
       bestScore = score;
       best = j;
