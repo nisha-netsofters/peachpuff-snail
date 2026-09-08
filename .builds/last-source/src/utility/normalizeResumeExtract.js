@@ -267,9 +267,11 @@ export function buildIndustriesRelation(industryStr, industriesList = []) {
 
 /**
  * Fuzzy-match resume signals to a Job Category that EXISTS in DB only.
- * Uses designation + skills + education + other resume fields together.
- * Never picks a category from a single weak word (e.g. skill "Analytics"
- * → "Data Science Analytics"). If role is not in master list → null.
+ * Uses designation + title + skills + education + filename + experience.
+ * Does NOT trust AI free-text jobCategory (can wrongly become
+ * "Data Science Analytics" from skill "Analytics").
+ * Single weak skill word alone never selects a multi-word DB category.
+ * Role not in master list (e.g. Receptionist) → null.
  */
 export function matchJobCategoryId(raw, jobCategories = []) {
   if (!Array.isArray(jobCategories) || !jobCategories.length) return null;
@@ -277,7 +279,14 @@ export function matchJobCategoryId(raw, jobCategories = []) {
   const toStr = (item) =>
     String(
       typeof item === "object" && item !== null
-        ? item.jobCategory || item.label || item.name || item.sub || ""
+        ? item.jobCategory ||
+            item.label ||
+            item.name ||
+            item.sub ||
+            item.title ||
+            item.designation ||
+            item.role ||
+            ""
         : item || ""
     )
       .trim()
@@ -304,19 +313,32 @@ export function matchJobCategoryId(raw, jobCategories = []) {
           .map((e) => [e?.name, e?.sub, e?.institution].filter(Boolean).join(" "))
           .join(" ")
       : "";
-    primaryTexts = [raw.designation, raw.jobCategory, raw.jobCategoryName]
+    const expText = Array.isArray(raw.experience)
+      ? raw.experience
+          .map((e) =>
+            [e?.title, e?.designation, e?.role, e?.company]
+              .filter(Boolean)
+              .join(" ")
+          )
+          .join(" ")
+      : "";
+
+    // Primary = real job title only — never AI jobCategory label
+    primaryTexts = [raw.designation, raw.title, raw.fileName]
       .map(toStr)
       .filter((s) => s && s !== "[object object]");
+
+    // Full resume context (exclude AI jobCategory — avoids self-match)
     corpusParts = [
       raw.designation,
-      raw.jobCategory,
-      raw.jobCategoryName,
+      raw.title,
       skillText,
       raw.currentEmployer,
       raw.field,
       raw.course,
       raw.highestQualification,
       eduText,
+      expText,
       raw.summary,
       raw.about,
       raw.fileName,
@@ -329,7 +351,7 @@ export function matchJobCategoryId(raw, jobCategories = []) {
     const texts = (Array.isArray(raw) ? raw : [raw])
       .map(toStr)
       .filter((s) => s && s !== "[object object]");
-    primaryTexts = texts.slice(0, 2);
+    primaryTexts = texts.slice(0, 1);
     corpusParts = texts;
   }
 
@@ -358,6 +380,10 @@ export function matchJobCategoryId(raw, jobCategories = []) {
     "from",
     "year",
     "years",
+    "pdf",
+    "docx",
+    "doc",
+    "resume",
   ]);
 
   // One weak skill/common word alone must never pick a multi-word category
@@ -408,7 +434,7 @@ export function matchJobCategoryId(raw, jobCategories = []) {
   const catId = (j) => j.id || j._id || j.value || null;
   const catName = (j) => String(j.jobCategory || j.label || "").trim();
 
-  // 1) Fuzzy primary match vs DB names only (designation / parsed category)
+  // 1) Fuzzy designation / title / filename vs DB names only
   for (const str of primaryNorm) {
     if (!str) continue;
     const found = jobCategories.find((j) => {
@@ -418,9 +444,12 @@ export function matchJobCategoryId(raw, jobCategories = []) {
       const nt = tokenize(name);
       const st = tokenize(str);
       if (!nt.length || !st.length) return false;
-      // fuzzy: most category tokens covered by designation tokens
       const hit = nt.filter((n) => st.some((t) => tokensMatch(t, n))).length;
-      return hit >= Math.ceil(nt.length * 0.5) && hit >= 1 && !(hit === 1 && weakAlone.has(nt[0]) && nt.length > 1);
+      if (nt.length >= 2 && hit === 1) {
+        const only = nt.find((n) => st.some((t) => tokensMatch(t, n)));
+        if (only && weakAlone.has(only)) return false;
+      }
+      return hit >= Math.ceil(nt.length * 0.5) && hit >= 1;
     });
     if (found) return catId(found);
   }
@@ -428,7 +457,7 @@ export function matchJobCategoryId(raw, jobCategories = []) {
   // 2) Category phrase appears in full resume text
   for (const j of jobCategories) {
     const name = normalizeName(catName(j));
-    if (name.length < 3) continue;
+    if (name.length < 4) continue;
     if (corpusNorm.includes(name)) return catId(j);
   }
 

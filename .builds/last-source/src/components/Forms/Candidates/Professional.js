@@ -218,12 +218,6 @@ const Professional = ({
             const skillText = Array.isArray(prof?.skill)
               ? prof.skill.join(" ")
               : String(prof?.skill || prof?.skills || "");
-            const jobCategoryName =
-              (typeof prof?.jobCategory === "object"
-                ? prof?.jobCategory?.jobCategory
-                : prof?.jobCategory) ||
-              prof?.jobCategoryName ||
-              "";
 
             const existingCatId =
               prof?.jobCategoryId ||
@@ -238,23 +232,22 @@ const Professional = ({
                   String(j._id) === String(existingCatId)
               );
 
-            // Fuzzy match using designation + skill + title + education + whole
-            // resume signals — but ONLY against Job Categories that exist in DB.
-            // Free-text roles not in master list (e.g. Receptionist) stay blank.
-            // One weak skill word alone (e.g. Analytics) will not pick a category.
-            const jobCategoryId = existingInDb
-              ? existingCatId
-              : matchJobCategoryId(
+            // On fresh resume parse always rematch — don't keep a previously
+            // wrong jobCategoryId (e.g. Data Science Analytics from Analytics skill).
+            const jobCategoryId =
+              existingInDb && !candidate?.resumeParsedAt
+                ? existingCatId
+                : matchJobCategoryId(
                   {
                     designation: prof?.designation,
-                    jobCategory: jobCategoryName,
-                    jobCategoryName,
+                    title: prof?.designation,
                     skill: skillText,
                     currentEmployer: prof?.currentEmployer,
                     field: prof?.field,
                     course: prof?.course,
                     highestQualification: prof?.highestQualification,
                     education: candidate?.education,
+                    experience: candidate?.experience,
                     preferedJobLocation: prof?.preferedJobLocation,
                     fileName:
                       candidate?.resumeFileName ||
@@ -269,7 +262,6 @@ const Professional = ({
                       candidate?.extractedText,
                       prof?.designation,
                       skillText,
-                      jobCategoryName,
                       Array.isArray(candidate?.experience)
                         ? candidate.experience
                             .map((e) =>
@@ -292,7 +284,8 @@ const Professional = ({
                     ]
                       .filter(Boolean)
                       .join(" "),
-                    resumeText: candidate?.resumeRawText || candidate?.extractedText || "",
+                    resumeText:
+                      candidate?.resumeRawText || candidate?.extractedText || "",
                   },
                   jobCategory
                 );
@@ -334,9 +327,24 @@ const Professional = ({
               }
               }
             } else {
-              // Not in master list — do not show free-text category in edit
+              // Not in master list — do not show free-text / wrong category
               setJobCat(null);
               setFieldValue("jobCategoryId", "");
+              if (
+                candidate?.resumeParsedAt &&
+                (prof?.jobCategoryId ||
+                  prof?.jobCategory?.id ||
+                  (typeof prof?.jobCategory === "string" && prof.jobCategory))
+              ) {
+                setCandidate((prev) => ({
+                  ...prev,
+                  professional: {
+                    ...(prev?.professional || {}),
+                    jobCategoryId: "",
+                    jobCategory: undefined,
+                  },
+                }));
+              }
             }
 
             if (prof.noticePeriod) {
