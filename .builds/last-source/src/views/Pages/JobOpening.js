@@ -697,6 +697,10 @@ const JobOpening = () => {
         jobOpening?.salaryRangeStart || (salaryNum > 0 ? salaryNum : 0),
       salaryRangeEnd:
         jobOpening?.salaryRangeEnd || (salaryNum > 0 ? salaryNum : 0),
+      jobLocation: [jobOpening?.area, jobOpening?.city, jobOpening?.state]
+        .map((v) => String(v || "").trim())
+        .filter(Boolean)
+        .join(", ") || jobOpening?.jobLocation || "",
     };
     for (const key in payload) {
       if (payload[key] !== undefined && payload[key] !== null) {
@@ -727,6 +731,10 @@ const JobOpening = () => {
         jobOpening?.salaryRangeStart || (salaryNum > 0 ? salaryNum : 0),
       salaryRangeEnd:
         jobOpening?.salaryRangeEnd || (salaryNum > 0 ? salaryNum : 0),
+      jobLocation: [jobOpening?.area, jobOpening?.city, jobOpening?.state]
+        .map((v) => String(v || "").trim())
+        .filter(Boolean)
+        .join(", ") || jobOpening?.jobLocation || "",
     };
     for (const key in payload) {
       fm.append(key, payload[key]);

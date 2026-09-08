@@ -1,12 +1,23 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Row, Col, Input, Label } from "reactstrap";
 import Select from "react-select";
 import Flatpickr from "react-flatpickr";
 import { selectThemeColors } from "@utils";
 import "@styles/react/libs/flatpickr/flatpickr.scss";
 import { useSelector } from "react-redux";
+import { State, City } from "country-state-city";
 import AiJobDescriptionPanel from "./AiJobDescriptionPanel";
 import { getAllClientsAPI } from "../../../apis/client";
+import { getAreasByCity } from "../../../apis/areas";
+import { resolveIndianAddress } from "../../../utility/resolveIndianAddress";
+import { cleanAreaValue } from "../../../utility/normalizeResumeExtract";
+
+const composeJobLocation = (data = {}) => {
+  const parts = [data.area, data.city, data.state]
+    .map((v) => String(v || "").trim())
+    .filter(Boolean);
+  return parts.join(", ");
+};
 
 const experienceOptions = [
   { value: "0-1 year", id: "minExperienceYears", label: "0-1 Year" },
@@ -61,6 +72,13 @@ const JobOpening = ({
   const [selectedRecruiter, setSelectedRecruiter] = useState(null);
   const [selectedClient, setSelectedClient] = useState(null);
   const [clientOptions, setClientOptions] = useState([]);
+  const [states, setStates] = useState([]);
+  const [cities, setCities] = useState([]);
+  const [selectedState, setSelectedState] = useState(null);
+  const [selectedCity, setSelectedCity] = useState(null);
+  const [selectedArea, setSelectedArea] = useState(null);
+  const [areaOptions, setAreaOptions] = useState([]);
+  const [areasLoading, setAreasLoading] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -197,6 +215,210 @@ const JobOpening = ({
       }
     }
   }, [authUser?.id]);
+
+  useEffect(() => {
+    try {
+      const result = State.getStatesOfCountry("IN") || [];
+      setStates(
+        result.map((ele) => ({
+          ...ele,
+          label: ele.name,
+          value: ele.name,
+          key: "state",
+        }))
+      );
+    } catch (error) {
+      setStates([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    const isoCode = selectedState?.isoCode || jobOpening?.stateId;
+    if (!isoCode) {
+      setCities([]);
+      return;
+    }
+    try {
+      const result = City.getCitiesOfState("IN", isoCode) || [];
+      setCities(
+        result.map((ele) => ({
+          ...ele,
+          label: ele.name,
+          value: ele.name,
+          key: "city",
+        }))
+      );
+    } catch (error) {
+      setCities([]);
+    }
+  }, [selectedState, jobOpening?.stateId]);
+
+  const cityName = useMemo(
+    () => selectedCity?.value || selectedCity?.name || jobOpening?.city || "",
+    [selectedCity, jobOpening?.city]
+  );
+  const stateName = useMemo(
+    () => selectedState?.value || selectedState?.name || jobOpening?.state || "",
+    [selectedState, jobOpening?.state]
+  );
+
+  // Prefill state/city/area when editing (or from old single jobLocation)
+  useEffect(() => {
+    if (!states.length) return;
+
+    let nextState = jobOpening?.state;
+    let nextStateId = jobOpening?.stateId;
+    let nextCity = jobOpening?.city;
+    let nextCityId = jobOpening?.cityId;
+    let nextArea = jobOpening?.area;
+
+    if (!nextState && !nextCity && jobOpening?.jobLocation) {
+      const parts = String(jobOpening.jobLocation)
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+      if (parts.length >= 3) {
+        nextArea = nextArea || parts[0];
+        nextCity = parts[1];
+        nextState = parts.slice(2).join(", ");
+      } else if (parts.length === 2) {
+        nextCity = parts[0];
+        nextState = parts[1];
+      } else if (parts.length === 1) {
+        nextCity = parts[0];
+      }
+    }
+
+    const resolved = resolveIndianAddress({
+      state: nextState,
+      stateId: nextStateId,
+      city: nextCity,
+      cityId: nextCityId,
+    });
+
+    if (resolved.stateId) {
+      const match = states.find((s) => s.isoCode === resolved.stateId);
+      if (match && selectedState?.isoCode !== match.isoCode) {
+        setSelectedState(match);
+      }
+    } else if (!jobOpening?.id && !jobOpening?.state) {
+      setSelectedState(null);
+      setSelectedCity(null);
+      setSelectedArea(null);
+    }
+
+    if (
+      resolved.stateId &&
+      (jobOpening?.state !== resolved.state ||
+        jobOpening?.stateId !== resolved.stateId ||
+        (!jobOpening?.area && nextArea) ||
+        (!jobOpening?.city && resolved.city))
+    ) {
+      setJobOpening((prev) => {
+        const merged = {
+          ...(prev || {}),
+          state: resolved.state,
+          stateId: resolved.stateId,
+        };
+        if (resolved.city) {
+          merged.city = resolved.city;
+          merged.cityId = resolved.cityId || resolved.city;
+        }
+        if (nextArea && !merged.area) merged.area = nextArea;
+        merged.jobLocation = composeJobLocation(merged);
+        return merged;
+      });
+    }
+  }, [jobOpening?.id, jobOpening?.state, jobOpening?.stateId, jobOpening?.jobLocation, states]);
+
+  useEffect(() => {
+    if (!jobOpening?.city || !cities.length) return;
+    const match =
+      cities.find(
+        (c) => c.name?.toLowerCase() === String(jobOpening.city).toLowerCase()
+      ) ||
+      cities.find(
+        (c) =>
+          c.name?.toLowerCase() === String(jobOpening.cityId || "").toLowerCase()
+      );
+    if (!match) return;
+    if (!selectedCity || selectedCity.value !== match.name) {
+      setSelectedCity(match);
+    }
+    if (jobOpening.cityId !== match.name || jobOpening.city !== match.name) {
+      setJobOpening((prev) => {
+        const merged = {
+          ...(prev || {}),
+          city: match.name,
+          cityId: match.name,
+        };
+        merged.jobLocation = composeJobLocation(merged);
+        return merged;
+      });
+    }
+  }, [jobOpening?.city, jobOpening?.id, cities]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!cityName) {
+        setAreaOptions([]);
+        setSelectedArea(null);
+        return;
+      }
+      setAreasLoading(true);
+      try {
+        const resp = await getAreasByCity({
+          state: stateName,
+          city: cityName,
+        });
+        const list = Array.isArray(resp?.data)
+          ? resp.data
+          : Array.isArray(resp)
+          ? resp
+          : [];
+        if (cancelled) return;
+        const options = list.map((a) => ({
+          label: a.name,
+          value: a.name,
+          key: "area",
+          id: a.id,
+        }));
+        setAreaOptions(options);
+
+        const currentArea = cleanAreaValue(jobOpening?.area || "");
+        if (currentArea) {
+          const lower = currentArea.toLowerCase();
+          const match =
+            options.find((o) => o.value.toLowerCase() === lower) ||
+            options.find(
+              (o) =>
+                o.value.toLowerCase().includes(lower) ||
+                lower.includes(o.value.toLowerCase())
+            );
+          setSelectedArea(
+            match || {
+              label: currentArea,
+              value: currentArea,
+              key: "area",
+            }
+          );
+        } else {
+          setSelectedArea(null);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setAreaOptions([]);
+          setSelectedArea(null);
+        }
+      } finally {
+        if (!cancelled) setAreasLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [cityName, stateName, jobOpening?.area, jobOpening?.id]);
 
   const onTextChange = (e) => {
     const { id, value } = e.target;
@@ -403,17 +625,95 @@ const JobOpening = ({
         </Col>
 
         <Col lg={6} xs={12} xl={4}>
-          <Label>Location</Label>
-          <Input
-            disabled={isRecruiter}
-            id="jobLocation"
-            value={jobOpening?.jobLocation || ""}
-            placeholder="Enter Location"
-            maxLength={200}
-            onFocus={() => setIsfocus("jobLocation")}
-            onBlur={() => setIsfocus(null)}
-            style={{ borderColor: focus === "jobLocation" && themecolor }}
-            onChange={onTextChange}
+          <Label>State</Label>
+          <Select
+            isDisabled={isRecruiter}
+            id="state"
+            value={selectedState || null}
+            placeholder={jobOpening?.state || "Select State"}
+            options={states}
+            className="react-select"
+            classNamePrefix="select"
+            theme={selectThemeColors}
+            onChange={(e) => {
+              setSelectedState(e);
+              setSelectedCity(null);
+              setSelectedArea(null);
+              setAreaOptions([]);
+              setJobOpening((prev) => {
+                const next = {
+                  ...(prev || {}),
+                  state: e.value,
+                  stateId: e.isoCode,
+                };
+                delete next.city;
+                delete next.cityId;
+                delete next.area;
+                next.jobLocation = composeJobLocation(next);
+                return next;
+              });
+            }}
+          />
+        </Col>
+
+        <Col lg={6} xs={12} xl={4}>
+          <Label>City</Label>
+          <Select
+            isDisabled={isRecruiter}
+            id="city"
+            value={selectedCity || null}
+            placeholder={jobOpening?.city || "Select City"}
+            options={cities}
+            className="react-select"
+            classNamePrefix="select"
+            theme={selectThemeColors}
+            onChange={(e) => {
+              setSelectedCity(e);
+              setSelectedArea(null);
+              setJobOpening((prev) => {
+                const next = {
+                  ...(prev || {}),
+                  city: e.value,
+                  cityId: e.value,
+                };
+                delete next.area;
+                next.jobLocation = composeJobLocation(next);
+                return next;
+              });
+            }}
+          />
+        </Col>
+
+        <Col lg={6} xs={12} xl={4}>
+          <Label>Area</Label>
+          <Select
+            isDisabled={isRecruiter || !cityName || areasLoading}
+            id="area"
+            value={selectedArea || null}
+            placeholder={
+              !cityName
+                ? "Select city first"
+                : areasLoading
+                ? "Loading areas..."
+                : areaOptions.length
+                ? "Select Area"
+                : "No areas for this city"
+            }
+            options={areaOptions}
+            isClearable
+            className="react-select"
+            classNamePrefix="select"
+            theme={selectThemeColors}
+            onChange={(e) => {
+              setSelectedArea(e || null);
+              setJobOpening((prev) => {
+                const next = { ...(prev || {}) };
+                if (e?.value) next.area = e.value;
+                else delete next.area;
+                next.jobLocation = composeJobLocation(next);
+                return next;
+              });
+            }}
           />
         </Col>
 
