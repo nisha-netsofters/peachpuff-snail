@@ -230,10 +230,11 @@ const Professional = ({
               matchJobCategoryId(jobCategoryName, jobCategory);
 
             if (jobCategoryId) {
+              const matchedCat = jobCategory?.find(
+                (j) => j.id === jobCategoryId || j._id === jobCategoryId
+              );
               const label =
-                jobCategory?.find(
-                  (j) => j.id === jobCategoryId || j._id === jobCategoryId
-                )?.jobCategory ||
+                matchedCat?.jobCategory ||
                 (typeof prof?.jobCategory === "object" &&
                 prof?.jobCategory?.id
                   ? prof?.jobCategory?.jobCategory
@@ -245,6 +246,23 @@ const Professional = ({
                 value: jobCategoryId,
               });
               setFieldValue("jobCategoryId", jobCategoryId);
+              // Persist match into parent state so Update writes to DB
+              // (dropdown-only match was UI-only until user re-selected).
+              const alreadySaved =
+                String(prof?.jobCategoryId || "") === String(jobCategoryId);
+              if (!alreadySaved && matchedCat) {
+                setCandidate((prev) => ({
+                  ...prev,
+                  professional: {
+                    ...(prev?.professional || {}),
+                    jobCategoryId: String(jobCategoryId),
+                    jobCategory: {
+                      id: matchedCat.id || jobCategoryId,
+                      jobCategory: matchedCat.jobCategory,
+                    },
+                  },
+                }));
+              }
             } else {
               // Not in master list — do not show free-text category in edit
               setJobCat(null);
@@ -614,6 +632,25 @@ const Professional = ({
                         onChange={(e) => {
                           setJobCat(e);
                           setFieldValue("jobCategoryId", e.value);
+                          const matchedCat = jobCategory?.find(
+                            (j) => j.id === e.value || j._id === e.value
+                          );
+                          setCandidate((prev) => ({
+                            ...prev,
+                            professional: {
+                              ...(prev?.professional || {}),
+                              jobCategoryId: e.value,
+                              jobCategory: matchedCat
+                                ? {
+                                    id: matchedCat.id || e.value,
+                                    jobCategory: matchedCat.jobCategory,
+                                  }
+                                : {
+                                    id: e.value,
+                                    jobCategory: e.label,
+                                  },
+                            },
+                          }));
                         }}
                       />
                     </div>
