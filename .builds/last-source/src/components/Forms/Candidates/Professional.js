@@ -215,31 +215,100 @@ const Professional = ({
               setFieldValue("highestQualification", prof.highestQualification);
             }
 
+            const skillText = Array.isArray(prof?.skill)
+              ? prof.skill.join(" ")
+              : String(prof?.skill || prof?.skills || "");
             const jobCategoryName =
               (typeof prof?.jobCategory === "object"
                 ? prof?.jobCategory?.jobCategory
                 : prof?.jobCategory) ||
               prof?.jobCategoryName ||
-              prof?.designation ||
               "";
 
-            const jobCategoryId =
+            const existingCatId =
               prof?.jobCategoryId ||
               prof?.jobCategory?._id ||
               prof?.jobCategory?.id ||
-              matchJobCategoryId(jobCategoryName, jobCategory);
+              null;
+            const existingInDb =
+              existingCatId &&
+              jobCategory?.some(
+                (j) =>
+                  String(j.id) === String(existingCatId) ||
+                  String(j._id) === String(existingCatId)
+              );
+
+            // Fuzzy match using designation + skill + title + education + whole
+            // resume signals — but ONLY against Job Categories that exist in DB.
+            // Free-text roles not in master list (e.g. Receptionist) stay blank.
+            // One weak skill word alone (e.g. Analytics) will not pick a category.
+            const jobCategoryId = existingInDb
+              ? existingCatId
+              : matchJobCategoryId(
+                  {
+                    designation: prof?.designation,
+                    jobCategory: jobCategoryName,
+                    jobCategoryName,
+                    skill: skillText,
+                    currentEmployer: prof?.currentEmployer,
+                    field: prof?.field,
+                    course: prof?.course,
+                    highestQualification: prof?.highestQualification,
+                    education: candidate?.education,
+                    preferedJobLocation: prof?.preferedJobLocation,
+                    fileName:
+                      candidate?.resumeFileName ||
+                      candidate?.resumeOriginalName ||
+                      (typeof candidate?.resume === "string"
+                        ? candidate.resume
+                        : ""),
+                    summary: [
+                      candidate?.summary,
+                      candidate?.about,
+                      candidate?.resumeRawText,
+                      candidate?.extractedText,
+                      prof?.designation,
+                      skillText,
+                      jobCategoryName,
+                      Array.isArray(candidate?.experience)
+                        ? candidate.experience
+                            .map((e) =>
+                              [e?.title, e?.designation, e?.role, e?.company]
+                                .filter(Boolean)
+                                .join(" ")
+                            )
+                            .join(" ")
+                        : "",
+                      Array.isArray(candidate?.industries_relation)
+                        ? candidate.industries_relation
+                            .map(
+                              (r) =>
+                                r?.industries?.industryCategory ||
+                                r?.industryCategory ||
+                                ""
+                            )
+                            .join(" ")
+                        : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" "),
+                    resumeText: candidate?.resumeRawText || candidate?.extractedText || "",
+                  },
+                  jobCategory
+                );
 
             if (jobCategoryId) {
               const matchedCat = jobCategory?.find(
-                (j) => j.id === jobCategoryId || j._id === jobCategoryId
+                (j) =>
+                  String(j.id) === String(jobCategoryId) ||
+                  String(j._id) === String(jobCategoryId)
               );
-              const label =
-                matchedCat?.jobCategory ||
-                (typeof prof?.jobCategory === "object" &&
-                prof?.jobCategory?.id
-                  ? prof?.jobCategory?.jobCategory
-                  : "") ||
-                "Selected Category";
+              // Only accept categories that exist in DB master list
+              if (!matchedCat) {
+                setJobCat(null);
+                setFieldValue("jobCategoryId", "");
+              } else {
+              const label = matchedCat.jobCategory || "Selected Category";
 
               setJobCat({
                 label: label,
@@ -262,6 +331,7 @@ const Professional = ({
                     },
                   },
                 }));
+              }
               }
             } else {
               // Not in master list — do not show free-text category in edit

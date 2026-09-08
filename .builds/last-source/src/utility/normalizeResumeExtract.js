@@ -265,75 +265,218 @@ export function buildIndustriesRelation(industryStr, industriesList = []) {
   return relations.slice(0, 3);
 }
 
+/**
+ * Fuzzy-match resume signals to a Job Category that EXISTS in DB only.
+ * Uses designation + skills + education + other resume fields together.
+ * Never picks a category from a single weak word (e.g. skill "Analytics"
+ * → "Data Science Analytics"). If role is not in master list → null.
+ */
 export function matchJobCategoryId(raw, jobCategories = []) {
-  const str = String(
-    typeof raw === "object" && raw !== null
-      ? raw.jobCategory || raw.label || ""
-      : raw || ""
-  )
-    .trim()
-    .toLowerCase();
-  if (!str || str === "[object object]" || !Array.isArray(jobCategories)) return null;
+  if (!Array.isArray(jobCategories) || !jobCategories.length) return null;
 
-  const found = jobCategories.find((j) => {
-    const name = String(j.jobCategory || j.label || "").toLowerCase();
-    return name === str || name.includes(str) || str.includes(name);
-  });
-  if (found) return found.id || found._id || found.value || null;
+  const toStr = (item) =>
+    String(
+      typeof item === "object" && item !== null
+        ? item.jobCategory || item.label || item.name || item.sub || ""
+        : item || ""
+    )
+      .trim()
+      .toLowerCase();
 
-  // Common title ↔ category aliases (lightweight, only for matching)
-  const aliases = {
-    receptionist: ["receptionist", "front desk", "front office", "admin", "administration"],
-    "front desk": ["receptionist", "front office", "admin"],
-    "software developer": ["software", "developer", "it software", "web developer", "programmer"],
-    developer: ["software", "developer", "programmer", "it"],
-    accountant: ["account", "accountant", "accounts", "finance"],
-    hr: ["human resource", "hr", "recruitment"],
-    "sales executive": ["sales", "business development", "bd"],
-    marketing: ["marketing", "digital marketing"],
-    teacher: ["teacher", "tutor", "education", "faculty"],
-    nurse: ["nurse", "nursing", "medical"],
-    designer: ["designer", "graphic", "ui", "ux"],
-  };
-  const aliasKeys = Object.keys(aliases);
-  const aliasHit = aliasKeys.find(
-    (k) => str === k || str.includes(k) || k.includes(str)
-  );
-  const expand = new Set(
-    str
-      .split(/[^a-z0-9]+/)
-      .filter((t) => t.length > 2)
-  );
-  if (aliasHit) {
-    aliases[aliasHit].forEach((a) =>
-      a.split(/\s+/).forEach((t) => t.length > 2 && expand.add(t))
-    );
+  const normalizeName = (s) =>
+    String(s || "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+
+  let primaryTexts = [];
+  let corpusParts = [];
+
+  if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+    const skillText = Array.isArray(raw.skill)
+      ? raw.skill.join(" ")
+      : Array.isArray(raw.skills)
+        ? raw.skills.join(" ")
+        : raw.skill || raw.skills || "";
+    const eduText = Array.isArray(raw.education)
+      ? raw.education
+          .map((e) => [e?.name, e?.sub, e?.institution].filter(Boolean).join(" "))
+          .join(" ")
+      : "";
+    primaryTexts = [raw.designation, raw.jobCategory, raw.jobCategoryName]
+      .map(toStr)
+      .filter((s) => s && s !== "[object object]");
+    corpusParts = [
+      raw.designation,
+      raw.jobCategory,
+      raw.jobCategoryName,
+      skillText,
+      raw.currentEmployer,
+      raw.field,
+      raw.course,
+      raw.highestQualification,
+      eduText,
+      raw.summary,
+      raw.about,
+      raw.fileName,
+      raw.resumeText,
+      raw.preferedJobLocation,
+    ]
+      .map(toStr)
+      .filter((s) => s && s !== "[object object]");
+  } else {
+    const texts = (Array.isArray(raw) ? raw : [raw])
+      .map(toStr)
+      .filter((s) => s && s !== "[object object]");
+    primaryTexts = texts.slice(0, 2);
+    corpusParts = texts;
   }
 
-  // Fuzzy: "IT Software - Developer" ↔ "Software Development"
-  const stop = new Set(["and", "the", "for", "job", "jobs", "category", "it"]);
-  const tokens = [...expand].filter((t) => t.length > 2 && !stop.has(t));
-  if (!tokens.length) return null;
+  if (!corpusParts.length && !primaryTexts.length) return null;
+
+  const corpus = corpusParts.join(" ");
+  const corpusNorm = normalizeName(corpus);
+  const primaryNorm = primaryTexts.map(normalizeName).filter(Boolean);
+
+  const stop = new Set([
+    "and",
+    "the",
+    "for",
+    "job",
+    "jobs",
+    "category",
+    "it",
+    "senior",
+    "junior",
+    "lead",
+    "assistant",
+    "executive",
+    "officer",
+    "manager",
+    "with",
+    "from",
+    "year",
+    "years",
+  ]);
+
+  // One weak skill/common word alone must never pick a multi-word category
+  const weakAlone = new Set([
+    "analytics",
+    "analysis",
+    "data",
+    "science",
+    "leadership",
+    "teamwork",
+    "communication",
+    "problem",
+    "solving",
+    "innovation",
+    "inovation",
+    "collaboration",
+    "management",
+    "support",
+    "service",
+    "customer",
+    "sales",
+    "marketing",
+    "digital",
+    "computer",
+    "office",
+    "admin",
+    "general",
+  ]);
+
+  const tokenize = (s) =>
+    normalizeName(s)
+      .split(" ")
+      .filter((t) => t.length > 2 && !stop.has(t));
+
+  // Fuzzy token match (developer ↔ development, etc.)
+  const tokensMatch = (a, b) => {
+    if (!a || !b) return false;
+    if (a === b) return true;
+    if (a.includes(b) || b.includes(a)) return true;
+    const minLen = Math.min(a.length, b.length);
+    if (minLen >= 5) {
+      const prefix = Math.min(6, minLen);
+      if (a.slice(0, prefix) === b.slice(0, prefix)) return true;
+    }
+    return false;
+  };
+
+  const catId = (j) => j.id || j._id || j.value || null;
+  const catName = (j) => String(j.jobCategory || j.label || "").trim();
+
+  // 1) Fuzzy primary match vs DB names only (designation / parsed category)
+  for (const str of primaryNorm) {
+    if (!str) continue;
+    const found = jobCategories.find((j) => {
+      const name = normalizeName(catName(j));
+      if (!name) return false;
+      if (name === str || name.includes(str) || str.includes(name)) return true;
+      const nt = tokenize(name);
+      const st = tokenize(str);
+      if (!nt.length || !st.length) return false;
+      // fuzzy: most category tokens covered by designation tokens
+      const hit = nt.filter((n) => st.some((t) => tokensMatch(t, n))).length;
+      return hit >= Math.ceil(nt.length * 0.5) && hit >= 1 && !(hit === 1 && weakAlone.has(nt[0]) && nt.length > 1);
+    });
+    if (found) return catId(found);
+  }
+
+  // 2) Category phrase appears in full resume text
+  for (const j of jobCategories) {
+    const name = normalizeName(catName(j));
+    if (name.length < 3) continue;
+    if (corpusNorm.includes(name)) return catId(j);
+  }
+
+  // 3) Fuzzy token coverage over whole resume — need enough category words,
+  //    not just one skill word like "Analytics"
+  const corpusTokens = tokenize(corpusNorm);
+  if (!corpusTokens.length) return null;
 
   let best = null;
   let bestScore = 0;
+
   for (const j of jobCategories) {
-    const name = String(j.jobCategory || j.label || "").toLowerCase();
-    const nameTokens = name
-      .split(/[^a-z0-9]+/)
-      .filter((t) => t.length > 2 && !stop.has(t));
-    let score = tokens.filter((t) =>
-      nameTokens.some((n) => n.includes(t) || t.includes(n))
-    ).length;
-    // Bonus for exact token equality
-    score += tokens.filter((t) => nameTokens.includes(t)).length * 0.5;
+    const name = normalizeName(catName(j));
+    const nameTokens = tokenize(name);
+    if (!nameTokens.length) continue;
+
+    const matched = nameTokens.filter((n) =>
+      corpusTokens.some((t) => tokensMatch(t, n))
+    );
+    const coverage = matched.length / nameTokens.length;
+
+    // Block: only 1 weak word matched on a multi-word category
+    if (nameTokens.length >= 2 && matched.length === 1 && weakAlone.has(matched[0])) {
+      continue;
+    }
+    // Need at least half the category tokens (fuzzy), min 1 for single-word categories
+    if (nameTokens.length === 1) {
+      if (matched.length < 1) continue;
+      if (weakAlone.has(matched[0]) && matched[0].length < 8) continue;
+    } else if (coverage < 0.5 || matched.length < 2) {
+      continue;
+    }
+
+    let score = coverage * 10 + matched.length;
+    const primaryHit = primaryNorm.some((p) => {
+      const pt = tokenize(p);
+      return nameTokens.some((n) => pt.some((t) => tokensMatch(t, n)));
+    });
+    if (primaryHit) score += 4;
+
     if (score > bestScore) {
       bestScore = score;
       best = j;
     }
   }
-  if (bestScore < 1 || !best) return null;
-  return best.id || best._id || best.value || null;
+
+  if (!best) return null;
+  return catId(best);
 }
 
 export function normalizeProfessional(prof = {}, courseList = [], education = []) {
