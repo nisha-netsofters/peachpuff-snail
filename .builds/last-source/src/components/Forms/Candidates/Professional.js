@@ -232,12 +232,19 @@ const Professional = ({
                   String(j._id) === String(existingCatId)
               );
 
-            // On fresh resume parse always rematch — don't keep a previously
-            // wrong jobCategoryId (e.g. Data Science Analytics from Analytics skill).
-            const jobCategoryId =
-              existingInDb && !candidate?.resumeParsedAt
-                ? existingCatId
-                : matchJobCategoryId(
+            const hasRoleSignal = !!(
+              prof?.designation ||
+              candidate?.resumeFileName ||
+              candidate?.resumeOriginalName ||
+              (Array.isArray(candidate?.experience) &&
+                candidate.experience.some(
+                  (e) => e?.title || e?.designation || e?.role
+                ))
+            );
+
+            // Always rematch from resume role signals. Do not keep a stale
+            // wrong jobCategoryId (e.g. Sales and Marketing from marketing cert).
+            const matchedId = matchJobCategoryId(
                   {
                     designation: prof?.designation,
                     title: prof?.designation,
@@ -290,6 +297,12 @@ const Professional = ({
                   jobCategory
                 );
 
+            const jobCategoryId = matchedId
+              ? matchedId
+              : !hasRoleSignal && existingInDb
+                ? existingCatId
+                : null;
+
             if (jobCategoryId) {
               const matchedCat = jobCategory?.find(
                 (j) =>
@@ -327,11 +340,11 @@ const Professional = ({
               }
               }
             } else {
-              // Not in master list — do not show free-text / wrong category
+              // Not in master list / no proper match — do not keep wrong category
               setJobCat(null);
               setFieldValue("jobCategoryId", "");
               if (
-                candidate?.resumeParsedAt &&
+                (candidate?.resumeParsedAt || hasRoleSignal) &&
                 (prof?.jobCategoryId ||
                   prof?.jobCategory?.id ||
                   (typeof prof?.jobCategory === "string" && prof.jobCategory))
