@@ -16,7 +16,7 @@ import { tostify } from "../../Tostify";
 import {
   normalizeProfessional,
   buildIndustriesRelation,
-  matchJobCategoryId,
+  matchJobCategoryAndSub,
   matchEducationOption,
   matchCourseOption,
 } from "../../../utility/normalizeResumeExtract";
@@ -260,12 +260,24 @@ const Professional = ({
               prof?.jobCategory?._id ||
               prof?.jobCategory?.id ||
               null;
+            const existingSubId =
+              prof?.jobSubCategoryId ||
+              prof?.jobSubCategory?._id ||
+              prof?.jobSubCategory?.id ||
+              null;
             const existingInDb =
               existingCatId &&
               jobCategory?.some(
                 (j) =>
                   String(j.id) === String(existingCatId) ||
                   String(j._id) === String(existingCatId)
+              );
+            const existingSubInDb =
+              existingSubId &&
+              allJobSubCategories?.some(
+                (s) =>
+                  String(s.id) === String(existingSubId) ||
+                  String(s._id) === String(existingSubId)
               );
 
             const hasRoleSignal = !!(
@@ -278,66 +290,70 @@ const Professional = ({
                 ))
             );
 
-            // Always rematch from resume role signals. Do not keep a stale
-            // wrong jobCategoryId (e.g. Sales and Marketing from marketing cert).
-            const matchedId = matchJobCategoryId(
-                  {
-                    designation: prof?.designation,
-                    title: prof?.designation,
-                    skill: skillText,
-                    currentEmployer: prof?.currentEmployer,
-                    field: prof?.field,
-                    course: prof?.course,
-                    highestQualification: prof?.highestQualification,
-                    education: candidate?.education,
-                    experience: candidate?.experience,
-                    preferedJobLocation: prof?.preferedJobLocation,
-                    fileName:
-                      candidate?.resumeFileName ||
-                      candidate?.resumeOriginalName ||
-                      (typeof candidate?.resume === "string"
-                        ? candidate.resume
-                        : ""),
-                    summary: [
-                      candidate?.summary,
-                      candidate?.about,
-                      candidate?.resumeRawText,
-                      candidate?.extractedText,
-                      prof?.designation,
-                      skillText,
-                      Array.isArray(candidate?.experience)
-                        ? candidate.experience
-                            .map((e) =>
-                              [e?.title, e?.designation, e?.role, e?.company]
-                                .filter(Boolean)
-                                .join(" ")
-                            )
-                            .join(" ")
-                        : "",
-                      Array.isArray(candidate?.industries_relation)
-                        ? candidate.industries_relation
-                            .map(
-                              (r) =>
-                                r?.industries?.industryCategory ||
-                                r?.industryCategory ||
-                                ""
-                            )
-                            .join(" ")
-                        : "",
-                    ]
-                      .filter(Boolean)
-                      .join(" "),
-                    resumeText:
-                      candidate?.resumeRawText || candidate?.extractedText || "",
-                  },
-                  jobCategory
-                );
+            const resumeSignals = {
+              designation: prof?.designation,
+              title: prof?.designation,
+              skill: skillText,
+              currentEmployer: prof?.currentEmployer,
+              field: prof?.field,
+              course: prof?.course,
+              highestQualification: prof?.highestQualification,
+              education: candidate?.education,
+              experience: candidate?.experience,
+              preferedJobLocation: prof?.preferedJobLocation,
+              fileName:
+                candidate?.resumeFileName ||
+                candidate?.resumeOriginalName ||
+                (typeof candidate?.resume === "string"
+                  ? candidate.resume
+                  : ""),
+              summary: [
+                candidate?.summary,
+                candidate?.about,
+                candidate?.resumeRawText,
+                candidate?.extractedText,
+                prof?.designation,
+                skillText,
+                Array.isArray(candidate?.experience)
+                  ? candidate.experience
+                      .map((e) =>
+                        [e?.title, e?.designation, e?.role, e?.company]
+                          .filter(Boolean)
+                          .join(" ")
+                      )
+                      .join(" ")
+                  : "",
+                Array.isArray(candidate?.industries_relation)
+                  ? candidate.industries_relation
+                      .map(
+                        (r) =>
+                          r?.industries?.industryCategory ||
+                          r?.industryCategory ||
+                          ""
+                      )
+                      .join(" ")
+                  : "",
+              ]
+                .filter(Boolean)
+                .join(" "),
+              resumeText:
+                candidate?.resumeRawText || candidate?.extractedText || "",
+            };
 
-            const jobCategoryId = matchedId
-              ? matchedId
-              : !hasRoleSignal && existingInDb
-                ? existingCatId
-                : null;
+            // Sub category (role) first, then category (department)
+            const matched = matchJobCategoryAndSub(
+              resumeSignals,
+              jobCategory || [],
+              allJobSubCategories || []
+            );
+
+            let jobCategoryId = matched?.jobCategoryId || null;
+            let jobSubCategoryId = matched?.jobSubCategoryId || null;
+
+            if (!jobCategoryId && !hasRoleSignal && existingInDb) {
+              jobCategoryId = existingCatId;
+              if (existingSubInDb) jobSubCategoryId = existingSubId;
+            }
 
             if (jobCategoryId) {
               const matchedCat = jobCategory?.find(
@@ -345,57 +361,71 @@ const Professional = ({
                   String(j.id) === String(jobCategoryId) ||
                   String(j._id) === String(jobCategoryId)
               );
-              // Only accept categories that exist in DB master list
               if (!matchedCat) {
                 setJobCat(null);
+                setJobSubCat(null);
                 setFieldValue("jobCategoryId", "");
+                setFieldValue("jobSubCategoryId", "");
               } else {
-              const label = matchedCat.jobCategory || "Selected Category";
+                setJobCat({
+                  label: matchedCat.jobCategory || "Selected Category",
+                  value: jobCategoryId,
+                });
+                setFieldValue("jobCategoryId", jobCategoryId);
 
-              setJobCat({
-                label: label,
-                value: jobCategoryId,
-              });
-              setFieldValue("jobCategoryId", jobCategoryId);
-              // Prefill sub category if saved
-              const savedSubId =
-                prof?.jobSubCategoryId ||
-                prof?.jobSubCategory?.id ||
-                "";
-              if (savedSubId && allJobSubCategories?.length) {
-                const sub = allJobSubCategories.find(
-                  (s) =>
-                    String(s.id) === String(savedSubId) ||
-                    String(s._id) === String(savedSubId)
-                );
-                if (sub) {
+                let matchedSub = null;
+                if (jobSubCategoryId && allJobSubCategories?.length) {
+                  matchedSub = allJobSubCategories.find(
+                    (s) =>
+                      String(s.id) === String(jobSubCategoryId) ||
+                      String(s._id) === String(jobSubCategoryId)
+                  );
+                }
+                if (matchedSub) {
                   setJobSubCat({
-                    label: sub.jobSubCategory,
-                    value: sub.id || sub._id,
+                    label: matchedSub.jobSubCategory,
+                    value: matchedSub.id || matchedSub._id,
                   });
-                  setFieldValue("jobSubCategoryId", sub.id || sub._id);
+                  setFieldValue(
+                    "jobSubCategoryId",
+                    matchedSub.id || matchedSub._id
+                  );
+                } else {
+                  setJobSubCat(null);
+                  setFieldValue("jobSubCategoryId", "");
+                  jobSubCategoryId = null;
+                }
+
+                const alreadySaved =
+                  String(prof?.jobCategoryId || "") ===
+                    String(jobCategoryId) &&
+                  String(prof?.jobSubCategoryId || "") ===
+                    String(jobSubCategoryId || "");
+                if (!alreadySaved) {
+                  setCandidate((prev) => ({
+                    ...prev,
+                    professional: {
+                      ...(prev?.professional || {}),
+                      jobCategoryId: String(jobCategoryId),
+                      jobCategory: {
+                        id: matchedCat.id || jobCategoryId,
+                        jobCategory: matchedCat.jobCategory,
+                      },
+                      jobSubCategoryId: jobSubCategoryId
+                        ? String(jobSubCategoryId)
+                        : "",
+                      jobSubCategory: matchedSub
+                        ? {
+                            id: matchedSub.id || jobSubCategoryId,
+                            jobSubCategory: matchedSub.jobSubCategory,
+                            jobCategoryId: matchedSub.jobCategoryId,
+                          }
+                        : undefined,
+                    },
+                  }));
                 }
               }
-              // Persist match into parent state so Update writes to DB
-              // (dropdown-only match was UI-only until user re-selected).
-              const alreadySaved =
-                String(prof?.jobCategoryId || "") === String(jobCategoryId);
-              if (!alreadySaved && matchedCat) {
-                setCandidate((prev) => ({
-                  ...prev,
-                  professional: {
-                    ...(prev?.professional || {}),
-                    jobCategoryId: String(jobCategoryId),
-                    jobCategory: {
-                      id: matchedCat.id || jobCategoryId,
-                      jobCategory: matchedCat.jobCategory,
-                    },
-                  },
-                }));
-              }
-              }
             } else {
-              // Not in master list / no proper match — do not keep wrong category
               setJobCat(null);
               setJobSubCat(null);
               setFieldValue("jobCategoryId", "");
@@ -404,6 +434,7 @@ const Professional = ({
                 (candidate?.resumeParsedAt || hasRoleSignal) &&
                 (prof?.jobCategoryId ||
                   prof?.jobCategory?.id ||
+                  prof?.jobSubCategoryId ||
                   (typeof prof?.jobCategory === "string" && prof.jobCategory))
               ) {
                 setCandidate((prev) => ({
@@ -458,7 +489,7 @@ const Professional = ({
                 setCalculatedExpectedSalary(calculatedSalary.toFixed(0));
               }
             }
-          }, [candidate?.id, candidate?.resumeParsedAt, jobCategory]);
+          }, [candidate?.id, candidate?.resumeParsedAt, jobCategory, allJobSubCategories]);
 
           useEffect(() => {
             const savedField =

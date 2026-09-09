@@ -655,6 +655,201 @@ export function matchJobCategoryId(raw, jobCategories = []) {
   return exists ? id : null;
 }
 
+/**
+ * Match resume role against Sub Category first, then Job Category.
+ * Returns { jobCategoryId, jobSubCategoryId } — both only from master lists.
+ */
+export function matchJobCategoryAndSub(
+  raw,
+  jobCategories = [],
+  jobSubCategories = []
+) {
+  const normalizeName = (s) =>
+    String(s || "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+
+  const stop = new Set([
+    "and",
+    "the",
+    "for",
+    "job",
+    "jobs",
+    "category",
+    "it",
+    "senior",
+    "junior",
+    "lead",
+    "assistant",
+    "executive",
+    "officer",
+    "manager",
+    "with",
+    "from",
+    "year",
+    "years",
+    "pdf",
+    "docx",
+    "doc",
+    "resume",
+  ]);
+
+  const weakToken = new Set([
+    "analytics",
+    "analysis",
+    "data",
+    "science",
+    "leadership",
+    "teamwork",
+    "communication",
+    "problem",
+    "solving",
+    "innovation",
+    "collaboration",
+    "management",
+    "support",
+    "service",
+    "customer",
+    "sales",
+    "marketing",
+    "digital",
+    "computer",
+    "office",
+    "admin",
+    "general",
+    "banking",
+    "finance",
+    "financial",
+    "literacy",
+    "employment",
+    "certificate",
+    "certification",
+    "certified",
+    "course",
+    "training",
+  ]);
+
+  const tokenize = (s) =>
+    normalizeName(s)
+      .split(" ")
+      .filter((t) => t.length > 2 && !stop.has(t));
+
+  const tokensMatch = (a, b) => {
+    if (!a || !b) return false;
+    if (a === b) return true;
+    let i = 0;
+    while (i < a.length && i < b.length && a[i] === b[i]) i += 1;
+    if (Math.min(a.length, b.length) >= 6 && i >= 5) return true;
+    const shorter = a.length <= b.length ? a : b;
+    const longer = a.length <= b.length ? b : a;
+    if (shorter.length >= 5 && longer.startsWith(shorter)) return true;
+    if (shorter.length >= 6 && longer.includes(shorter)) return true;
+    return false;
+  };
+
+  const toStr = (item) =>
+    String(
+      typeof item === "object" && item !== null
+        ? item.jobCategory ||
+            item.jobSubCategory ||
+            item.label ||
+            item.title ||
+            item.designation ||
+            item.role ||
+            ""
+        : item || ""
+    )
+      .trim()
+      .toLowerCase();
+
+  let roleParts = [];
+  if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+    const expTitles = Array.isArray(raw.experience)
+      ? raw.experience.map((e) =>
+          [e?.title, e?.designation, e?.role].filter(Boolean).join(" ")
+        )
+      : [];
+    roleParts = [raw.designation, raw.title, ...expTitles, raw.fileName]
+      .map(toStr)
+      .filter((s) => s && s !== "[object object]");
+  } else {
+    roleParts = (Array.isArray(raw) ? raw : [raw])
+      .map(toStr)
+      .filter((s) => s && s !== "[object object]");
+  }
+
+  const designation = normalizeName(
+    raw && typeof raw === "object" && !Array.isArray(raw)
+      ? raw.designation || raw.title || ""
+      : ""
+  );
+  const roleJoined = normalizeName(roleParts.join(" "));
+  const roleTokens = tokenize(roleJoined);
+
+  const empty = { jobCategoryId: null, jobSubCategoryId: null };
+  if (!roleJoined && !designation) return empty;
+
+  // 1) Sub category (job role) first
+  if (Array.isArray(jobSubCategories) && jobSubCategories.length) {
+    let bestSub = null;
+    let bestScore = 0;
+    for (const s of jobSubCategories) {
+      const name = normalizeName(s.jobSubCategory || s.label || "");
+      if (!name || name.length < 3) continue;
+      let score = 0;
+      if (designation === name || roleJoined === name) score = 100;
+      else if (name.length >= 5 && (designation.includes(name) || roleJoined.includes(name)))
+        score = 95;
+      else if (name.length >= 5 && name.includes(designation) && designation.length >= 5)
+        score = 92;
+      else {
+        const nameTokens = tokenize(name);
+        const matched = nameTokens.filter((n) =>
+          roleTokens.some((t) => tokensMatch(t, n))
+        );
+        if (
+          nameTokens.length &&
+          matched.length === nameTokens.length &&
+          matched.some((t) => !weakToken.has(t) || t.length >= 8)
+        ) {
+          score = 88;
+        }
+      }
+      if (score > bestScore) {
+        bestScore = score;
+        bestSub = s;
+      }
+    }
+    if (bestSub && bestScore >= 88) {
+      const subId = bestSub.id || bestSub._id || bestSub.value || null;
+      const parentId = bestSub.jobCategoryId || null;
+      const parentOk =
+        !parentId ||
+        !Array.isArray(jobCategories) ||
+        !jobCategories.length ||
+        jobCategories.some(
+          (j) =>
+            String(j.id || j._id || j.value) === String(parentId)
+        );
+      if (subId && parentId && parentOk) {
+        return {
+          jobCategoryId: String(parentId),
+          jobSubCategoryId: String(subId),
+        };
+      }
+    }
+  }
+
+  // 2) Fallback: category (department) only
+  const catId = matchJobCategoryId(raw, jobCategories);
+  return {
+    jobCategoryId: catId ? String(catId) : null,
+    jobSubCategoryId: null,
+  };
+}
+
 export function normalizeProfessional(prof = {}, courseList = [], education = []) {
   const p = { ...(prof || {}) };
 
