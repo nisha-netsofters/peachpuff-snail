@@ -11,6 +11,7 @@ import { getAllClientsAPI } from "../../../apis/client";
 import { getAreasByCity } from "../../../apis/areas";
 import { resolveIndianAddress } from "../../../utility/resolveIndianAddress";
 import { cleanAreaValue } from "../../../utility/normalizeResumeExtract";
+import { getAllJobSubCatAPI } from "../../../apis/jobSubCategory";
 
 const composeJobLocation = (data = {}) => {
   const parts = [data.area, data.city, data.state]
@@ -65,6 +66,9 @@ const JobOpening = ({
   const [focus, setIsfocus] = useState(null);
   const [selectIndustries, setSelectIndustries] = useState(null);
   const [selectJobCategory, setSelectJobCategory] = useState(null);
+  const [selectJobSubCategory, setSelectJobSubCategory] = useState(null);
+  const [jobSubCategoryOptions, setJobSubCategoryOptions] = useState([]);
+  const [allJobSubCategories, setAllJobSubCategories] = useState([]);
   const [experience, setExperience] = useState(null);
   const [employmentType, setEmploymentType] = useState(null);
   const [qualification, setQualification] = useState(null);
@@ -104,6 +108,39 @@ const JobOpening = ({
     })();
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const resp = await getAllJobSubCatAPI({});
+        if (!cancelled) setAllJobSubCategories(resp?.results || []);
+      } catch (e) {
+        if (!cancelled) setAllJobSubCategories([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    const catId =
+      selectJobCategory?.value || jobOpening?.jobCategoryId || "";
+    if (!catId) {
+      setJobSubCategoryOptions([]);
+      return;
+    }
+    setJobSubCategoryOptions(
+      (allJobSubCategories || [])
+        .filter((s) => String(s.jobCategoryId) === String(catId))
+        .map((s) => ({
+          label: s.jobSubCategory,
+          value: s.id || s._id,
+          jobCategoryId: s.jobCategoryId,
+        }))
+    );
+  }, [selectJobCategory?.value, jobOpening?.jobCategoryId, allJobSubCategories]);
+
   // Prefill selects when editing
   useEffect(() => {
     if (jobOpening?.industriesId && industries?.length) {
@@ -133,6 +170,19 @@ const JobOpening = ({
         setSelectJobCategory({
           label: jobOpening.jobCategory.jobCategory,
           value: jobOpening.jobCategoryId,
+        });
+      }
+    }
+    if (jobOpening?.jobSubCategoryId && allJobSubCategories?.length) {
+      const found = allJobSubCategories.find(
+        (s) =>
+          String(s.id) === String(jobOpening.jobSubCategoryId) ||
+          String(s._id) === String(jobOpening.jobSubCategoryId)
+      );
+      if (found) {
+        setSelectJobSubCategory({
+          label: found.jobSubCategory,
+          value: found.id || found._id,
         });
       }
     }
@@ -180,7 +230,7 @@ const JobOpening = ({
     } else {
       setStatus(statusOptions.find((o) => o.value === "open"));
     }
-  }, [jobOpening?.id, industries, jobCategories]);
+  }, [jobOpening?.id, industries, jobCategories, allJobSubCategories]);
 
   useEffect(() => {
     if (jobOpening?.recruiterId && assignableUsers?.length) {
@@ -530,7 +580,38 @@ const JobOpening = ({
             theme={selectThemeColors}
             onChange={(e) => {
               setSelectJobCategory(e);
-              setJobOpening({ ...jobOpening, jobCategoryId: e?.value || "" });
+              setSelectJobSubCategory(null);
+              setJobOpening({
+                ...jobOpening,
+                jobCategoryId: e?.value || "",
+                jobSubCategoryId: "",
+              });
+            }}
+          />
+        </Col>
+
+        <Col lg={6} xs={12} xl={4}>
+          <Label>Job Sub Category</Label>
+          <Select
+            isDisabled={isRecruiter || !selectJobCategory?.value}
+            id="jobSubCategoryId"
+            value={selectJobSubCategory}
+            placeholder={
+              !selectJobCategory?.value
+                ? "Select job category first"
+                : "Select Job Sub Category"
+            }
+            options={jobSubCategoryOptions}
+            className="react-select"
+            classNamePrefix="select"
+            theme={selectThemeColors}
+            isClearable
+            onChange={(e) => {
+              setSelectJobSubCategory(e || null);
+              setJobOpening({
+                ...jobOpening,
+                jobSubCategoryId: e?.value || "",
+              });
             }}
           />
         </Col>

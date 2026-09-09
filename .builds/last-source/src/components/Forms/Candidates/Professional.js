@@ -28,6 +28,7 @@ import {
   getUnfilledSelectStyles,
 } from "../../../utility/unfilledProfileFields";
 import { isFilled } from "../../../utility/profileCompleteness";
+import { getAllJobSubCatAPI } from "../../../apis/jobSubCategory";
 // import jobCategoryActions from "../../../redux/jobCategory/actions";
 
 const Professional = ({
@@ -69,6 +70,9 @@ const Professional = ({
   const [currentlyWorking, setCurrentlyWorking] = useState();
   const [jobCategoryOptions, setJobCategoryOptions] = useState([]);
   const [jobCat, setJobCat] = useState();
+  const [allJobSubCategories, setAllJobSubCategories] = useState([]);
+  const [jobSubCategoryOptions, setJobSubCategoryOptions] = useState([]);
+  const [jobSubCat, setJobSubCat] = useState(null);
   const [eng, setEng] = useState([]);
   const { educationOptions, courseOptions, educationLoading, courseLoading } =
     useEducationCourseCascade({
@@ -85,6 +89,38 @@ const Professional = ({
       setJobCategoryOptions(options);
     }
   }, [jobCategory]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const resp = await getAllJobSubCatAPI({});
+        if (cancelled) return;
+        setAllJobSubCategories(resp?.results || []);
+      } catch (e) {
+        if (!cancelled) setAllJobSubCategories([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    const catId = jobCat?.value || candidate?.professional?.jobCategoryId || "";
+    if (!catId) {
+      setJobSubCategoryOptions([]);
+      return;
+    }
+    const options = (allJobSubCategories || [])
+      .filter((s) => String(s.jobCategoryId) === String(catId))
+      .map((s) => ({
+        ...s,
+        label: s.jobSubCategory,
+        value: s.id || s._id,
+      }));
+    setJobSubCategoryOptions(options);
+  }, [jobCat?.value, candidate?.professional?.jobCategoryId, allJobSubCategories]);
 
   useEffect(() => {
     if (industriesData?.length > 0) {
@@ -321,6 +357,25 @@ const Professional = ({
                 value: jobCategoryId,
               });
               setFieldValue("jobCategoryId", jobCategoryId);
+              // Prefill sub category if saved
+              const savedSubId =
+                prof?.jobSubCategoryId ||
+                prof?.jobSubCategory?.id ||
+                "";
+              if (savedSubId && allJobSubCategories?.length) {
+                const sub = allJobSubCategories.find(
+                  (s) =>
+                    String(s.id) === String(savedSubId) ||
+                    String(s._id) === String(savedSubId)
+                );
+                if (sub) {
+                  setJobSubCat({
+                    label: sub.jobSubCategory,
+                    value: sub.id || sub._id,
+                  });
+                  setFieldValue("jobSubCategoryId", sub.id || sub._id);
+                }
+              }
               // Persist match into parent state so Update writes to DB
               // (dropdown-only match was UI-only until user re-selected).
               const alreadySaved =
@@ -342,7 +397,9 @@ const Professional = ({
             } else {
               // Not in master list / no proper match — do not keep wrong category
               setJobCat(null);
+              setJobSubCat(null);
               setFieldValue("jobCategoryId", "");
+              setFieldValue("jobSubCategoryId", "");
               if (
                 (candidate?.resumeParsedAt || hasRoleSignal) &&
                 (prof?.jobCategoryId ||
@@ -355,6 +412,8 @@ const Professional = ({
                     ...(prev?.professional || {}),
                     jobCategoryId: "",
                     jobCategory: undefined,
+                    jobSubCategoryId: "",
+                    jobSubCategory: undefined,
                   },
                 }));
               }
@@ -722,7 +781,9 @@ const Professional = ({
                         )}
                         onChange={(e) => {
                           setJobCat(e);
+                          setJobSubCat(null);
                           setFieldValue("jobCategoryId", e.value);
+                          setFieldValue("jobSubCategoryId", "");
                           const matchedCat = jobCategory?.find(
                             (j) => j.id === e.value || j._id === e.value
                           );
@@ -740,6 +801,50 @@ const Professional = ({
                                     id: e.value,
                                     jobCategory: e.label,
                                   },
+                              jobSubCategoryId: "",
+                              jobSubCategory: undefined,
+                            },
+                          }));
+                        }}
+                      />
+                    </div>
+                  </Col>
+                  <Col lg={6} xs={12} xl={4}>
+                    <div>
+                      <Label>Job Sub Category</Label>
+                      <Select
+                        style={{ cursor: "pointer" }}
+                        id="jobSubCategoryId"
+                        name="jobSubCategoryId"
+                        value={jobSubCat}
+                        isDisabled={isDisabledAllFields || !jobCat?.value}
+                        placeholder={
+                          !jobCat?.value
+                            ? "Select job category first"
+                            : "Select job sub category"
+                        }
+                        options={jobSubCategoryOptions}
+                        className="react-select"
+                        classNamePrefix="select"
+                        theme={selectThemeColors}
+                        isClearable
+                        onChange={(e) => {
+                          setJobSubCat(e || null);
+                          setFieldValue("jobSubCategoryId", e?.value || "");
+                          setCandidate((prev) => ({
+                            ...prev,
+                            professional: {
+                              ...(prev?.professional || {}),
+                              jobSubCategoryId: e?.value || "",
+                              jobSubCategory: e
+                                ? {
+                                    id: e.value,
+                                    jobSubCategory: e.label,
+                                    jobCategoryId:
+                                      prev?.professional?.jobCategoryId ||
+                                      jobCat?.value,
+                                  }
+                                : undefined,
                             },
                           }));
                         }}

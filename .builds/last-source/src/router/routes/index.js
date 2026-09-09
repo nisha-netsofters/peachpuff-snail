@@ -178,6 +178,12 @@ const Routes = [
     permission: ["SuperAdmin"],
   },
   {
+    path: "/superadmin/jobSubCategory",
+    exact: true,
+    component: lazy(() => import("../../views/Pages/jobSubCategory")),
+    permission: ["SuperAdmin"],
+  },
+  {
     path: "/superadmin/industries",
     exact: true,
     component: lazy(() => import("../../views/Pages/Industries")),

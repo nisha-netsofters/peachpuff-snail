@@ -4,6 +4,7 @@ import candidate from "./candidate/saga";
 import client from "./client/saga";
 import onBoarding from "./onBoarding/saga";
 import jobCat from "./jobCategory/saga";
+import jobSubCat from "./jobSubCategory/saga";
 import interview from "./interview/saga";
 import role from "./role/saga";
 import user from "./user/saga";
@@ -30,6 +31,7 @@ export default function* rootSaga() {
     client(),
     onBoarding(),
     jobCat(),
+    jobSubCat(),
     interview(),
     role(),
     user(),

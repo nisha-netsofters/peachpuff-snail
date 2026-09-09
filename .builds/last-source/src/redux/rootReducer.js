@@ -6,6 +6,7 @@ import { candidateReducer } from "./candidate/reducer";
 import { clientReducer } from "./client/reducer";
 import { onBoardingReducer } from "./onBoarding/reducer";
 import { jobCatReducer } from "./jobCategory/reducer";
+import { jobSubCatReducer } from "./jobSubCategory/reducer";
 import { interviewReducer } from "./interview/reducer";
 import { roleReducer } from "./role/reducer";
 import { userReducer } from "./user/reducer";
@@ -34,6 +35,7 @@ const rootReducer = combineReducers({
   client: clientReducer,
   onBoarding: onBoardingReducer,
   jobCategory: jobCatReducer,
+  jobSubCategory: jobSubCatReducer,
   interview: interviewReducer,
   roles: roleReducer,
   user: userReducer,

@@ -108,6 +108,13 @@ export default [
     permission: ["SuperAdmin"],
   },
   {
+    id: "JobSubCategory",
+    title: "Job Sub Category",
+    icon: <AlignJustify size={20} />,
+    navLink: "/superadmin/jobSubCategory",
+    permission: ["SuperAdmin"],
+  },
+  {
     id: "Industries",
     title: "Industries",
     icon: <MessageCircle size={20} />,

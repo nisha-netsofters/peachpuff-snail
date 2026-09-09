@@ -100,6 +100,13 @@ export default [
     navLink: `/superadmin/jobCategory`,
     permission: ["SuperAdmin"],
   },
+  {
+    id: "JobSubCategory",
+    title: "Job Sub Category",
+    icon: <AlignJustify size={20} />,
+    navLink: `/superadmin/jobSubCategory`,
+    permission: ["SuperAdmin"],
+  },
   // {
   //   id: "Hot Vacancy",
   //   title: "Hot Vacancy",
