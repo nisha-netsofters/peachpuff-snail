@@ -79,7 +79,11 @@ import ComponentSpinner from "../../@core/components/spinner/Loading-spinner";
 import ReactCanvasConfetti from "react-canvas-confetti";
 import { calculateProfileCompleteness } from "../../utility/profileCompleteness";
 import { resolveIndianAddress } from "../../utility/resolveIndianAddress";
-import { normalizeExtractedResume } from "../../utility/normalizeResumeExtract";
+import {
+  normalizeExtractedResume,
+  matchJobCategoryAndSubCategory,
+} from "../../utility/normalizeResumeExtract";
+import { getAllJobSubCatAPI } from "../../apis/jobSubCategory";
 import course from "../Forms/Course";
 import { resolveAssetUrl } from "../../utility/resolveAssetUrl";
 import apiCall from "../../utility/axiosInterceptor";
@@ -192,6 +196,61 @@ const SecondPage = ({
       cand?.preferredLocation ||
       "-"
     );
+  };
+
+  /** UI rematch is display-only until save — force category into professional before API. */
+  const ensureProfessionalJobCategory = async (cand) => {
+    const prof = { ...(cand?.professional || {}) };
+    if (prof.jobCategoryId) return prof;
+    try {
+      const subResp = await getAllJobSubCatAPI({});
+      const subs = subResp?.results || [];
+      const matched = matchJobCategoryAndSubCategory(
+        {
+          designation: prof.designation,
+          title: prof.designation,
+          skill: prof.skill,
+          experience: cand?.experience,
+          education: cand?.education,
+          field: prof.field,
+          course: prof.course,
+        },
+        jobCategoryMaster,
+        subs
+      );
+      if (matched?.jobCategoryId) {
+        const cat = jobCategoryMaster.find(
+          (j) =>
+            String(j.id) === String(matched.jobCategoryId) ||
+            String(j._id) === String(matched.jobCategoryId)
+        );
+        prof.jobCategoryId = String(matched.jobCategoryId);
+        if (cat) {
+          prof.jobCategory = {
+            id: cat.id || matched.jobCategoryId,
+            jobCategory: cat.jobCategory,
+          };
+        }
+      }
+      if (matched?.jobSubCategoryId) {
+        const sub = subs.find(
+          (s) =>
+            String(s.id) === String(matched.jobSubCategoryId) ||
+            String(s._id) === String(matched.jobSubCategoryId)
+        );
+        prof.jobSubCategoryId = String(matched.jobSubCategoryId);
+        if (sub) {
+          prof.jobSubCategory = {
+            id: sub.id || matched.jobSubCategoryId,
+            jobSubCategory: sub.jobSubCategory,
+            jobCategoryId: matched.jobCategoryId,
+          };
+        }
+      }
+    } catch (e) {
+      // keep professional as-is; backend resolve is still a fallback
+    }
+    return prof;
   };
 
   const getCandidateIndustriesLabel = (cand) => {
@@ -2267,6 +2326,9 @@ const SecondPage = ({
     delete candidate.education;
     delete candidate.experience;
 
+    // Rematch category into payload so create does not save without jobCategoryId
+    candidate.professional = await ensureProfessionalJobCategory(candidate);
+
     // Only use AWS upload if bucket is configured; otherwise pass files directly to backend FormData
     const awsBucket = process.env.REACT_APP_AWS_BUCKET_NAME;
     if (awsBucket && candidate?.image && typeof candidate.image === 'object') {
@@ -2334,8 +2396,16 @@ const SecondPage = ({
     console.info("ObjDataObjDataObjData => ", candidate);
     console.info("--------------------");
     const isMatch = _.isMatch(ObjData, candidate);
+    const listCat = String(ObjData?.professional?.jobCategoryId || "");
+    const formCat = String(candidate?.professional?.jobCategoryId || "");
+    const listSub = String(ObjData?.professional?.jobSubCategoryId || "");
+    const formSub = String(candidate?.professional?.jobSubCategoryId || "");
+    const categoryDirty = listCat !== formCat || listSub !== formSub;
 
-    if (isMatch == false) {
+    if (isMatch == false || categoryDirty) {
+      // Ensure rematched category is in professional before update POST
+      candidate.professional = await ensureProfessionalJobCategory(candidate);
+
       const typeResume = typeof candidate?.resume;
       const typeImage = typeof candidate?.image;
 
