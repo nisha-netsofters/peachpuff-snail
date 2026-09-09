@@ -115,17 +115,16 @@ export const Address = ({
               }));
             }
           } else {
-            // Keep parsed free-text visible until user picks from list
-            setSelectedArea({
-              label: currentArea,
-              value: currentArea,
-              key: "area",
-            });
-            if (!candidate?.area) {
-              setCandidate((prev) => ({
-                ...(Array.isArray(prev) ? {} : prev || {}),
-                area: currentArea,
-              }));
+            // Not in areas master list → empty (never keep free-text)
+            setSelectedArea(null);
+            if (candidate?.area) {
+              setCandidate((prev) => {
+                const next = {
+                  ...(Array.isArray(prev) ? {} : prev || {}),
+                };
+                delete next.area;
+                return next;
+              });
             }
           }
         } else {
@@ -145,9 +144,17 @@ export const Address = ({
     };
   }, [cityName, stateName, candidate?.area, candidate?.street, candidate?.resumeParsedAt]);
 
-  // Resolve state dropdown + stateId when resume / autofill sets state name only
+  // Resolve state/city from master list only — unmatched resume strings → empty
   useEffect(() => {
-    if ((!candidate?.state && !candidate?.stateId) || !states?.length) return;
+    if (
+      !candidate?.state &&
+      !candidate?.stateId &&
+      !candidate?.city &&
+      !candidate?.cityId
+    ) {
+      return;
+    }
+    if (!states?.length) return;
 
     const resolved = resolveIndianAddress({
       state: candidate.state,
@@ -155,56 +162,70 @@ export const Address = ({
       city: candidate.city,
       cityId: candidate.cityId,
     });
-    if (!resolved.stateId) return;
 
-    const match = states.find((s) => s.isoCode === resolved.stateId);
-    if (!match) return;
+    const needsUpdate =
+      candidate.state !== (resolved.state || "") ||
+      candidate.stateId !== (resolved.stateId || "") ||
+      candidate.city !== (resolved.city || "") ||
+      candidate.cityId !== (resolved.cityId || "");
 
-    const option = {
-      ...match,
-      label: match.name,
-      value: match.name,
-      key: "state",
-    };
-
-    if (!selectedState || selectedState.isoCode !== match.isoCode) {
-      setSelectedState(option);
-    }
-
-    if (
-      candidate.stateId !== resolved.stateId ||
-      candidate.state !== resolved.state
-    ) {
+    if (needsUpdate) {
       setCandidate((prev) => {
         const base = Array.isArray(prev) ? {} : prev || {};
         return {
           ...base,
-          state: resolved.state,
-          stateId: resolved.stateId,
+          state: resolved.state || "",
+          stateId: resolved.stateId || "",
+          city: resolved.city || "",
+          cityId: resolved.cityId || "",
         };
       });
     }
-  }, [candidate?.state, candidate?.stateId, candidate?.resumeParsedAt, states]);
 
-  // Resolve city dropdown + cityId when autofill sets city name
+    if (resolved.stateId) {
+      const match = states.find((s) => s.isoCode === resolved.stateId);
+      if (match) {
+        const option = {
+          ...match,
+          label: match.name,
+          value: match.name,
+          key: "state",
+        };
+        if (!selectedState || selectedState.isoCode !== match.isoCode) {
+          setSelectedState(option);
+        }
+      }
+    } else if (selectedState) {
+      setSelectedState(undefined);
+    }
+  }, [
+    candidate?.state,
+    candidate?.stateId,
+    candidate?.city,
+    candidate?.cityId,
+    candidate?.resumeParsedAt,
+    states,
+  ]);
+
+  // Resolve city dropdown when master city is set
   useEffect(() => {
-    if (!candidate?.city || !cities?.length) return;
+    if (!candidate?.city || !cities?.length) {
+      if (!candidate?.city && selectedCity) setSelectedCity(undefined);
+      return;
+    }
 
-    const resolved = resolveIndianAddress({
-      state: candidate.state,
-      stateId: candidate.stateId,
-      city: candidate.city,
-      cityId: candidate.cityId,
-    });
-
-    const match =
-      cities.find(
-        (c) => c.name?.toLowerCase() === String(resolved.city).toLowerCase()
-      ) ||
-      cities.find(
-        (c) => c.name?.toLowerCase() === String(candidate.city).toLowerCase()
-      );
-    if (!match) return;
+    const match = cities.find(
+      (c) => c.name?.toLowerCase() === String(candidate.city).toLowerCase()
+    );
+    if (!match) {
+      // Not in cities-for-state list → clear
+      setSelectedCity(undefined);
+      setCandidate((prev) => {
+        const base = Array.isArray(prev) ? {} : prev || {};
+        return { ...base, city: "", cityId: "" };
+      });
+      return;
+    }
 
     const option = {
       ...match,

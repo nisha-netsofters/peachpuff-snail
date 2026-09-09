@@ -1,8 +1,9 @@
 import { City, State } from "country-state-city";
 
 /**
- * Map resume / free-text state+city names to country-state-city IDs
- * so react-select + form validation (stateId / cityId) succeed.
+ * Map resume / free-text state+city to country-state-city master list only.
+ * Unmatched values become empty (never keep free-text).
+ * City-only: search all Indian cities and fill state from the match.
  */
 export const resolveIndianAddress = ({
   state = "",
@@ -10,17 +11,20 @@ export const resolveIndianAddress = ({
   stateId = "",
   cityId = "",
 } = {}) => {
-  let nextState = (state || "").trim();
-  let nextStateId = (stateId || "").trim();
-  let nextCity = (city || "").trim();
-  let nextCityId = (cityId || "").trim();
+  const states = State.getStatesOfCountry("IN") || [];
+  let nextState = "";
+  let nextStateId = "";
+  let nextCity = "";
+  let nextCityId = "";
 
-  const stateNeedle = (nextStateId || nextState).toLowerCase();
-  if (stateNeedle) {
-    const match = State.getStatesOfCountry("IN").find(
+  const rawState = String(stateId || state || "").trim();
+  const rawCity = String(city || cityId || "").trim();
+
+  if (rawState) {
+    const match = states.find(
       (s) =>
-        s.name?.toLowerCase() === stateNeedle ||
-        s.isoCode?.toLowerCase() === stateNeedle
+        s.name?.toLowerCase() === rawState.toLowerCase() ||
+        s.isoCode?.toLowerCase() === rawState.toLowerCase()
     );
     if (match) {
       nextState = match.name;
@@ -28,20 +32,34 @@ export const resolveIndianAddress = ({
     }
   }
 
-  if (nextStateId && nextCity) {
-    const cities = City.getCitiesOfState("IN", nextStateId) || [];
-    const cityNeedle = nextCity.toLowerCase();
-    const cityMatch = cities.find((c) => c.name?.toLowerCase() === cityNeedle);
-    if (cityMatch) {
-      nextCity = cityMatch.name;
-      nextCityId = cityMatch.name;
+  if (rawCity) {
+    const cityNeedle = rawCity.toLowerCase();
+
+    if (nextStateId) {
+      const cities = City.getCitiesOfState("IN", nextStateId) || [];
+      const cityMatch = cities.find(
+        (c) => c.name?.toLowerCase() === cityNeedle
+      );
+      if (cityMatch) {
+        nextCity = cityMatch.name;
+        nextCityId = cityMatch.name;
+      }
     } else {
-      nextCity = "";
-      nextCityId = "";
+      // City only (or invalid state) — resolve from master across India
+      for (const s of states) {
+        const cities = City.getCitiesOfState("IN", s.isoCode) || [];
+        const cityMatch = cities.find(
+          (c) => c.name?.toLowerCase() === cityNeedle
+        );
+        if (cityMatch) {
+          nextState = s.name;
+          nextStateId = s.isoCode;
+          nextCity = cityMatch.name;
+          nextCityId = cityMatch.name;
+          break;
+        }
+      }
     }
-  } else if (nextCity) {
-    nextCity = "";
-    nextCityId = "";
   }
 
   return {
