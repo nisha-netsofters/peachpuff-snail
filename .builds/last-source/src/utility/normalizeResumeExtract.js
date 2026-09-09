@@ -604,12 +604,29 @@ export function matchJobCategoryId(raw, jobCategories = []) {
       }
     }
 
-    // Skills: tiny boost only if already a strong role match
-    if (score >= 80) {
-      const skillHit = nameTokens.filter((n) =>
-        skillTokens.some((t) => tokensMatch(t, n))
-      ).length;
-      if (skillHit > 0) score += Math.min(4, skillHit);
+    // Skills + titles + designation together. Tiny extra if already a role match.
+    // Skills alone on weak words (Analytics, Digital Marketing cert) never win.
+    const skillMatched = nameTokens.filter((n) =>
+      skillTokens.some((t) => tokensMatch(t, n))
+    );
+    if (roleMatched.length >= 1 && skillMatched.length >= 1) {
+      const rs = [...new Set([...roleMatched, ...skillMatched])];
+      if (rs.length >= 2 && strong(rs).length >= 1) {
+        score = Math.max(
+          score,
+          Math.round(coverage(rs) * 68) + strong(rs).length * 10
+        );
+      }
+      score += Math.min(4, skillMatched.length);
+    } else if (score >= 80) {
+      score += Math.min(4, skillMatched.length);
+    }
+    if (
+      !roleMatched.length &&
+      skillMatched.length &&
+      (allWeak || skillMatched.every((t) => weakToken.has(t)))
+    ) {
+      continue;
     }
 
     if (conflicts && score < 92) continue;
