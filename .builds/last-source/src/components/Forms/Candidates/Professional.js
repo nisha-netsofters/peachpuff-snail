@@ -16,7 +16,7 @@ import { tostify } from "../../Tostify";
 import {
   normalizeProfessional,
   buildIndustriesRelation,
-  matchJobCategoryAndSub,
+  matchJobCategoryAndSubCategory,
   matchEducationOption,
   matchCourseOption,
 } from "../../../utility/normalizeResumeExtract";
@@ -260,24 +260,12 @@ const Professional = ({
               prof?.jobCategory?._id ||
               prof?.jobCategory?.id ||
               null;
-            const existingSubId =
-              prof?.jobSubCategoryId ||
-              prof?.jobSubCategory?._id ||
-              prof?.jobSubCategory?.id ||
-              null;
             const existingInDb =
               existingCatId &&
               jobCategory?.some(
                 (j) =>
                   String(j.id) === String(existingCatId) ||
                   String(j._id) === String(existingCatId)
-              );
-            const existingSubInDb =
-              existingSubId &&
-              allJobSubCategories?.some(
-                (s) =>
-                  String(s.id) === String(existingSubId) ||
-                  String(s._id) === String(existingSubId)
               );
 
             const hasRoleSignal = !!(
@@ -290,6 +278,7 @@ const Professional = ({
                 ))
             );
 
+            // Rematch like backend: Sub Category (role) first, then Category.
             const resumeSignals = {
               designation: prof?.designation,
               title: prof?.designation,
@@ -340,11 +329,10 @@ const Professional = ({
                 candidate?.resumeRawText || candidate?.extractedText || "",
             };
 
-            // Sub category (role) first, then category (department)
-            const matched = matchJobCategoryAndSub(
+            const matched = matchJobCategoryAndSubCategory(
               resumeSignals,
-              jobCategory || [],
-              allJobSubCategories || []
+              jobCategory,
+              allJobSubCategories
             );
 
             let jobCategoryId = matched?.jobCategoryId || null;
@@ -352,7 +340,10 @@ const Professional = ({
 
             if (!jobCategoryId && !hasRoleSignal && existingInDb) {
               jobCategoryId = existingCatId;
-              if (existingSubInDb) jobSubCategoryId = existingSubId;
+              jobSubCategoryId =
+                prof?.jobSubCategoryId ||
+                prof?.jobSubCategory?.id ||
+                null;
             }
 
             if (jobCategoryId) {
@@ -361,71 +352,74 @@ const Professional = ({
                   String(j.id) === String(jobCategoryId) ||
                   String(j._id) === String(jobCategoryId)
               );
+              // Only accept categories that exist in DB master list
               if (!matchedCat) {
                 setJobCat(null);
                 setJobSubCat(null);
                 setFieldValue("jobCategoryId", "");
                 setFieldValue("jobSubCategoryId", "");
               } else {
-                setJobCat({
-                  label: matchedCat.jobCategory || "Selected Category",
-                  value: jobCategoryId,
-                });
-                setFieldValue("jobCategoryId", jobCategoryId);
+              const label = matchedCat.jobCategory || "Selected Category";
 
-                let matchedSub = null;
-                if (jobSubCategoryId && allJobSubCategories?.length) {
-                  matchedSub = allJobSubCategories.find(
+              setJobCat({
+                label: label,
+                value: jobCategoryId,
+              });
+              setFieldValue("jobCategoryId", jobCategoryId);
+
+              const matchedSub = jobSubCategoryId
+                ? allJobSubCategories.find(
                     (s) =>
                       String(s.id) === String(jobSubCategoryId) ||
                       String(s._id) === String(jobSubCategoryId)
-                  );
-                }
-                if (matchedSub) {
-                  setJobSubCat({
-                    label: matchedSub.jobSubCategory,
-                    value: matchedSub.id || matchedSub._id,
-                  });
-                  setFieldValue(
-                    "jobSubCategoryId",
-                    matchedSub.id || matchedSub._id
-                  );
-                } else {
-                  setJobSubCat(null);
-                  setFieldValue("jobSubCategoryId", "");
-                  jobSubCategoryId = null;
-                }
+                  )
+                : null;
+              if (matchedSub) {
+                setJobSubCat({
+                  label: matchedSub.jobSubCategory,
+                  value: matchedSub.id || matchedSub._id,
+                });
+                setFieldValue(
+                  "jobSubCategoryId",
+                  matchedSub.id || matchedSub._id
+                );
+              } else {
+                setJobSubCat(null);
+                setFieldValue("jobSubCategoryId", "");
+                jobSubCategoryId = null;
+              }
 
-                const alreadySaved =
-                  String(prof?.jobCategoryId || "") ===
-                    String(jobCategoryId) &&
-                  String(prof?.jobSubCategoryId || "") ===
-                    String(jobSubCategoryId || "");
-                if (!alreadySaved) {
-                  setCandidate((prev) => ({
-                    ...prev,
-                    professional: {
-                      ...(prev?.professional || {}),
-                      jobCategoryId: String(jobCategoryId),
-                      jobCategory: {
-                        id: matchedCat.id || jobCategoryId,
-                        jobCategory: matchedCat.jobCategory,
-                      },
-                      jobSubCategoryId: jobSubCategoryId
-                        ? String(jobSubCategoryId)
-                        : "",
-                      jobSubCategory: matchedSub
-                        ? {
-                            id: matchedSub.id || jobSubCategoryId,
-                            jobSubCategory: matchedSub.jobSubCategory,
-                            jobCategoryId: matchedSub.jobCategoryId,
-                          }
-                        : undefined,
+              // Persist match into parent state so Update writes to DB
+              const alreadySaved =
+                String(prof?.jobCategoryId || "") === String(jobCategoryId) &&
+                String(prof?.jobSubCategoryId || "") ===
+                  String(jobSubCategoryId || "");
+              if (!alreadySaved && matchedCat) {
+                setCandidate((prev) => ({
+                  ...prev,
+                  professional: {
+                    ...(prev?.professional || {}),
+                    jobCategoryId: String(jobCategoryId),
+                    jobCategory: {
+                      id: matchedCat.id || jobCategoryId,
+                      jobCategory: matchedCat.jobCategory,
                     },
-                  }));
-                }
+                    jobSubCategoryId: jobSubCategoryId
+                      ? String(jobSubCategoryId)
+                      : "",
+                    jobSubCategory: matchedSub
+                      ? {
+                          id: matchedSub.id || jobSubCategoryId,
+                          jobSubCategory: matchedSub.jobSubCategory,
+                          jobCategoryId: matchedCat.id || jobCategoryId,
+                        }
+                      : undefined,
+                  },
+                }));
+              }
               }
             } else {
+              // Not in master list / no proper match — do not keep wrong category
               setJobCat(null);
               setJobSubCat(null);
               setFieldValue("jobCategoryId", "");

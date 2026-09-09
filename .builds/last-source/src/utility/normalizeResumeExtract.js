@@ -656,10 +656,11 @@ export function matchJobCategoryId(raw, jobCategories = []) {
 }
 
 /**
- * Match resume role against Sub Category first, then Job Category.
- * Returns { jobCategoryId, jobSubCategoryId } — both only from master lists.
+ * Match resume signals against Job Sub Category first, then Job Category.
+ * Returns { jobCategoryId, jobSubCategoryId } — either may be null.
+ * Same rules: no inventing from weak skill/cert words alone.
  */
-export function matchJobCategoryAndSub(
+export function matchJobCategoryAndSubCategory(
   raw,
   jobCategories = [],
   jobSubCategories = []
@@ -719,11 +720,6 @@ export function matchJobCategoryAndSub(
     "office",
     "admin",
     "general",
-    "banking",
-    "finance",
-    "financial",
-    "literacy",
-    "employment",
     "certificate",
     "certification",
     "certified",
@@ -771,7 +767,7 @@ export function matchJobCategoryAndSub(
           [e?.title, e?.designation, e?.role].filter(Boolean).join(" ")
         )
       : [];
-    roleParts = [raw.designation, raw.title, ...expTitles, raw.fileName]
+    roleParts = [raw.designation, raw.title, ...expTitles]
       .map(toStr)
       .filter((s) => s && s !== "[object object]");
   } else {
@@ -788,22 +784,19 @@ export function matchJobCategoryAndSub(
   const roleJoined = normalizeName(roleParts.join(" "));
   const roleTokens = tokenize(roleJoined);
 
-  const empty = { jobCategoryId: null, jobSubCategoryId: null };
-  if (!roleJoined && !designation) return empty;
+  let jobSubCategoryId = null;
+  let jobCategoryId = null;
 
-  // 1) Sub category (job role) first
-  if (Array.isArray(jobSubCategories) && jobSubCategories.length) {
+  if (roleJoined && Array.isArray(jobSubCategories) && jobSubCategories.length) {
     let bestSub = null;
     let bestScore = 0;
     for (const s of jobSubCategories) {
       const name = normalizeName(s.jobSubCategory || s.label || "");
       if (!name || name.length < 3) continue;
       let score = 0;
-      if (designation === name || roleJoined === name) score = 100;
-      else if (name.length >= 5 && (designation.includes(name) || roleJoined.includes(name)))
-        score = 95;
-      else if (name.length >= 5 && name.includes(designation) && designation.length >= 5)
-        score = 92;
+      if (roleJoined === name || designation === name) score = 100;
+      else if (name.length >= 5 && roleJoined.includes(name)) score = 95;
+      else if (name.length >= 5 && designation.includes(name)) score = 92;
       else {
         const nameTokens = tokenize(name);
         const matched = nameTokens.filter((n) =>
@@ -823,31 +816,32 @@ export function matchJobCategoryAndSub(
       }
     }
     if (bestSub && bestScore >= 88) {
-      const subId = bestSub.id || bestSub._id || bestSub.value || null;
-      const parentId = bestSub.jobCategoryId || null;
-      const parentOk =
-        !parentId ||
-        !Array.isArray(jobCategories) ||
-        !jobCategories.length ||
-        jobCategories.some(
-          (j) =>
-            String(j.id || j._id || j.value) === String(parentId)
-        );
-      if (subId && parentId && parentOk) {
-        return {
-          jobCategoryId: String(parentId),
-          jobSubCategoryId: String(subId),
-        };
-      }
+      jobSubCategoryId = bestSub.id || bestSub._id || bestSub.value || null;
+      jobCategoryId =
+        bestSub.jobCategoryId ||
+        bestSub.jobCategory?.id ||
+        null;
     }
   }
 
-  // 2) Fallback: category (department) only
-  const catId = matchJobCategoryId(raw, jobCategories);
-  return {
-    jobCategoryId: catId ? String(catId) : null,
-    jobSubCategoryId: null,
-  };
+  if (!jobCategoryId) {
+    jobCategoryId = matchJobCategoryId(raw, jobCategories);
+  }
+
+  // Ensure category id exists in master list
+  if (
+    jobCategoryId &&
+    Array.isArray(jobCategories) &&
+    !jobCategories.some(
+      (j) =>
+        String(j.id || j._id || j.value) === String(jobCategoryId)
+    )
+  ) {
+    jobCategoryId = null;
+    jobSubCategoryId = null;
+  }
+
+  return { jobCategoryId, jobSubCategoryId };
 }
 
 export function normalizeProfessional(prof = {}, courseList = [], education = []) {
