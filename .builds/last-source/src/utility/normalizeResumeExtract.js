@@ -656,34 +656,10 @@ export function matchJobCategoryId(raw, jobCategories = []) {
 }
 
 /**
- * Alias resume role wording → master Job Sub Category name.
+ * Primary category pick is AI + DB master list on parse.
+ * Keep empty — do not grow a long alias dictionary here.
  */
-const JOB_SUB_ROLE_ALIASES = {
-  "sales associate": "Sales Executive",
-  "sales assosciate": "Sales Executive",
-  "sales representative": "Sales Executive",
-  "sales rep": "Sales Executive",
-  "retail sales associate": "Retail Sales Executive",
-  "marketing associate": "Marketing Executive",
-  "digital marketing associate": "Digital Marketing Executive",
-  "assistant accountant": "Accountant",
-  "accounts assistant": "Accountant",
-  "account assistant": "Accountant",
-  "accounts executive": "Accountant",
-  "sr accountant": "Senior Accountant",
-  "senior accountant": "Senior Accountant",
-  "civil engg": "Civil Engineer",
-  "civil eng": "Civil Engineer",
-  "business process associate": "Process Associate",
-  "process associate": "Process Associate",
-  bpo: "Process Associate",
-  "bpo executive": "Process Executive",
-  "data entry operator": "Data Entry",
-  "data entry executive": "Data Entry",
-  "purchase associate": "Purchase Executive",
-  "hr executive": "HR Executive",
-  "human resource executive": "HR Executive",
-};
+const JOB_SUB_ROLE_ALIASES = {};
 
 /**
  * Match resume signals against Job Sub Category first, then Job Category.
@@ -703,7 +679,9 @@ export function matchJobCategoryAndSubCategory(
       .trim();
 
   const isUsableDesignation = (text) => {
-    const t = String(text || "").trim();
+    const t = String(text || "")
+      .replace(/^[\s•·\-–—*]+/, "")
+      .trim();
     if (!t || t.length < 3) return false;
     if (/^s:$/i.test(t) || /^[:\-–—•·*|]+$/.test(t)) return false;
     const words = t.split(/\s+/).filter(Boolean);
@@ -716,7 +694,57 @@ export function matchJobCategoryAndSubCategory(
       return false;
     }
     if (/[.!?]$/.test(t) && words.length > 6) return false;
+    const titleWord =
+      /\b(executive|associate|manager|officer|engineer|accountant|cashier|champion|assistant|operator|developer|analyst|fresher|trainee|intern|billing|sales|hr|admin|receptionist|coordinator|specialist|clerk)\b/i.test(
+        t
+      );
+    if (
+      !titleWord &&
+      /\b(pvt|ltd|limited|private|company|classes|fashion|solutions|technologies|industries|llp|school|college)\b/i.test(
+        t
+      )
+    ) {
+      return false;
+    }
     return true;
+  };
+
+  const inferCanonicalFromSignals = (designationNorm, roleJoined, skillJoined) => {
+    const hay = `${designationNorm} ${roleJoined} ${skillJoined}`.trim();
+    if (!hay) return "";
+    if (/\bbilling(\s+work)?\b/.test(designationNorm) || /\bbilling(\s+work)?\b/.test(roleJoined)) {
+      return "Billing Executive";
+    }
+    if (/\bbrand\s+champion\b/.test(designationNorm) || /\bbrand\s+champion\b/.test(roleJoined)) {
+      return "Brand Executive";
+    }
+    if (/^accounting$/.test(designationNorm) || /^accountant$/.test(designationNorm)) {
+      return "Accountant";
+    }
+    const hasTally = /\b(tally|telly)\b/.test(hay);
+    const hasAcctSignal =
+      /\b(gst|vat|tax|journal|invoice|account|accounting|book\s*keep|payable|receivable|purchase|sale)\b/.test(
+        hay
+      );
+    if (hasTally && hasAcctSignal) return "Accountant";
+    if (hasTally && /\bfresher\b/.test(designationNorm)) return "Accountant";
+    const hasDataEntry = /\bdata\s*entry\b/.test(hay);
+    const domainClash =
+      /\bmarketing\b/.test(skillJoined) &&
+      /\b(account|accounting)\b/.test(skillJoined) &&
+      hasDataEntry;
+    if (
+      hasDataEntry &&
+      !domainClash &&
+      (!designationNorm ||
+        /\b(fresher|data\s*entry)\b/.test(designationNorm) ||
+        !/\b(engineer|developer|nurse|teacher|doctor|sales|marketing)\b/.test(
+          designationNorm
+        ))
+    ) {
+      return "Data Entry";
+    }
+    return "";
   };
 
   const stop = new Set([
@@ -878,9 +906,18 @@ export function matchJobCategoryAndSubCategory(
     designation = normalizeName(roleParts[0] || "");
   }
 
+  const skillJoined = normalizeName(
+    raw && typeof raw === "object" && !Array.isArray(raw)
+      ? Array.isArray(raw.skill)
+        ? raw.skill.join(" ")
+        : raw.skill || raw.skills || ""
+      : ""
+  );
+  const roleJoinedPre = normalizeName(roleParts.join(" "));
   const aliasCanonical =
     JOB_SUB_ROLE_ALIASES[designation] ||
     JOB_SUB_ROLE_ALIASES[normalizeName(roleParts[0] || "")] ||
+    inferCanonicalFromSignals(designation, roleJoinedPre, skillJoined) ||
     "";
 
   const roleJoined = normalizeName(
