@@ -77,6 +77,28 @@ const getDefaultExpiryDateISO = () => {
   return date.toISOString();
 };
 
+/** Parse Salary input → match fields. Prefer text over stale salaryRange*. */
+const parseSalaryRangeFromInput = (job = {}) => {
+  const raw = String(job?.salary || "").trim();
+  if (raw) {
+    const nums = raw.match(/\d+(?:\.\d+)?/g)?.map((n) => Number(n)).filter((n) => Number.isFinite(n) && n > 0) || [];
+    if (nums.length >= 2) {
+      const start = Math.min(nums[0], nums[1]);
+      const end = Math.max(nums[0], nums[1]);
+      return { salaryRangeStart: start, salaryRangeEnd: end };
+    }
+    if (nums.length === 1) {
+      return { salaryRangeStart: nums[0], salaryRangeEnd: nums[0] };
+    }
+  }
+  const start = Number(job?.salaryRangeStart);
+  const end = Number(job?.salaryRangeEnd);
+  if (Number.isFinite(start) && Number.isFinite(end) && end > 0) {
+    return { salaryRangeStart: start, salaryRangeEnd: end };
+  }
+  return { salaryRangeStart: 0, salaryRangeEnd: 0 };
+};
+
 const getNewJobOpeningDefaults = () => ({
   postingStatus: "open",
   expiryDate: getDefaultExpiryDateISO(),
@@ -689,14 +711,11 @@ const JobOpening = () => {
     setLoading(true);
     const fm = new FormData();
     // Keep salary matching fields in sync with single Salary input
-    const salaryNum = Number(jobOpening?.salary || jobOpening?.salaryRangeStart || 0);
+    const salaryRange = parseSalaryRangeFromInput(jobOpening);
     const payload = {
       ...jobOpening,
       expiryDate: jobOpening?.expiryDate || getDefaultExpiryDateISO(),
-      salaryRangeStart:
-        jobOpening?.salaryRangeStart || (salaryNum > 0 ? salaryNum : 0),
-      salaryRangeEnd:
-        jobOpening?.salaryRangeEnd || (salaryNum > 0 ? salaryNum : 0),
+      ...salaryRange,
       jobLocation: [jobOpening?.area, jobOpening?.city, jobOpening?.state]
         .map((v) => String(v || "").trim())
         .filter(Boolean)
@@ -724,13 +743,10 @@ const JobOpening = () => {
   const jobOpeningUpdateHandler = async () => {
     setLoading(true);
     const fm = new FormData();
-    const salaryNum = Number(jobOpening?.salary || jobOpening?.salaryRangeStart || 0);
+    const salaryRange = parseSalaryRangeFromInput(jobOpening);
     const payload = {
       ...jobOpening,
-      salaryRangeStart:
-        jobOpening?.salaryRangeStart || (salaryNum > 0 ? salaryNum : 0),
-      salaryRangeEnd:
-        jobOpening?.salaryRangeEnd || (salaryNum > 0 ? salaryNum : 0),
+      ...salaryRange,
       jobLocation: [jobOpening?.area, jobOpening?.city, jobOpening?.state]
         .map((v) => String(v || "").trim())
         .filter(Boolean)
