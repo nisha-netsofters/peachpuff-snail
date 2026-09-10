@@ -656,9 +656,39 @@ export function matchJobCategoryId(raw, jobCategories = []) {
 }
 
 /**
+ * Alias resume role wording → master Job Sub Category name.
+ */
+const JOB_SUB_ROLE_ALIASES = {
+  "sales associate": "Sales Executive",
+  "sales assosciate": "Sales Executive",
+  "sales representative": "Sales Executive",
+  "sales rep": "Sales Executive",
+  "retail sales associate": "Retail Sales Executive",
+  "marketing associate": "Marketing Executive",
+  "digital marketing associate": "Digital Marketing Executive",
+  "assistant accountant": "Accountant",
+  "accounts assistant": "Accountant",
+  "account assistant": "Accountant",
+  "accounts executive": "Accountant",
+  "sr accountant": "Senior Accountant",
+  "senior accountant": "Senior Accountant",
+  "civil engg": "Civil Engineer",
+  "civil eng": "Civil Engineer",
+  "business process associate": "Process Associate",
+  "process associate": "Process Associate",
+  bpo: "Process Associate",
+  "bpo executive": "Process Executive",
+  "data entry operator": "Data Entry",
+  "data entry executive": "Data Entry",
+  "purchase associate": "Purchase Executive",
+  "hr executive": "HR Executive",
+  "human resource executive": "HR Executive",
+};
+
+/**
  * Match resume signals against Job Sub Category first, then Job Category.
  * Returns { jobCategoryId, jobSubCategoryId } — either may be null.
- * Same rules: no inventing from weak skill/cert words alone.
+ * Role/title + aliases first. Skills never invent category alone.
  */
 export function matchJobCategoryAndSubCategory(
   raw,
@@ -672,6 +702,23 @@ export function matchJobCategoryAndSubCategory(
       .replace(/\s+/g, " ")
       .trim();
 
+  const isUsableDesignation = (text) => {
+    const t = String(text || "").trim();
+    if (!t || t.length < 3) return false;
+    if (/^s:$/i.test(t) || /^[:\-–—•·*|]+$/.test(t)) return false;
+    const words = t.split(/\s+/).filter(Boolean);
+    if (words.length > 10) return false;
+    if (
+      /\b(seek|seeking|challenging|opportunit|looking for|objective|career goal|success of the|fully use my skills)\b/i.test(
+        t
+      )
+    ) {
+      return false;
+    }
+    if (/[.!?]$/.test(t) && words.length > 6) return false;
+    return true;
+  };
+
   const stop = new Set([
     "and",
     "the",
@@ -683,10 +730,6 @@ export function matchJobCategoryAndSubCategory(
     "senior",
     "junior",
     "lead",
-    "assistant",
-    "executive",
-    "officer",
-    "manager",
     "with",
     "from",
     "year",
@@ -725,6 +768,11 @@ export function matchJobCategoryAndSubCategory(
     "certified",
     "course",
     "training",
+    "technical",
+    "professional",
+    "soft",
+    "skill",
+    "skills",
   ]);
 
   const tokenize = (s) =>
@@ -745,6 +793,45 @@ export function matchJobCategoryAndSubCategory(
     return false;
   };
 
+  const isStrongSalesTitle = (text) => {
+    const t = normalizeName(text);
+    if (!t) return false;
+    if (
+      /\b(receptionist|developer|engineer|accountant|nurse|teacher|driver|cashier)\b/.test(
+        t
+      )
+    ) {
+      return false;
+    }
+    return /\bsales\s+(executive|manager|officer|associate|representative|rep|consultant|coordinator|specialist)\b/.test(
+      t
+    );
+  };
+
+  const nearMatchSubScore = (roleNorm, designationNorm, subName) => {
+    const pairs = [
+      [/\bsales\s+(associate|representative|rep)\b/, /^sales\s+executive$/],
+      [/\bretail\s+sales\s+associate\b/, /^retail\s+sales\s+executive$/],
+      [
+        /\b(assistant\s+accountant|accounts?\s+assistant|accounts?\s+executive)\b/,
+        /^accountant$/,
+      ],
+      [
+        /\b(business\s+process\s+associate|process\s+associate|\bbpo\b)\b/,
+        /^process\s+associate$/,
+      ],
+      [/\bdata\s+entry(\s+operator|\s+executive)?\b/, /^data\s+entry$/],
+      [/\bpurchase\s+associate\b/, /^purchase\s+executive$/],
+      [/\bmarketing\s+associate\b/, /^marketing\s+executive$/],
+      [/\bcivil\s+eng(g|ineer)?\b/, /^civil\s+engineer$/],
+    ];
+    const hay = `${roleNorm} ${designationNorm}`.trim();
+    for (const [roleRe, subRe] of pairs) {
+      if (roleRe.test(hay) && subRe.test(subName)) return 90;
+    }
+    return 0;
+  };
+
   const toStr = (item) =>
     String(
       typeof item === "object" && item !== null
@@ -763,11 +850,17 @@ export function matchJobCategoryAndSubCategory(
   let roleParts = [];
   if (raw && typeof raw === "object" && !Array.isArray(raw)) {
     const expTitles = Array.isArray(raw.experience)
-      ? raw.experience.map((e) =>
-          [e?.title, e?.designation, e?.role].filter(Boolean).join(" ")
-        )
+      ? raw.experience
+          .map((e) =>
+            [e?.title, e?.designation, e?.role].filter(Boolean).join(" ")
+          )
+          .filter((t) => isUsableDesignation(t))
       : [];
-    roleParts = [raw.designation, raw.title, ...expTitles]
+    let designationRaw = String(raw.designation || raw.title || "").trim();
+    if (!isUsableDesignation(designationRaw)) {
+      designationRaw = expTitles[0] || "";
+    }
+    roleParts = [designationRaw, ...expTitles]
       .map(toStr)
       .filter((s) => s && s !== "[object object]");
   } else {
@@ -776,12 +869,23 @@ export function matchJobCategoryAndSubCategory(
       .filter((s) => s && s !== "[object object]");
   }
 
-  const designation = normalizeName(
+  let designation = normalizeName(
     raw && typeof raw === "object" && !Array.isArray(raw)
       ? raw.designation || raw.title || ""
       : ""
   );
-  const roleJoined = normalizeName(roleParts.join(" "));
+  if (!isUsableDesignation(designation)) {
+    designation = normalizeName(roleParts[0] || "");
+  }
+
+  const aliasCanonical =
+    JOB_SUB_ROLE_ALIASES[designation] ||
+    JOB_SUB_ROLE_ALIASES[normalizeName(roleParts[0] || "")] ||
+    "";
+
+  const roleJoined = normalizeName(
+    [...roleParts, aliasCanonical].filter(Boolean).join(" ")
+  );
   const roleTokens = tokenize(roleJoined);
 
   let jobSubCategoryId = null;
@@ -794,10 +898,12 @@ export function matchJobCategoryAndSubCategory(
       const name = normalizeName(s.jobSubCategory || s.label || "");
       if (!name || name.length < 3) continue;
       let score = 0;
-      if (roleJoined === name || designation === name) score = 100;
+      if (aliasCanonical && name === normalizeName(aliasCanonical)) score = 98;
+      else if (roleJoined === name || designation === name) score = 100;
       else if (name.length >= 5 && roleJoined.includes(name)) score = 95;
       else if (name.length >= 5 && designation.includes(name)) score = 92;
       else {
+        score = Math.max(score, nearMatchSubScore(roleJoined, designation, name));
         const nameTokens = tokenize(name);
         const matched = nameTokens.filter((n) =>
           roleTokens.some((t) => tokensMatch(t, n))
@@ -807,7 +913,7 @@ export function matchJobCategoryAndSubCategory(
           matched.length === nameTokens.length &&
           matched.some((t) => !weakToken.has(t) || t.length >= 8)
         ) {
-          score = 88;
+          score = Math.max(score, 88);
         }
       }
       if (score > bestScore) {
@@ -818,9 +924,22 @@ export function matchJobCategoryAndSubCategory(
     if (bestSub && bestScore >= 88) {
       jobSubCategoryId = bestSub.id || bestSub._id || bestSub.value || null;
       jobCategoryId =
-        bestSub.jobCategoryId ||
-        bestSub.jobCategory?.id ||
-        null;
+        bestSub.jobCategoryId || bestSub.jobCategory?.id || null;
+    }
+  }
+
+  if (!jobCategoryId) {
+    if (isStrongSalesTitle(roleJoined) || isStrongSalesTitle(designation)) {
+      const salesCat = (jobCategories || []).find((j) => {
+        const n = normalizeName(j.jobCategory || j.label || "");
+        return (
+          (n.includes("sales") && n.includes("business")) ||
+          (n.includes("sales") && n.includes("marketing"))
+        );
+      });
+      if (salesCat) {
+        jobCategoryId = salesCat.id || salesCat._id || salesCat.value || null;
+      }
     }
   }
 
@@ -828,13 +947,11 @@ export function matchJobCategoryAndSubCategory(
     jobCategoryId = matchJobCategoryId(raw, jobCategories);
   }
 
-  // Ensure category id exists in master list
   if (
     jobCategoryId &&
     Array.isArray(jobCategories) &&
     !jobCategories.some(
-      (j) =>
-        String(j.id || j._id || j.value) === String(jobCategoryId)
+      (j) => String(j.id || j._id || j.value) === String(jobCategoryId)
     )
   ) {
     jobCategoryId = null;

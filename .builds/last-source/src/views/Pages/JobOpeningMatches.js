@@ -28,6 +28,14 @@ import { tostify } from "../../components/Tostify";
 import { getInterviewAPI } from "../../apis/interview";
 import Avatar from "@components/avatar";
 import { MdOutlineCategory } from "react-icons/md";
+
+/** Best Matches table only — missing / 0 salary → "-" */
+const formatSalaryDisplay = (value) => {
+  if (value == null || value === "") return "-";
+  const n = Number(value);
+  if (!Number.isNaN(n) && n === 0) return "-";
+  return value;
+};
 import { BsPersonWorkspace } from "react-icons/bs";
 import { MdOutlineWorkHistory } from "react-icons/md";
 import { BsGenderAmbiguous } from "react-icons/bs";
@@ -416,11 +424,11 @@ const JobOpeningMatches = ({ jobIdOverride, embeddedMode = false }) => {
 
     {
       name: "Currant Salary",
-      selector: (row) => row?.professional?.currentSalary,
+      selector: (row) => formatSalaryDisplay(row?.professional?.currentSalary),
     },
     {
       name: "Expected Salary",
-      selector: (row) => row?.professional?.expectedsalary,
+      selector: (row) => formatSalaryDisplay(row?.professional?.expectedsalary),
     },
     {
       name: "Preferable Job Location",
@@ -487,11 +495,11 @@ const JobOpeningMatches = ({ jobIdOverride, embeddedMode = false }) => {
     },
     {
       name: "Currant Salary",
-      selector: (row) => row?.professional?.currentSalary,
+      selector: (row) => formatSalaryDisplay(row?.professional?.currentSalary),
     },
     {
       name: "Expected Salary",
-      selector: (row) => row?.professional?.expectedsalary,
+      selector: (row) => formatSalaryDisplay(row?.professional?.expectedsalary),
     },
     {
       name: "Preferable Job Location",
