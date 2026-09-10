@@ -543,8 +543,19 @@ const Professional = ({
                 setCalculatedExpectedSalary("Current Monthly Salary + 20%");
               }
               if (!isNaN(calculatedSalary)) {
-                setCalculatedExpectedSalary(calculatedSalary.toFixed(0));
-                setFieldValue("expectedsalary", calculatedSalary.toFixed(0));
+                const expected = calculatedSalary.toFixed(0);
+                setCalculatedExpectedSalary(expected);
+                setFieldValue("expectedsalary", expected);
+                // Keep parent/DB payload in sync with what the UI shows
+                setCandidate((prev) => ({
+                  ...prev,
+                  expectedsalary: Number(expected),
+                  professional: {
+                    ...(prev?.professional || {}),
+                    expectedsalary: Number(expected),
+                    currentSalary: values.currentSalary,
+                  },
+                }));
               }
             } else {
             }
