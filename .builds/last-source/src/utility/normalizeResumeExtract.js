@@ -744,6 +744,9 @@ export function matchJobCategoryAndSubCategory(
     ) {
       return "Data Entry";
     }
+    if (/\bseo\b/.test(designationNorm) || /\bseo\b/.test(roleJoined)) {
+      return "SEO Executive";
+    }
     return "";
   };
 
@@ -852,11 +855,53 @@ export function matchJobCategoryAndSubCategory(
       [/\bpurchase\s+associate\b/, /^purchase\s+executive$/],
       [/\bmarketing\s+associate\b/, /^marketing\s+executive$/],
       [/\bcivil\s+eng(g|ineer)?\b/, /^civil\s+engineer$/],
+      [/\bseo(\s+manager|\s+executive|\s+specialist|\s+lead)?\b/, /^seo\s+executive$/],
+      [/\bbrand\s+champion\b/, /^brand\s+executive$/],
     ];
     const hay = `${roleNorm} ${designationNorm}`.trim();
     for (const [roleRe, subRe] of pairs) {
       if (roleRe.test(hay) && subRe.test(subName)) return 90;
     }
+    return 0;
+  };
+
+  /** Titles like Manager/Executive alone must not decide a sub category. */
+  const roleLevelWeak = new Set([
+    "manager",
+    "executive",
+    "officer",
+    "assistant",
+    "associate",
+    "specialist",
+    "coordinator",
+    "consultant",
+    "head",
+    "lead",
+    "intern",
+    "trainee",
+    "senior",
+    "junior",
+  ]);
+
+  const scoreSubTokenMatch = (name, roleToks, skillToks) => {
+    const nameTokens = tokenize(name);
+    const strongNameTokens = nameTokens.filter(
+      (t) => !roleLevelWeak.has(t) && !weakToken.has(t)
+    );
+    // Sub name is only level words (e.g. leftover "manager") → never match on that alone
+    if (!strongNameTokens.length) return 0;
+    const fromRole = strongNameTokens.filter((n) =>
+      roleToks.some((t) => tokensMatch(t, n))
+    );
+    // Must have strong overlap with designation/title — skills alone cannot invent sub
+    if (!fromRole.length) return 0;
+    const covered = strongNameTokens.filter(
+      (n) =>
+        roleToks.some((t) => tokensMatch(t, n)) ||
+        skillToks.some((t) => tokensMatch(t, n))
+    );
+    if (covered.length === strongNameTokens.length) return 88;
+    if (fromRole.length === strongNameTokens.length) return 90;
     return 0;
   };
 
@@ -924,6 +969,7 @@ export function matchJobCategoryAndSubCategory(
     [...roleParts, aliasCanonical].filter(Boolean).join(" ")
   );
   const roleTokens = tokenize(roleJoined);
+  const skillTokens = tokenize(skillJoined);
 
   let jobSubCategoryId = null;
   let jobCategoryId = null;
@@ -941,17 +987,10 @@ export function matchJobCategoryAndSubCategory(
       else if (name.length >= 5 && designation.includes(name)) score = 92;
       else {
         score = Math.max(score, nearMatchSubScore(roleJoined, designation, name));
-        const nameTokens = tokenize(name);
-        const matched = nameTokens.filter((n) =>
-          roleTokens.some((t) => tokensMatch(t, n))
+        score = Math.max(
+          score,
+          scoreSubTokenMatch(name, roleTokens, skillTokens)
         );
-        if (
-          nameTokens.length &&
-          matched.length === nameTokens.length &&
-          matched.some((t) => !weakToken.has(t) || t.length >= 8)
-        ) {
-          score = Math.max(score, 88);
-        }
       }
       if (score > bestScore) {
         bestScore = score;

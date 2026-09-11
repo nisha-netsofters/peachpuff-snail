@@ -260,6 +260,11 @@ const Professional = ({
               prof?.jobCategory?._id ||
               prof?.jobCategory?.id ||
               null;
+            const existingSubId =
+              prof?.jobSubCategoryId ||
+              prof?.jobSubCategory?._id ||
+              prof?.jobSubCategory?.id ||
+              null;
             const existingInDb =
               existingCatId &&
               jobCategory?.some(
@@ -268,82 +273,69 @@ const Professional = ({
                   String(j._id) === String(existingCatId)
               );
 
-            const hasRoleSignal = !!(
-              prof?.designation ||
-              candidate?.resumeFileName ||
-              candidate?.resumeOriginalName ||
-              (Array.isArray(candidate?.experience) &&
-                candidate.experience.some(
-                  (e) => e?.title || e?.designation || e?.role
-                ))
-            );
+            // Edit: always show DB Job Category / Sub Category (no rematch overwrite).
+            let jobCategoryId = existingInDb ? existingCatId : null;
+            let jobSubCategoryId = existingInDb ? existingSubId : null;
 
-            // Rematch like backend: Sub Category (role) first, then Category.
-            const resumeSignals = {
-              designation: prof?.designation,
-              title: prof?.designation,
-              skill: skillText,
-              currentEmployer: prof?.currentEmployer,
-              field: prof?.field,
-              course: prof?.course,
-              highestQualification: prof?.highestQualification,
-              education: candidate?.education,
-              experience: candidate?.experience,
-              preferedJobLocation: prof?.preferedJobLocation,
-              fileName:
-                candidate?.resumeFileName ||
-                candidate?.resumeOriginalName ||
-                (typeof candidate?.resume === "string"
-                  ? candidate.resume
-                  : ""),
-              summary: [
-                candidate?.summary,
-                candidate?.about,
-                candidate?.resumeRawText,
-                candidate?.extractedText,
-                prof?.designation,
-                skillText,
-                Array.isArray(candidate?.experience)
-                  ? candidate.experience
-                      .map((e) =>
-                        [e?.title, e?.designation, e?.role, e?.company]
-                          .filter(Boolean)
-                          .join(" ")
-                      )
-                      .join(" ")
-                  : "",
-                Array.isArray(candidate?.industries_relation)
-                  ? candidate.industries_relation
-                      .map(
-                        (r) =>
-                          r?.industries?.industryCategory ||
-                          r?.industryCategory ||
-                          ""
-                      )
-                      .join(" ")
-                  : "",
-              ]
-                .filter(Boolean)
-                .join(" "),
-              resumeText:
-                candidate?.resumeRawText || candidate?.extractedText || "",
-            };
+            // Rematch only when DB has no valid category yet (e.g. fresh resume parse).
+            if (!jobCategoryId) {
+              const resumeSignals = {
+                designation: prof?.designation,
+                title: prof?.designation,
+                skill: skillText,
+                currentEmployer: prof?.currentEmployer,
+                field: prof?.field,
+                course: prof?.course,
+                highestQualification: prof?.highestQualification,
+                education: candidate?.education,
+                experience: candidate?.experience,
+                preferedJobLocation: prof?.preferedJobLocation,
+                fileName:
+                  candidate?.resumeFileName ||
+                  candidate?.resumeOriginalName ||
+                  (typeof candidate?.resume === "string"
+                    ? candidate.resume
+                    : ""),
+                summary: [
+                  candidate?.summary,
+                  candidate?.about,
+                  candidate?.resumeRawText,
+                  candidate?.extractedText,
+                  prof?.designation,
+                  skillText,
+                  Array.isArray(candidate?.experience)
+                    ? candidate.experience
+                        .map((e) =>
+                          [e?.title, e?.designation, e?.role, e?.company]
+                            .filter(Boolean)
+                            .join(" ")
+                        )
+                        .join(" ")
+                    : "",
+                  Array.isArray(candidate?.industries_relation)
+                    ? candidate.industries_relation
+                        .map(
+                          (r) =>
+                            r?.industries?.industryCategory ||
+                            r?.industryCategory ||
+                            ""
+                        )
+                        .join(" ")
+                    : "",
+                ]
+                  .filter(Boolean)
+                  .join(" "),
+                resumeText:
+                  candidate?.resumeRawText || candidate?.extractedText || "",
+              };
 
-            const matched = matchJobCategoryAndSubCategory(
-              resumeSignals,
-              jobCategory,
-              allJobSubCategories
-            );
-
-            let jobCategoryId = matched?.jobCategoryId || null;
-            let jobSubCategoryId = matched?.jobSubCategoryId || null;
-
-            if (!jobCategoryId && !hasRoleSignal && existingInDb) {
-              jobCategoryId = existingCatId;
-              jobSubCategoryId =
-                prof?.jobSubCategoryId ||
-                prof?.jobSubCategory?.id ||
-                null;
+              const matched = matchJobCategoryAndSubCategory(
+                resumeSignals,
+                jobCategory,
+                allJobSubCategories
+              );
+              jobCategoryId = matched?.jobCategoryId || null;
+              jobSubCategoryId = matched?.jobSubCategoryId || null;
             }
 
             if (jobCategoryId) {
@@ -389,12 +381,12 @@ const Professional = ({
                 jobSubCategoryId = null;
               }
 
-              // Persist match into parent state so Update writes to DB
+              // Persist rematch only when DB had no category yet
               const alreadySaved =
                 String(prof?.jobCategoryId || "") === String(jobCategoryId) &&
                 String(prof?.jobSubCategoryId || "") ===
                   String(jobSubCategoryId || "");
-              if (!alreadySaved && matchedCat) {
+              if (!existingInDb && !alreadySaved && matchedCat) {
                 setCandidate((prev) => ({
                   ...prev,
                   professional: {
@@ -419,29 +411,11 @@ const Professional = ({
               }
               }
             } else {
-              // Not in master list / no proper match — do not keep wrong category
+              // No DB category and rematch empty — leave selects blank (do not wipe DB)
               setJobCat(null);
               setJobSubCat(null);
               setFieldValue("jobCategoryId", "");
               setFieldValue("jobSubCategoryId", "");
-              if (
-                (candidate?.resumeParsedAt || hasRoleSignal) &&
-                (prof?.jobCategoryId ||
-                  prof?.jobCategory?.id ||
-                  prof?.jobSubCategoryId ||
-                  (typeof prof?.jobCategory === "string" && prof.jobCategory))
-              ) {
-                setCandidate((prev) => ({
-                  ...prev,
-                  professional: {
-                    ...(prev?.professional || {}),
-                    jobCategoryId: "",
-                    jobCategory: undefined,
-                    jobSubCategoryId: "",
-                    jobSubCategory: undefined,
-                  },
-                }));
-              }
             }
 
             if (prof.noticePeriod) {
