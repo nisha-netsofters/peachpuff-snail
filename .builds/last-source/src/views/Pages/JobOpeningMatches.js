@@ -83,7 +83,7 @@ const JobOpeningMatches = ({ jobIdOverride, embeddedMode = false }) => {
 
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
-  const [sortBy, setSortBy] = useState("newToOld");
+  const [sortBy, setSortBy] = useState("matchScore");
   const [matchScore, setMatchScore] = useState("");
   const [matchDuration, setMatchDuration] = useState("");
   const [interviewLoading, setInterviewLoading] = useState(false);
@@ -180,11 +180,11 @@ const JobOpeningMatches = ({ jobIdOverride, embeddedMode = false }) => {
   };
 
   const handleFilterClear = () => {
-    setSortBy("newToOld");
+    setSortBy("matchScore");
     setMatchScore("");
     setMatchDuration("");
     setPage(1);
-    getJobOpeningMatchCandidate(1, perPage, "newToOld", "", "");
+    getJobOpeningMatchCandidate(1, perPage, "matchScore", "", "");
     setFilterToggleMode(false);
   };
 

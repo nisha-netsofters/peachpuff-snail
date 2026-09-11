@@ -7,6 +7,7 @@ import { useSelector } from "react-redux";
 import useBreakpoint from "../../utility/hooks/useBreakpoints";
 
 export const JOB_MATCH_SORT_OPTIONS = [
+  { value: "matchScore", label: "Match Score ↓" },
   { value: "newToOld", label: "New → Old" },
   { value: "oldToNew", label: "Old → New" },
 ];
@@ -63,7 +64,7 @@ const SortSelect = ({ sortBy, onSortChange }) => {
         className="react-select"
         classNamePrefix="select"
         theme={selectThemeColors}
-        onChange={(opt) => onSortChange(opt?.value || "newToOld")}
+        onChange={(opt) => onSortChange(opt?.value || "matchScore")}
         {...selectMenuPortalProps}
       />
     </>
