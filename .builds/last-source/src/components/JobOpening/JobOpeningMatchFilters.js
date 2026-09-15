@@ -37,8 +37,8 @@ export const JOB_MATCH_SCORE_OPTIONS = [
   { value: "above80", label: "Above 80%" },
   { value: "above70", label: "Above 70%" },
   { value: "above60", label: "Above 60%" },
-  { value: "below50", label: "Below 50%" },
-  { value: "below30", label: "Below 30%" },
+  { value: "above50", label: "Above 50%" },
+  { value: "above30", label: "Above 30%" },
 ];
 
 const selectMenuPortalProps = {
