@@ -424,13 +424,15 @@ const FeedBack = () => {
               ? {
                   width: "145px",
                   marginLeft: "auto",
-                  backgroundColor: themecolor,
+                  backgroundColor:
+                    Object.keys(filterData).length > 0 ? "#D97706" : themecolor,
                   color: "white",
                 }
               : {
                   width: "60px",
                   marginLeft: "auto",
-                  backgroundColor: themecolor,
+                  backgroundColor:
+                    Object.keys(filterData).length > 0 ? "#D97706" : themecolor,
                   color: "white",
                 }
           }

@@ -3460,14 +3460,16 @@ const SecondPage = ({
                   width: "145px",
                   marginLeft:
                     filterKey(filterData).length > 0 ? "10px" : "auto",
-                  backgroundColor: themecolor,
+                  backgroundColor:
+                    filterKey(filterData).length > 0 ? "#D97706" : themecolor,
                   color: "white",
                 }
                 : {
                   width: "60px",
                   marginLeft:
                     filterKey(filterData).length > 0 ? "10px" : "auto",
-                  backgroundColor: themecolor,
+                  backgroundColor:
+                    filterKey(filterData).length > 0 ? "#D97706" : themecolor,
                   color: "white",
                 }
             }

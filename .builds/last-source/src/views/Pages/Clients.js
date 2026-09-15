@@ -740,14 +740,16 @@ const Clients = () => {
                   width: "145px",
                   marginLeft:
                     Object.keys(filterData).length > 0 ? "10px" : "auto",
-                  backgroundColor: themecolor,
+                  backgroundColor:
+                    Object.keys(filterData).length > 0 ? "#D97706" : themecolor,
                   color: "white",
                 }
               : {
                   width: "60px",
                   marginLeft:
                     Object.keys(filterData).length > 0 ? "10px" : "auto",
-                  backgroundColor: themecolor,
+                  backgroundColor:
+                    Object.keys(filterData).length > 0 ? "#D97706" : themecolor,
                   color: "white",
                 }
           }

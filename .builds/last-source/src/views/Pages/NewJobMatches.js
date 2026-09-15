@@ -638,7 +638,12 @@ const NewJobMatches = () => {
           </Button>
           <Button
             color="default"
-            style={{ backgroundColor: themeColor, color: "white", width: "145px" }}
+            style={{
+              backgroundColor:
+                profileCompletion || matchDuration ? "#D97706" : themeColor,
+              color: "white",
+              width: "145px",
+            }}
             onClick={() => setFilterToggleMode((prev) => !prev)}
           >
             Filter Data

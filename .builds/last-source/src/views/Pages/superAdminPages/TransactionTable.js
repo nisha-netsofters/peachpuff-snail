@@ -606,14 +606,24 @@ const TransactionTable = () => {
                   width: "145px",
                   marginLeft:
                     Object.keys(filterData).length > 0 ? "10px" : "auto",
-                  backgroundColor: themecolor ? themecolor : "#CF509B",
+                  backgroundColor:
+                    Object.keys(filterData).length > 0
+                      ? "#D97706"
+                      : themecolor
+                        ? themecolor
+                        : "#CF509B",
                   color: "white",
                 }
               : {
                   width: "60px",
                   marginLeft:
                     Object.keys(filterData).length > 0 ? "10px" : "auto",
-                  backgroundColor: themecolor ? themecolor : "#CF509B",
+                  backgroundColor:
+                    Object.keys(filterData).length > 0
+                      ? "#D97706"
+                      : themecolor
+                        ? themecolor
+                        : "#CF509B",
                   color: "white",
                 }
           }

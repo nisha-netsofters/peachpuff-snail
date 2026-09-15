@@ -376,11 +376,17 @@ const JobCategory = () => {
                   width: "145px",
                   marginLeft:
                     Object.keys(filterData).length > 0 ? "10px" : "auto",
+                  backgroundColor:
+                    Object.keys(filterData).length > 0 ? "#D97706" : undefined,
+                  color: Object.keys(filterData).length > 0 ? "white" : undefined,
                 }
               : {
                   width: "60px",
                   marginLeft:
                     Object.keys(filterData).length > 0 ? "10px" : "auto",
+                  backgroundColor:
+                    Object.keys(filterData).length > 0 ? "#D97706" : undefined,
+                  color: Object.keys(filterData).length > 0 ? "white" : undefined,
                 }
           }
           color="primary"

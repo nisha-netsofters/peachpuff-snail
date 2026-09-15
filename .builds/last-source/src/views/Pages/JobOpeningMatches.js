@@ -581,7 +581,13 @@ const JobOpeningMatches = ({ jobIdOverride, embeddedMode = false }) => {
           )}
           <Button
             color="default"
-            style={{ backgroundColor: themeColor, color: "white", width: "145px", marginLeft: "auto" }}
+            style={{
+              backgroundColor:
+                matchScore || matchDuration ? "#D97706" : themeColor,
+              color: "white",
+              width: "145px",
+              marginLeft: "auto",
+            }}
             onClick={() => setFilterToggleMode((prev) => !prev)}
           >
             Filter Data
