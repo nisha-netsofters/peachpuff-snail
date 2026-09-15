@@ -1,7 +1,8 @@
 import React, { useMemo, useState } from "react";
-import { Button, Col, Input, Label, Row, Spinner } from "reactstrap";
+import { Button, Col, Input, Label, Row } from "reactstrap";
 import { toast } from "react-toastify";
 import { generateJobDescriptionAPI } from "../../../apis/jobOpening";
+import ResumeExtractSpinner from "../../ResumeExtractSpinner";
 
 const AI_ACTIONS = [
   { key: "generate", label: "Generate" },
@@ -207,7 +208,8 @@ const AiJobDescriptionPanel = ({
               >
                 {loadingAction === btn.key ? (
                   <>
-                    <Spinner size="sm" className="me-50" /> Working…
+                    <ResumeExtractSpinner />
+                    <span className="ms-50">Working…</span>
                   </>
                 ) : (
                   btn.label
