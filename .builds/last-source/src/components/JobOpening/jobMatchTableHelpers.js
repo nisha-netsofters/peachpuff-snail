@@ -118,6 +118,26 @@ export const fetchJobScopedInterview = async (
 export const hasViewedByCurrentUser = (row) =>
   row?.viewedByCurrentUser === true;
 
+/** Candidate registered after job was created (same idea as header new-best-match). */
+export const isNewBestMatchCandidate = (row, jobOpeningRow) => {
+  if (row?.isNewBestMatch === true || row?.newBestMatch === true) return true;
+  const jobAt = jobOpeningRow?.createdAt;
+  const candAt = row?.created_at || row?.createdAt;
+  if (!jobAt || !candAt) return false;
+  return new Date(candAt).getTime() > new Date(jobAt).getTime();
+};
+
+export const NewBestMatchCandidateBadge = ({ themeColor }) => (
+  <Badge
+    pill
+    color="default"
+    style={{ backgroundColor: themeColor || "#323D76", fontSize: "12px" }}
+    className="column-action d-flex align-items-center"
+  >
+    New
+  </Badge>
+);
+
 export const getInterviewButtonLabel = (row) =>
   hasExistingInterview(row) ? "Edit Interview" : "Interview";
 

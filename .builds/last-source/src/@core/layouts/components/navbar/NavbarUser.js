@@ -114,9 +114,9 @@ const NavbarUser = (props) => {
           )}
 
         </div>
-        <ul className="nav navbar-nav align-items-center ms-auto">
+        <ul className="nav navbar-nav align-items-center ms-auto gap-50">
           <NewBestMatchHeaderBadge />
-          <h4 className="welcome" style={{ color: themeColor }}>
+          <h4 className="welcome mb-0" style={{ color: themeColor }}>
             Welcome back,
           </h4>{" "}
           <h3 className="welcome " style={{ color: themeColor }}>

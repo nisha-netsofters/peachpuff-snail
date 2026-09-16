@@ -634,11 +634,10 @@ const JobOpening = () => {
 
     {
       name: "Posting Status",
-      minWidth: "240px",
+      minWidth: "130px",
       selector: (row) => row?.postingStatus || "open",
       cell: (row) => {
         const status = row?.postingStatus || "open";
-        const jobTitle = String(row?.designation || "").trim();
         const colorMap = {
           draft: "secondary",
           open: "info",
@@ -647,29 +646,35 @@ const JobOpening = () => {
           archived: "dark",
         };
         return (
-          <div className="d-flex flex-column align-items-center gap-25 px-50">
-            <div className="d-flex align-items-center gap-50 flex-wrap justify-content-center">
-              <Badge color={colorMap[status] || "info"} pill>
-                {status}
-              </Badge>
-              {jobTitle ? (
-                <span
-                  style={{
-                    fontSize: "12px",
-                    fontWeight: 600,
-                    maxWidth: "180px",
-                    lineHeight: 1.3,
-                    textAlign: "center",
-                  }}
-                  title={jobTitle}
-                >
-                  {jobTitle}
-                </span>
-              ) : null}
-            </div>
-          </div>
+          <Badge color={colorMap[status] || "info"} pill>
+            {status}
+          </Badge>
         );
       },
+    },
+    {
+      name: "Job Title",
+      minWidth: "180px",
+      selector: (row) => row?.designation || "-",
+      cell: (row) => {
+        const title = String(row?.designation || "").trim() || "-";
+        return (
+          <span
+            style={{ fontWeight: 600, fontSize: "13px", lineHeight: 1.35 }}
+            title={title}
+          >
+            {title}
+          </span>
+        );
+      },
+      conditionalCellStyles: [
+        {
+          when: (row) => row.status == "Inactive",
+          style: {
+            opacity: "0.5",
+          },
+        },
+      ],
     },
 
     {

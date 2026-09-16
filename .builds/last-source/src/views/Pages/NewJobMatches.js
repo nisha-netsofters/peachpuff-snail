@@ -19,7 +19,6 @@ import jobOpeningMatchesActions from "../../redux/jobOpeningMatches/actions";
 import { useParams } from "react-router-dom/cjs/react-router-dom";
 import DataTable from "react-data-table-component";
 import ComponentSpinner from "../../@core/components/spinner/Loading-spinner";
-import moment from "moment/moment";
 import whatsapp from "../../assets/images/whatsapp-svgrepo-com.svg";
 import clientActions from "../../redux/client/actions";
 import subscriptionActions from "../../redux/subscription/actions";
@@ -49,7 +48,9 @@ import {
   buildInterviewCreateState,
   buildInterviewUpdatePayload,
   fetchJobScopedInterview,
+  isNewBestMatchCandidate,
   isShortlistedInterview,
+  NewBestMatchCandidateBadge,
 } from "../../components/JobOpening/jobMatchTableHelpers";
 
 const NewJobMatches = () => {
@@ -375,33 +376,34 @@ const NewJobMatches = () => {
     },
   };
 
+  const matchCandidateNameCell = (row) => {
+    const name =
+      [row?.firstname, row?.lastname].filter(Boolean).join(" ").trim() || "-";
+    const showNew = isNewBestMatchCandidate(row, jobOpeningRow);
+    return (
+      <div className="d-flex align-items-center flex-wrap" style={{ gap: 10 }}>
+        <span
+          style={{
+            textDecoration: "underline",
+            textUnderlineOffset: "2px",
+            color: themeColor || "#323D76",
+            cursor: "pointer",
+          }}
+          onClick={() => openViewProfile(row)}
+          title="View Profile"
+        >
+          {name}
+        </span>
+        {showNew ? <NewBestMatchCandidateBadge themeColor={themeColor} /> : null}
+      </div>
+    );
+  };
+
   const columnsClients = [
     {
-      name: "Status",
-      minWidth: "110px",
-      cell: (row) => {
-        const createdDate = moment(row.created_at);
-        const fiveDaysAgo = moment().subtract(5, "days");
-
-        // if (user?.email != 'gunjan@growworkinfotech.com') {
-        //   return null
-        // }
-
-        if (createdDate.isAfter(fiveDaysAgo)) {
-          return (
-            <Badge
-              pill
-              color="default"
-              style={{ backgroundColor: themeColor }}
-              className="column-action d-flex align-items-center"
-            >
-              {"New"}
-            </Badge>
-          );
-        } else {
-          return null;
-        }
-      },
+      name: "Candidate",
+      minWidth: "200px",
+      cell: (row) => matchCandidateNameCell(row),
     },
     {
       name: "Match Score",
@@ -415,14 +417,6 @@ const NewJobMatches = () => {
           ? `${row.profileCompleteness}%`
           : "-",
       minWidth: "120px",
-    },
-    {
-      name: "First Name",
-      selector: (row) => row?.firstname,
-    },
-    {
-      name: "Last Name",
-      selector: (row) => row?.lastname,
     },
     {
       name: "Job Category",
@@ -486,27 +480,9 @@ const NewJobMatches = () => {
   ];
   const subscriptionColumnsClients = [
     {
-      name: "Status",
-      minWidth: "110px",
-      cell: (row) => {
-        const createdDate = moment(row.created_at);
-        const fiveDaysAgo = moment().subtract(5, "days");
-
-        if (createdDate.isAfter(fiveDaysAgo)) {
-          return (
-            <Badge
-              pill
-              color="default"
-              style={{ backgroundColor: themeColor }}
-              className="column-action d-flex align-items-center"
-            >
-              {"New"}
-            </Badge>
-          );
-        } else {
-          return null;
-        }
-      },
+      name: "Candidate",
+      minWidth: "200px",
+      cell: (row) => matchCandidateNameCell(row),
     },
     {
       name: "Match Score",
@@ -520,14 +496,6 @@ const NewJobMatches = () => {
           ? `${row.profileCompleteness}%`
           : "-",
       minWidth: "120px",
-    },
-    {
-      name: "First Name",
-      selector: (row) => row?.firstname,
-    },
-    {
-      name: "Last Name",
-      selector: (row) => row?.lastname,
     },
     {
       name: "Email-id",

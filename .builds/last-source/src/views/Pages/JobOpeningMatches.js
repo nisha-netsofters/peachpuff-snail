@@ -52,7 +52,9 @@ import {
   buildInterviewCreateState,
   buildInterviewUpdatePayload,
   fetchJobScopedInterview,
+  isNewBestMatchCandidate,
   isShortlistedInterview,
+  NewBestMatchCandidateBadge,
 } from "../../components/JobOpening/jobMatchTableHelpers";
 import { markNewBestMatchSeenAPI } from "../../apis/jobOpening";
 
@@ -403,14 +405,34 @@ const JobOpeningMatches = ({ jobIdOverride, embeddedMode = false }) => {
     },
   };
 
+  const matchCandidateNameCell = (row) => {
+    const name =
+      [row?.firstname, row?.lastname].filter(Boolean).join(" ").trim() || "-";
+    const showNew = isNewBestMatchCandidate(row, jobOpeningRow);
+    return (
+      <div className="d-flex align-items-center flex-wrap" style={{ gap: 10 }}>
+        <span
+          style={{
+            textDecoration: "underline",
+            textUnderlineOffset: "2px",
+            color: themeColor || "#323D76",
+            cursor: "pointer",
+          }}
+          onClick={() => openViewProfile(row)}
+          title="View Profile"
+        >
+          {name}
+        </span>
+        {showNew ? <NewBestMatchCandidateBadge themeColor={themeColor} /> : null}
+      </div>
+    );
+  };
+
   const columnsClients = [
     {
-      name: "First Name",
-      selector: (row) => row?.firstname,
-    },
-    {
-      name: "Last Name",
-      selector: (row) => row?.lastname,
+      name: "Candidate",
+      minWidth: "200px",
+      cell: (row) => matchCandidateNameCell(row),
     },
     {
       name: "Match Score",
@@ -469,12 +491,9 @@ const JobOpeningMatches = ({ jobIdOverride, embeddedMode = false }) => {
   ];
   const subscriptionColumnsClients = [
     {
-      name: "First Name",
-      selector: (row) => row?.firstname,
-    },
-    {
-      name: "Last Name",
-      selector: (row) => row?.lastname,
+      name: "Candidate",
+      minWidth: "200px",
+      cell: (row) => matchCandidateNameCell(row),
     },
     {
       name: "Match Score",
