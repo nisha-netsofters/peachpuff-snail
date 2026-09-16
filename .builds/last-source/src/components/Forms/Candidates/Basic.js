@@ -193,19 +193,10 @@ const Basic = ({
   useEffect(() => {
     if (!resumeUploadOnly) return;
     let cancelled = false;
-    const MIN_CHECK_MS = 400;
 
     const checkResumeApiConfig = async () => {
       setApiConfigChecking(true);
-      const startedAt = Date.now();
       const status = await fetchResumeExtractionStatus();
-      if (cancelled) return;
-
-      const elapsed = Date.now() - startedAt;
-      const waitMore = Math.max(0, MIN_CHECK_MS - elapsed);
-      if (waitMore > 0) {
-        await new Promise((resolve) => setTimeout(resolve, waitMore));
-      }
       if (cancelled) return;
 
       if (status && status.ready === true) {
@@ -231,26 +222,23 @@ const Basic = ({
     const file = files[0];
     if (!file) return;
 
-    // Always re-check Super Admin OCR/AI config before extraction
-    setApiConfigChecking(true);
-    const startedAt = Date.now();
-    const latestStatus = await fetchResumeExtractionStatus();
-    const waitMore = Math.max(0, 400 - (Date.now() - startedAt));
-    if (waitMore > 0) {
-      await new Promise((resolve) => setTimeout(resolve, waitMore));
-    }
-    setApiConfigChecking(false);
-    const isReady = latestStatus && latestStatus.ready === true;
-    setApiConfigReady(!!isReady);
-    if (!isReady) {
-      const msg =
-        (latestStatus && latestStatus.message) || DEFAULT_API_CONFIG_ERROR;
-      setApiConfigError(msg);
-      setExtractError(msg);
-      setExtracted(false);
-      tostify(msg);
-      if (evt.target) evt.target.value = "";
-      return;
+    // Skip slow re-check if OCR/AI already confirmed ready
+    if (!apiConfigReady) {
+      setApiConfigChecking(true);
+      const latestStatus = await fetchResumeExtractionStatus();
+      setApiConfigChecking(false);
+      const isReady = latestStatus && latestStatus.ready === true;
+      setApiConfigReady(!!isReady);
+      if (!isReady) {
+        const msg =
+          (latestStatus && latestStatus.message) || DEFAULT_API_CONFIG_ERROR;
+        setApiConfigError(msg);
+        setExtractError(msg);
+        setExtracted(false);
+        tostify(msg);
+        if (evt.target) evt.target.value = "";
+        return;
+      }
     }
     setApiConfigError("");
     setExtractError("");

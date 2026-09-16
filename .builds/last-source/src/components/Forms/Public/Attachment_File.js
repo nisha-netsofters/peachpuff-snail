@@ -125,19 +125,10 @@ const Attachment_File = ({
 
   useEffect(() => {
     let cancelled = false;
-    const MIN_CHECK_MS = 2500;
 
     const checkResumeApiConfig = async () => {
       setApiConfigChecking(true);
-      const startedAt = Date.now();
       const status = await fetchResumeExtractionStatus();
-      if (cancelled) return;
-
-      const elapsed = Date.now() - startedAt;
-      const waitMore = Math.max(0, MIN_CHECK_MS - elapsed);
-      if (waitMore > 0) {
-        await new Promise((resolve) => setTimeout(resolve, waitMore));
-      }
       if (cancelled) return;
 
       if (status && status.ready === true) {
@@ -239,26 +230,24 @@ const Attachment_File = ({
     setSelectedResumeName(file.name);
     setIsShowFileName(true);
 
-    setApiConfigChecking(true);
-    const startedAt = Date.now();
-    const latestStatus = await fetchResumeExtractionStatus();
-    const waitMore = Math.max(0, 2500 - (Date.now() - startedAt));
-    if (waitMore > 0) {
-      await new Promise((resolve) => setTimeout(resolve, waitMore));
-    }
-    setApiConfigChecking(false);
-    const isReady = latestStatus && latestStatus.ready === true;
-    setApiConfigReady(!!isReady);
+    // Skip re-check if already ready
+    if (!apiConfigReady) {
+      setApiConfigChecking(true);
+      const latestStatus = await fetchResumeExtractionStatus();
+      setApiConfigChecking(false);
+      const isReady = latestStatus && latestStatus.ready === true;
+      setApiConfigReady(!!isReady);
 
-    if (!isReady) {
-      const msg = (latestStatus && latestStatus.message) || DEFAULT_API_CONFIG_ERROR;
-      setApiConfigError(msg);
-      setExtractError(msg);
-      tostify(msg);
-      // Still allow plain upload without AI
-      await awsUploadAssets(file, "resume", dispatch);
-      if (evt.target) evt.target.value = "";
-      return;
+      if (!isReady) {
+        const msg = (latestStatus && latestStatus.message) || DEFAULT_API_CONFIG_ERROR;
+        setApiConfigError(msg);
+        setExtractError(msg);
+        tostify(msg);
+        // Still allow plain upload without AI
+        await awsUploadAssets(file, "resume", dispatch);
+        if (evt.target) evt.target.value = "";
+        return;
+      }
     }
 
     setApiConfigError("");
