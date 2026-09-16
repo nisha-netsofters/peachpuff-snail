@@ -17,6 +17,7 @@ import { resolveAssetUrl } from "../../../utility/resolveAssetUrl";
 import { tostify, tostifySuccess } from "../../Tostify";
 import { resolveIndianAddress } from "../../../utility/resolveIndianAddress";
 import apiCall from "../../../utility/axiosInterceptor";
+import { postParseResume } from "../../../utility/parseResumeApi";
 import {
   normalizeExtractedResume,
   genderSelectValue,
@@ -39,6 +40,8 @@ const AI_VALIDATION_MESSAGES = {
   AI_NETWORK_ERROR:
     "Live server could not reach Google Gemini. This is not an OCR config change — Hostinger may be blocking outbound Gemini API calls.",
   API_CONFIG_NOT_SET: DEFAULT_API_CONFIG_ERROR,
+  EMPTY_RESUME_TEXT:
+    "Could not read text from this resume. Please upload a clear PDF, DOC, DOCX, or image.",
 };
 
 const getFriendlyExtractError = (result) => {
@@ -290,19 +293,7 @@ const Attachment_File = ({
       const formData = new FormData();
       formData.append("resume", file);
 
-      let result = null;
-      try {
-        result = await apiCall.post("/candidate/publicParseResume", formData);
-      } catch (err1) {
-        result = err1?.response?.data || null;
-        if (!result) {
-          try {
-            result = await apiCall.post("/candidate/parse-resume", formData);
-          } catch (err2) {
-            result = err2?.response?.data || null;
-          }
-        }
-      }
+      const result = await postParseResume(formData);
 
       if (!result || !result.success) {
         if (result?.code === "API_CONFIG_NOT_SET") {

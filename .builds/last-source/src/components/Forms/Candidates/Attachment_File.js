@@ -9,6 +9,7 @@ import {
   normalizeExtractedResume,
   genderSelectValue,
 } from "../../../utility/normalizeResumeExtract";
+import { postParseResume } from "../../../utility/parseResumeApi";
 import course from "../Course";
 import ResumeExtractSpinner from "../../ResumeExtractSpinner";
 
@@ -27,6 +28,8 @@ const AI_VALIDATION_MESSAGES = {
   AI_NETWORK_ERROR:
     "Live server could not reach Google Gemini. This is not an OCR config change — Hostinger may be blocking outbound Gemini API calls.",
   API_CONFIG_NOT_SET: DEFAULT_API_CONFIG_ERROR,
+  EMPTY_RESUME_TEXT:
+    "Could not read text from this resume. Please upload a clear PDF, DOC, DOCX, or image.",
 };
 
 const getFriendlyExtractError = (result) => {
@@ -343,41 +346,7 @@ const Attachment_File = ({
       const formData = new FormData();
       formData.append("resume", file);
 
-      let result = null;
-      try {
-        result = await apiCall.post("/candidate/parse-resume", formData);
-      } catch (err1) {
-        result = err1?.response?.data || null;
-      }
-
-      const isAiValidationError =
-        result?.code &&
-        [
-          "AI_API_KEY_INVALID",
-          "AI_MODEL_INVALID",
-          "AI_RATE_LIMIT",
-          "AI_PARSE_FAILED",
-          "API_CONFIG_NOT_SET",
-        ].includes(result.code);
-      const isSessionTokenError =
-        !isAiValidationError &&
-        ((result?.msg && /invalid token|expired token|unauthorized/i.test(result.msg)) ||
-          (result?.error && /invalid token|expired token/i.test(String(result.error))));
-
-      if (
-        (!result || !result.success) &&
-        (isSessionTokenError || !result) &&
-        !isAiValidationError
-      ) {
-        try {
-          const pubRes = await apiCall.post("/candidate/publicParseResume", formData);
-          if (pubRes && (pubRes.success || pubRes.code)) {
-            result = pubRes;
-          }
-        } catch (ePub) {
-          if (ePub?.response?.data) result = ePub.response.data;
-        }
-      }
+      const result = await postParseResume(formData);
 
       if (!result || !result.success) {
         if (result?.code === "API_CONFIG_NOT_SET") {
