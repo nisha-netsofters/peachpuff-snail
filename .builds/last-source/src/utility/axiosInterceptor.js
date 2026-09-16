@@ -63,23 +63,17 @@ apiCall.interceptors.request.use(
 apiCall.interceptors.response.use(
   async (resp) => {
     if (resp?.data?.msg === "invalid token or expired token") {
-      // Do not logout/redirect during resume parse — callers fall back to publicParseResume
-      const reqUrl = String(resp?.config?.url || "");
-      const isResumeParse =
-        /parse-resume|publicParseResume|resume-extraction-status/i.test(reqUrl);
-      if (!isResumeParse) {
-        clearAuthSession();
-        try {
-          persistor.pause();
-        } catch (_) {
-          /* ignore */
-        }
-        if (
-          typeof window !== "undefined" &&
-          !window.location.pathname.includes("/login")
-        ) {
-          window.location.href = "/login";
-        }
+      clearAuthSession();
+      try {
+        persistor.pause();
+      } catch (_) {
+        /* ignore */
+      }
+      if (
+        typeof window !== "undefined" &&
+        !window.location.pathname.includes("/login")
+      ) {
+        window.location.href = "/login";
       }
       return resp.data;
     }

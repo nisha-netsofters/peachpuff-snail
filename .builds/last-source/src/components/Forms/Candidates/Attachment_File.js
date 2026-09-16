@@ -9,13 +9,60 @@ import {
   normalizeExtractedResume,
   genderSelectValue,
 } from "../../../utility/normalizeResumeExtract";
-import { postParseResume, getFriendlyExtractError } from "../../../utility/parseResumeApi";
 import course from "../Course";
 import ResumeExtractSpinner from "../../ResumeExtractSpinner";
 
 const DEFAULT_API_CONFIG_ERROR =
   "Resume auto-extraction is unavailable. Please ask your Super Admin to enable and configure OCR & API Configuration (AI API key and model are required).";
 
+const AI_VALIDATION_MESSAGES = {
+  AI_API_KEY_INVALID:
+    "Invalid AI API key. Please ask your Super Admin to update the API key in OCR & API Configuration, then try again.",
+  AI_MODEL_INVALID:
+    "Invalid or retired AI model. For Claude use claude-haiku-4-5-20251001 in Super Admin → OCR & API Configuration.",
+  AI_RATE_LIMIT:
+    "AI service rate limit reached. Please wait a moment and try again.",
+  AI_SERVICE_BUSY:
+    "Gemini is temporarily busy (high demand). Please wait a few seconds and upload again.",
+  AI_NETWORK_ERROR:
+    "Live server could not reach Google Gemini. This is not an OCR config change — Hostinger may be blocking outbound Gemini API calls.",
+  API_CONFIG_NOT_SET: DEFAULT_API_CONFIG_ERROR,
+};
+
+const getFriendlyExtractError = (result) => {
+  if (!result) {
+    return "Failed to extract resume data. Please verify your backend server is running.";
+  }
+  if (result.code && AI_VALIDATION_MESSAGES[result.code]) {
+    return AI_VALIDATION_MESSAGES[result.code];
+  }
+  const raw = result.error || result.msg || result.message || "";
+  const lower = String(raw).toLowerCase();
+  if (
+    lower.includes("invalid api key") ||
+    lower.includes("api key not valid") ||
+    lower.includes("unauthorized") ||
+    lower.includes("invalid authentication")
+  ) {
+    return AI_VALIDATION_MESSAGES.AI_API_KEY_INVALID;
+  }
+  if (lower.includes("cannot reach google gemini") || lower.includes("enotfound") || lower.includes("econnrefused")) {
+    return AI_VALIDATION_MESSAGES.AI_NETWORK_ERROR;
+  }
+  if (lower.includes("high demand") || lower.includes("try again later") || lower.includes("temporarily busy")) {
+    return AI_VALIDATION_MESSAGES.AI_SERVICE_BUSY;
+  }
+  if (lower.includes("model") && (lower.includes("invalid") || lower.includes("not found"))) {
+    return AI_VALIDATION_MESSAGES.AI_MODEL_INVALID;
+  }
+  if (lower.includes("status code 404") || lower.includes("not_found_error")) {
+    return AI_VALIDATION_MESSAGES.AI_MODEL_INVALID;
+  }
+  if (/oauth|sign-in|developers\.google|access token/i.test(raw)) {
+    return AI_VALIDATION_MESSAGES.AI_API_KEY_INVALID;
+  }
+  return raw || "Unable to parse resume. Please try again.";
+};
 
 const getResumeDisplayName = (resume) => {
   if (!resume) return "";
@@ -133,10 +180,19 @@ const Attachment_File = ({
 
   useEffect(() => {
     let cancelled = false;
+    const MIN_CHECK_MS = 2500;
 
     const checkResumeApiConfig = async () => {
       setApiConfigChecking(true);
+      const startedAt = Date.now();
       const status = await fetchResumeExtractionStatus();
+      if (cancelled) return;
+
+      const elapsed = Date.now() - startedAt;
+      const waitMore = Math.max(0, MIN_CHECK_MS - elapsed);
+      if (waitMore > 0) {
+        await new Promise((resolve) => setTimeout(resolve, waitMore));
+      }
       if (cancelled) return;
 
       if (status && status.ready === true) {
@@ -228,24 +284,26 @@ const Attachment_File = ({
 
     setIsShowFileName(true);
 
-    // Skip slow re-check if we already know OCR/AI is ready
-    if (!apiConfigReady) {
-      setApiConfigChecking(true);
-      const latestStatus = await fetchResumeExtractionStatus();
-      setApiConfigChecking(false);
+    setApiConfigChecking(true);
+    const startedAt = Date.now();
+    const latestStatus = await fetchResumeExtractionStatus();
+    const waitMore = Math.max(0, 2500 - (Date.now() - startedAt));
+    if (waitMore > 0) {
+      await new Promise((resolve) => setTimeout(resolve, waitMore));
+    }
+    setApiConfigChecking(false);
 
-      const isReady = latestStatus && latestStatus.ready === true;
-      setApiConfigReady(!!isReady);
+    const isReady = latestStatus && latestStatus.ready === true;
+    setApiConfigReady(!!isReady);
 
-      if (!isReady) {
-        const msg = (latestStatus && latestStatus.message) || DEFAULT_API_CONFIG_ERROR;
-        setApiConfigError(msg);
-        setExtractError(msg);
-        tostify(msg);
-        fileOnChangeHandler(evt);
-        if (evt.target) evt.target.value = "";
-        return;
-      }
+    if (!isReady) {
+      const msg = (latestStatus && latestStatus.message) || DEFAULT_API_CONFIG_ERROR;
+      setApiConfigError(msg);
+      setExtractError(msg);
+      tostify(msg);
+      fileOnChangeHandler(evt);
+      if (evt.target) evt.target.value = "";
+      return;
     }
 
     setApiConfigError("");
@@ -285,7 +343,41 @@ const Attachment_File = ({
       const formData = new FormData();
       formData.append("resume", file);
 
-      const result = await postParseResume(formData);
+      let result = null;
+      try {
+        result = await apiCall.post("/candidate/parse-resume", formData);
+      } catch (err1) {
+        result = err1?.response?.data || null;
+      }
+
+      const isAiValidationError =
+        result?.code &&
+        [
+          "AI_API_KEY_INVALID",
+          "AI_MODEL_INVALID",
+          "AI_RATE_LIMIT",
+          "AI_PARSE_FAILED",
+          "API_CONFIG_NOT_SET",
+        ].includes(result.code);
+      const isSessionTokenError =
+        !isAiValidationError &&
+        ((result?.msg && /invalid token|expired token|unauthorized/i.test(result.msg)) ||
+          (result?.error && /invalid token|expired token/i.test(String(result.error))));
+
+      if (
+        (!result || !result.success) &&
+        (isSessionTokenError || !result) &&
+        !isAiValidationError
+      ) {
+        try {
+          const pubRes = await apiCall.post("/candidate/publicParseResume", formData);
+          if (pubRes && (pubRes.success || pubRes.code)) {
+            result = pubRes;
+          }
+        } catch (ePub) {
+          if (ePub?.response?.data) result = ePub.response.data;
+        }
+      }
 
       if (!result || !result.success) {
         if (result?.code === "API_CONFIG_NOT_SET") {
@@ -294,7 +386,6 @@ const Attachment_File = ({
         }
         throw Object.assign(new Error(getFriendlyExtractError(result)), {
           code: result?.code,
-          httpStatus: result?.httpStatus,
         });
       }
 
@@ -307,7 +398,6 @@ const Attachment_File = ({
         getFriendlyExtractError({
           code: err?.code,
           error: err?.message,
-          httpStatus: err?.httpStatus,
         }) || "Unable to parse resume. Please try again.";
       setExtractError(msg);
       setExtracted(false);
