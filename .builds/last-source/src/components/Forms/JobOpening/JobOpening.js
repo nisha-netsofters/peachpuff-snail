@@ -853,11 +853,11 @@ const JobOpening = ({
         </Col>
 
         <Col lg={6} xs={12} xl={4}>
-          <Label>Recruiter</Label>
+          <Label>Assigned To</Label>
           <Select
             isDisabled={isRecruiter || !canAssignRecruiter}
             value={selectedRecruiter}
-            placeholder="Select Recruiter / Staff"
+            placeholder="Select Recruiter / Staff / BDM / Team Leader"
             options={(assignableUsers || []).map((u) => ({
               value: u.id,
               label: u.name,

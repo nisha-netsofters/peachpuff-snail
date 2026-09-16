@@ -702,7 +702,7 @@ const JobOpening = () => {
       ],
     },
     {
-      name: "Recruiter",
+      name: "Assigned To",
       minWidth: "140px",
       cell: (row) => (
         <span style={{ fontWeight: "500" }}>

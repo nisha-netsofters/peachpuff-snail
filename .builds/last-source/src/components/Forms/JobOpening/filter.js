@@ -130,11 +130,11 @@ const Filter = ({
       <Fragment>
         <Row noGutters>
           <Col md="12" className="mt-1">
-            <Label>Recruiter</Label>
+            <Label>Assigned To</Label>
             <Select
               menuPlacement="auto"
               value={selectTempUser}
-              placeholder="Select Recruiter"
+              placeholder="Select assignee"
               options={recruiterOptions}
               className="react-select"
               classNamePrefix="select"

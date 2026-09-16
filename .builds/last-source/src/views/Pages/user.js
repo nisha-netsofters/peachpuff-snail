@@ -224,6 +224,14 @@ const User = () => {
     {
       name: "Email",
       selector: (row) => row?.email,
+      cell: (row) => (
+        <span
+          className="candidate-email-text"
+          style={{ textTransform: "none" }}
+        >
+          {row?.email || "-"}
+        </span>
+      ),
     },
     {
       name: "Contact Number",
@@ -439,7 +447,15 @@ const User = () => {
             >
               {state.title}:{" "}
             </strong>
-            <strong style={{ fontSize: "12px" }}>{state.value}</strong>
+            <strong
+              className={state.title === "Email" ? "candidate-email-text" : undefined}
+              style={{
+                fontSize: "12px",
+                ...(state.title === "Email" ? { textTransform: "none" } : {}),
+              }}
+            >
+              {state.value}
+            </strong>
           </div>
         </div>
       </>
