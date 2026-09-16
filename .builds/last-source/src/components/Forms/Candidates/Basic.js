@@ -765,28 +765,33 @@ const Basic = ({
         </Col>
         <Col lg={6} xs={12} xl={4}>
           <div>
-            <Label id="mail">
+            <Label htmlFor="mobile">
               Mobile<span style={{ color: "red" }}>*</span>
             </Label>
             <Input
               id="mobile"
+              name="mobile"
               onFocus={() => setIsfocus("mobile")}
               onBlur={() => setIsfocus(null)}
               style={{
                 borderColor: focus === "mobile" && themecolor,
               }}
               className="w-100"
-              type="text"
+              type="tel"
+              inputMode="numeric"
+              autoComplete="tel"
               placeholder={"Enter Mobile"}
-              maxLength="10"
+              maxLength={10}
               disabled={isDisabledAllFields}
-              value={candidate?.mobile}
+              readOnly={isDisabledAllFields}
+              value={String(candidate?.mobile || "").replace(/\D/g, "").slice(-10)}
               onChange={(e) => {
-                const next = e.target.value.replace(/\D/g, "");
-                setCandidate((prev) => ({
-                  ...(prev || {}),
-                  mobile: next,
-                }));
+                if (isDisabledAllFields) return;
+                const next = e.target.value.replace(/\D/g, "").slice(0, 10);
+                setCandidate((prev) => {
+                  const base = Array.isArray(prev) ? {} : prev || {};
+                  return { ...base, mobile: next };
+                });
               }}
             />
           </div>

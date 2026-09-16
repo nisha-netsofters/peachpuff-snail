@@ -1091,15 +1091,29 @@ const SecondPage = ({
   /** Edit must always unlock fields (View Profile leaves isDisabledAllFields=true). */
   const openEditCandidate = (row) => {
     if (!row) return;
-    const canEdit =
-      row?.agency?.email == user?.agency?.email ||
-      user?.email == allAccessEmail ||
-      user?.agency?.email == allAccessEmail;
-    setIsDisabledAllFields(!canEdit);
-    setCandidate(row);
+    // Only lock when we KNOW it is another agency. Missing agency on row
+    // must NOT keep the form read-only (that blocked mobile/name edits).
+    const isForeignAgency =
+      Boolean(row?.agency?.email) &&
+      Boolean(user?.agency?.email) &&
+      row.agency.email !== user.agency.email &&
+      user?.email !== allAccessEmail &&
+      user?.agency?.email !== allAccessEmail;
+    setIsDisabledAllFields(isForeignAgency);
+    const normalizedMobile = String(row?.mobile || "")
+      .replace(/\D/g, "")
+      .slice(-10);
+    const normalizedAlt = String(row?.alternateMobile || "")
+      .replace(/\D/g, "")
+      .slice(-10);
+    setCandidate({
+      ...row,
+      mobile: normalizedMobile,
+      alternateMobile: normalizedAlt || row?.alternateMobile || "",
+    });
     setIndustriesData(row?.industries_relation);
     statusUpdate(row);
-    setEmail(row?.email);
+    setEmail(row?.email || "");
     setCreate(false);
     setUpdate(true);
     setShow(true);
@@ -2440,8 +2454,36 @@ const SecondPage = ({
       "savedCandidates",
       "_id",
     ]);
+    // Always send core identity fields first (never drop mobile/name on edit)
+    const mobileDigits = String(candidate?.mobile || "")
+      .replace(/\D/g, "")
+      .slice(-10);
+    const altDigits = String(candidate?.alternateMobile || "")
+      .replace(/\D/g, "")
+      .slice(-10);
+    fm.append("id", String(candidate?.id || ""));
+    fm.append("firstname", String(candidate?.firstname || ""));
+    fm.append("lastname", String(candidate?.lastname || ""));
+    fm.append("email", String(candidate?.email || email || "").toLowerCase());
+    fm.append("mobile", mobileDigits);
+    if (altDigits) fm.append("alternateMobile", altDigits);
+    if (candidate?.gender) fm.append("gender", String(candidate.gender));
+
     for (const key in candidate) {
       if (skipUpdateKeys.has(key)) continue;
+      if (
+        [
+          "id",
+          "firstname",
+          "lastname",
+          "email",
+          "mobile",
+          "alternateMobile",
+          "gender",
+        ].includes(key)
+      ) {
+        continue;
+      }
       if (key === "professional") {
         fm.append("professional", JSON.stringify(candidate[key] || {}));
       } else if (key === "industries_relation") {
@@ -2522,10 +2564,14 @@ const SecondPage = ({
       candidate?.lastname === undefined
     )
       return tostify(" Please Enter Valid Last Name", error);
-    else if (!email || regex.test(email) === false)
+    else if (
+      !(candidate?.email || email) ||
+      regex.test(String(candidate?.email || email).toLowerCase()) === false
+    )
       return tostify("  Please Enter Valid Email", error);
     else if (
-      candidate?.mobile?.replace(/\D/g, "")?.length !== 10 ||
+      String(candidate?.mobile || "").replace(/\D/g, "").slice(-10).length !==
+        10 ||
       candidate?.mobile === undefined
     )
       return tostify("Please Enter Valid Contact Number", error);
