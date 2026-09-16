@@ -347,15 +347,25 @@ const JobOpeningMatches = ({ jobIdOverride, embeddedMode = false }) => {
   const viewProfileColumn = {
     name: "View Profile",
     minWidth: "130px",
-    cell: (row) => (
-      <Button
-        onClick={() => openViewProfile(row)}
-        style={{ padding: "10px", backgroundColor: themeColor, color: "white" }}
-        color="default"
-      >
-        {getViewProfileButtonLabel(row, viewedCandidateIds)}
-      </Button>
-    ),
+    cell: (row) => {
+      const label = getViewProfileButtonLabel(row, viewedCandidateIds);
+      const isViewAgain = label === "View Again";
+      return (
+        <Button
+          onClick={() => openViewProfile(row)}
+          style={{
+            padding: "10px",
+            backgroundColor: isViewAgain ? `${themeColor}70` : themeColor,
+            color: isViewAgain ? themeColor : "white",
+            border: isViewAgain ? `1px solid ${themeColor}` : "none",
+            fontWeight: isViewAgain ? "500" : "600",
+          }}
+          color="default"
+        >
+          {label}
+        </Button>
+      );
+    },
   };
 
   const interviewScheduleColumn = {
