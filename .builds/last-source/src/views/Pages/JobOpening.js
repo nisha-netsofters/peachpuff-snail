@@ -645,6 +645,23 @@ const JobOpening = () => {
       ],
     },
     {
+      name: "Recruiter",
+      minWidth: "140px",
+      cell: (row) => (
+        <span style={{ fontWeight: "500" }}>
+          {row?.recruiter?.name || "-"}
+        </span>
+      ),
+      conditionalCellStyles: [
+        {
+          when: (row) => row.status == "Inactive",
+          style: {
+            opacity: "0.5",
+          },
+        },
+      ],
+    },
+    {
       name: "No. Of Vacancy",
       selector: (row) => row?.numberOfVacancy,
       conditionalCellStyles: [
