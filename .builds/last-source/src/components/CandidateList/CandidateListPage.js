@@ -1408,6 +1408,11 @@ const SecondPage = ({
     {
       name: "Email-id",
       selector: (row) => row?.email,
+      cell: (row) => (
+        <span className="candidate-email-text" style={{ textTransform: "none" }}>
+          {row?.email || "-"}
+        </span>
+      ),
     },
     {
       name: "Contact number",
@@ -1701,6 +1706,11 @@ const SecondPage = ({
     {
       name: "Email-id",
       selector: (row) => row?.email,
+      cell: (row) => (
+        <span className="candidate-email-text" style={{ textTransform: "none" }}>
+          {row?.email || "-"}
+        </span>
+      ),
     },
     {
       name: "Contact number",
@@ -2764,8 +2774,10 @@ const SecondPage = ({
               {state.title}:{" "}
             </strong>
             <strong
+              className={state.title === "Email" ? "candidate-email-text" : undefined}
               style={{
                 fontSize: "12px",
+                ...(state.title === "Email" ? { textTransform: "none" } : {}),
                 ...(state.title === "Name"
                   ? {
                       cursor: "pointer",
@@ -3156,10 +3168,12 @@ const SecondPage = ({
               >
                 <div className="state-col">
                   <strong
+                    className="candidate-email-text"
                     style={{
                       fontSize: "16px",
                       color: "black",
                       fontWeight: "bold",
+                      textTransform: "none",
                     }}
                   >
                     {email}
@@ -3191,10 +3205,12 @@ const SecondPage = ({
             >
               <div className="state-col">
                 <strong
+                  className="candidate-email-text"
                   style={{
                     fontSize: "16px",
                     color: "black",
                     fontWeight: "bold",
+                    textTransform: "none",
                   }}
                 >
                   {email}

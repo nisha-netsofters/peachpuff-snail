@@ -182,6 +182,11 @@
 
 .react-dataTable {
   text-transform: capitalize;
+
+  /* Email must keep original casing (e.g. user@gmail.com) */
+  .candidate-email-text {
+    text-transform: none !important;
+  }
 }
 
 .job-opening-match-table {
