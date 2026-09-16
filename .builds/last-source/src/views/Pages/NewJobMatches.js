@@ -48,9 +48,9 @@ import {
   buildInterviewCreateState,
   buildInterviewUpdatePayload,
   fetchJobScopedInterview,
-  isNewBestMatchCandidate,
   isShortlistedInterview,
   NewBestMatchCandidateBadge,
+  shouldShowNewBestMatchBadge,
 } from "../../components/JobOpening/jobMatchTableHelpers";
 
 const NewJobMatches = () => {
@@ -177,6 +177,25 @@ const NewJobMatches = () => {
       }
     })();
   }, []);
+
+  useEffect(() => {
+    const rows = jobOpeningNewMatchCandidate?.results;
+    if (!Array.isArray(rows) || !rows.length) return;
+    setViewedCandidateIds((prev) => {
+      const next = new Set(prev);
+      let changed = false;
+      rows.forEach((row) => {
+        if (row?.viewedByCurrentUser === true && row?.id) {
+          const id = String(row.id);
+          if (!next.has(id)) {
+            next.add(id);
+            changed = true;
+          }
+        }
+      });
+      return changed ? next : prev;
+    });
+  }, [jobOpeningNewMatchCandidate?.results]);
 
   useEffect(() => {
     if (!showInterview) return;
@@ -379,7 +398,11 @@ const NewJobMatches = () => {
   const matchCandidateNameCell = (row) => {
     const name =
       [row?.firstname, row?.lastname].filter(Boolean).join(" ").trim() || "-";
-    const showNew = isNewBestMatchCandidate(row, jobOpeningRow);
+    const showNew = shouldShowNewBestMatchBadge(
+      row,
+      jobOpeningRow,
+      viewedCandidateIds
+    );
     return (
       <div className="d-flex align-items-center flex-wrap" style={{ gap: 10 }}>
         <span

@@ -52,9 +52,9 @@ import {
   buildInterviewCreateState,
   buildInterviewUpdatePayload,
   fetchJobScopedInterview,
-  isNewBestMatchCandidate,
   isShortlistedInterview,
   NewBestMatchCandidateBadge,
+  shouldShowNewBestMatchBadge,
 } from "../../components/JobOpening/jobMatchTableHelpers";
 import { markNewBestMatchSeenAPI } from "../../apis/jobOpening";
 
@@ -159,6 +159,25 @@ const JobOpeningMatches = ({ jobIdOverride, embeddedMode = false }) => {
     if (!activeJobId) return undefined;
     markNewBestMatchSeenAPI(activeJobId).catch(() => {});
   }, [activeJobId]);
+
+  useEffect(() => {
+    const rows = jobOpeningMatchCandidate?.results;
+    if (!Array.isArray(rows) || !rows.length) return;
+    setViewedCandidateIds((prev) => {
+      const next = new Set(prev);
+      let changed = false;
+      rows.forEach((row) => {
+        if (row?.viewedByCurrentUser === true && row?.id) {
+          const id = String(row.id);
+          if (!next.has(id)) {
+            next.add(id);
+            changed = true;
+          }
+        }
+      });
+      return changed ? next : prev;
+    });
+  }, [jobOpeningMatchCandidate?.results]);
 
   // Drop local gate only after we actually entered a loading cycle
   useEffect(() => {
@@ -408,7 +427,11 @@ const JobOpeningMatches = ({ jobIdOverride, embeddedMode = false }) => {
   const matchCandidateNameCell = (row) => {
     const name =
       [row?.firstname, row?.lastname].filter(Boolean).join(" ").trim() || "-";
-    const showNew = isNewBestMatchCandidate(row, jobOpeningRow);
+    const showNew = shouldShowNewBestMatchBadge(
+      row,
+      jobOpeningRow,
+      viewedCandidateIds
+    );
     return (
       <div className="d-flex align-items-center flex-wrap" style={{ gap: 10 }}>
         <span

@@ -127,6 +127,18 @@ export const isNewBestMatchCandidate = (row, jobOpeningRow) => {
   return new Date(candAt).getTime() > new Date(jobAt).getTime();
 };
 
+/** Hide "New" after profile viewed once (same as View Again / viewedByCurrentUser). */
+export const shouldShowNewBestMatchBadge = (
+  row,
+  jobOpeningRow,
+  viewedIds = new Set()
+) => {
+  const candidateId = row?.id ? String(row.id) : "";
+  if (candidateId && viewedIds.has(candidateId)) return false;
+  if (hasViewedByCurrentUser(row)) return false;
+  return isNewBestMatchCandidate(row, jobOpeningRow);
+};
+
 export const NewBestMatchCandidateBadge = ({ themeColor }) => (
   <Badge
     pill
