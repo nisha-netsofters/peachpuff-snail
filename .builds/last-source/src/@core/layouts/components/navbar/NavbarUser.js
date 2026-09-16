@@ -6,6 +6,7 @@ import { useSelector, useDispatch } from "react-redux";
 import Rating from "react-rating";
 import ResumeThankYouPopup from "../../../../views/resume/ResumeThankYouPopup";
 import actions from "../../../../redux/candidate/actions";
+import NewBestMatchHeaderBadge from "../../../../components/Header/NewBestMatchHeaderBadge";
 
 const NavbarUser = (props) => {
   const RESUME_ENQUIRY_STATUS = {
@@ -114,6 +115,7 @@ const NavbarUser = (props) => {
 
         </div>
         <ul className="nav navbar-nav align-items-center ms-auto">
+          <NewBestMatchHeaderBadge />
           <h4 className="welcome" style={{ color: themeColor }}>
             Welcome back,
           </h4>{" "}

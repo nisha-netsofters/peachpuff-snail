@@ -54,6 +54,7 @@ import {
   fetchJobScopedInterview,
   isShortlistedInterview,
 } from "../../components/JobOpening/jobMatchTableHelpers";
+import { markNewBestMatchSeenAPI } from "../../apis/jobOpening";
 
 const JobOpeningMatches = ({ jobIdOverride, embeddedMode = false }) => {
   const history = useHistory();
@@ -150,6 +151,12 @@ const JobOpeningMatches = ({ jobIdOverride, embeddedMode = false }) => {
   useEffect(() => {
     if (isLoading) sawLoadingRef.current = true;
   }, [isLoading]);
+
+  // Clear header "new best match" badge for this job after viewing
+  useEffect(() => {
+    if (!activeJobId) return undefined;
+    markNewBestMatchSeenAPI(activeJobId).catch(() => {});
+  }, [activeJobId]);
 
   // Drop local gate only after we actually entered a loading cycle
   useEffect(() => {
@@ -340,25 +347,15 @@ const JobOpeningMatches = ({ jobIdOverride, embeddedMode = false }) => {
   const viewProfileColumn = {
     name: "View Profile",
     minWidth: "130px",
-    cell: (row) => {
-      const label = getViewProfileButtonLabel(row, viewedCandidateIds);
-      const isViewAgain = label === "View Again";
-      return (
-        <Button
-          onClick={() => openViewProfile(row)}
-          style={{
-            padding: "10px",
-            backgroundColor: isViewAgain ? `${themeColor}70` : themeColor,
-            color: isViewAgain ? themeColor : "white",
-            border: isViewAgain ? `1px solid ${themeColor}` : "none",
-            fontWeight: isViewAgain ? "500" : "600",
-          }}
-          color="default"
-        >
-          {label}
-        </Button>
-      );
-    },
+    cell: (row) => (
+      <Button
+        onClick={() => openViewProfile(row)}
+        style={{ padding: "10px", backgroundColor: themeColor, color: "white" }}
+        color="default"
+      >
+        {getViewProfileButtonLabel(row, viewedCandidateIds)}
+      </Button>
+    ),
   };
 
   const interviewScheduleColumn = {

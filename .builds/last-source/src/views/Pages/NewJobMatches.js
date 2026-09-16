@@ -28,6 +28,7 @@ import interviewActions from "../../redux/interview/actions";
 import candidateActions from "../../redux/candidate/actions";
 import onBoardingActions from "../../redux/onBoarding/actions";
 import { tostify } from "../../components/Tostify";
+import { markNewBestMatchSeenAPI } from "../../apis/jobOpening";
 import { getInterviewAPI } from "../../apis/interview";
 import Avatar from "@components/avatar";
 import { MdOutlineCategory } from "react-icons/md";
@@ -171,6 +172,7 @@ const NewJobMatches = () => {
       if (params?.id) {
         await getJobOpeningRow();
         await getNewJobMatchCandidate(page, perPage);
+        markNewBestMatchSeenAPI(params.id).catch(() => {});
       }
     })();
   }, []);
@@ -317,25 +319,15 @@ const NewJobMatches = () => {
   const viewProfileColumn = {
     name: "View Profile",
     minWidth: "130px",
-    cell: (row) => {
-      const label = getViewProfileButtonLabel(row, viewedCandidateIds);
-      const isViewAgain = label === "View Again";
-      return (
-        <Button
-          onClick={() => openViewProfile(row)}
-          style={{
-            padding: "10px",
-            backgroundColor: isViewAgain ? `${themeColor}70` : themeColor,
-            color: isViewAgain ? themeColor : "white",
-            border: isViewAgain ? `1px solid ${themeColor}` : "none",
-            fontWeight: isViewAgain ? "500" : "600",
-          }}
-          color="default"
-        >
-          {label}
-        </Button>
-      );
-    },
+    cell: (row) => (
+      <Button
+        onClick={() => openViewProfile(row)}
+        style={{ padding: "10px", backgroundColor: themeColor, color: "white" }}
+        color="default"
+      >
+        {getViewProfileButtonLabel(row, viewedCandidateIds)}
+      </Button>
+    ),
   };
 
   const interviewScheduleColumn = {

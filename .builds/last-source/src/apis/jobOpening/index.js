@@ -62,3 +62,13 @@ export const assignJobRecruiterAPI = async (payload) => {
     recruiterId: payload.recruiterId,
   });
 };
+
+/** Header: new Best Match candidates added after job create (per visible jobs). */
+export const getNewBestMatchSummaryAPI = async () => {
+  return await apiCall.get("/jobOpening/new-best-match-summary");
+};
+
+/** Clear header count for a job after opening its Best Match page. */
+export const markNewBestMatchSeenAPI = async (jobOpeningId) => {
+  return await apiCall.post(`/jobOpening/${jobOpeningId}/new-best-match-seen`);
+};
