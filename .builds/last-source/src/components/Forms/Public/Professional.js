@@ -372,7 +372,14 @@ const Professional = ({
                 experienceInYear?.value || values?.experienceInyear || "",
               highestQualification:
                 quelification?.value || values?.highestQualification || "",
-              field: field?.value || field?.label || values?.field || "",
+              field: field?.label || values?.field || "",
+              educationId:
+                field?.educationId ||
+                educationId ||
+                (field?.value && String(field.value).includes("-")
+                  ? field.value
+                  : "") ||
+                "",
               course: subCourse?.value || subCourse?.label || values?.course || "",
               jobCategoryId:
                 jobCat?.id || jobCat?.value || values?.jobCategoryId || "",

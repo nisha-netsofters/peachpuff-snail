@@ -2984,9 +2984,15 @@ const SecondPage = ({
         value: (() => {
           const field = candidate?.professional?.field;
           const qual = candidate?.professional?.highestQualification;
-          if (!field && !qual) return "-";
-          if (field && qual) return `${field} [${qual}]`;
-          return field || qual || "-";
+          const looksLikeId =
+            typeof field === "string" &&
+            /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+              field.trim()
+            );
+          const fieldLabel = looksLikeId ? "" : field;
+          if (!fieldLabel && !qual) return "-";
+          if (fieldLabel && qual) return `${fieldLabel} [${qual}]`;
+          return fieldLabel || qual || "-";
         })(),
       },
       {
