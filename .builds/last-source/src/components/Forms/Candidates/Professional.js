@@ -548,6 +548,22 @@ const Professional = ({
                 if (nextVal === undefined || nextVal === null) return;
                 if (nextVal === "Current Monthly Salary + 20%") return;
                 if (key === "jobCategory") return;
+                // Allow intentional clear of category fields on edit
+                if (
+                  (key === "jobCategoryId" || key === "jobSubCategoryId") &&
+                  nextVal === ""
+                ) {
+                  merged[key] = "";
+                  if (key === "jobCategoryId") {
+                    delete merged.jobCategory;
+                    merged.jobSubCategoryId = "";
+                    delete merged.jobSubCategory;
+                  }
+                  if (key === "jobSubCategoryId") {
+                    delete merged.jobSubCategory;
+                  }
+                  return;
+                }
                 if (
                   nextVal === "" &&
                   prevProf[key] !== undefined &&

@@ -2438,20 +2438,50 @@ const SecondPage = ({
       }
 
       const fm = new FormData();
+      const skipUpdateKeys = new Set([
+        "resumeParsedAt",
+        "resumeFiles",
+        "resumeParseCache",
+        "interviews",
+        "client",
+        "agency",
+        "jobCategory",
+        "industries",
+        "appliedStatus",
+        "matchScore",
+        "saved_Candidates",
+        "savedCandidates",
+        "_id",
+      ]);
       for (const key in candidate) {
+        if (skipUpdateKeys.has(key)) continue;
         if (key === "professional") {
-          fm.append("professional", JSON.stringify(candidate[key]));
+          fm.append("professional", JSON.stringify(candidate[key] || {}));
         } else if (key === "industries_relation") {
-          fm.append("industries_relation", JSON.stringify(candidate[key]));
+          fm.append(
+            "industries_relation",
+            JSON.stringify(candidate[key] || [])
+          );
+        } else if (key === "education") {
+          if (Array.isArray(candidate[key]) && candidate[key].length > 0) {
+            fm.append("education", JSON.stringify(candidate[key]));
+          }
+        } else if (key === "experience") {
+          if (Array.isArray(candidate[key]) && candidate[key].length > 0) {
+            fm.append("experience", JSON.stringify(candidate[key]));
+          }
         } else if (key === "status") {
           fm.append(key, "view");
-        } else if (key === "resumeParsedAt") {
-          continue;
-        } else if (key === "resumeFiles") {
-          continue;
-        } else {
+        } else if (
+          candidate[key] !== undefined &&
+          candidate[key] !== null &&
+          typeof candidate[key] !== "object"
+        ) {
+          fm.append(key, candidate[key]);
+        } else if (candidate[key] instanceof File) {
           fm.append(key, candidate[key]);
         }
+        // skip plain objects — FormData would coerce to "[object Object]"
       }
 
       await dispatch({
