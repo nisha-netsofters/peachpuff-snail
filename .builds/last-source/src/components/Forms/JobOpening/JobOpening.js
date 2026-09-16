@@ -234,7 +234,9 @@ const JobOpening = ({
 
   useEffect(() => {
     if (jobOpening?.recruiterId && assignableUsers?.length) {
-      const found = assignableUsers.find((u) => u.id === jobOpening.recruiterId);
+      const found = assignableUsers.find(
+        (u) => String(u.id) === String(jobOpening.recruiterId)
+      );
       if (found) {
         setSelectedRecruiter({ value: found.id, label: found.name, id: found.id });
       }

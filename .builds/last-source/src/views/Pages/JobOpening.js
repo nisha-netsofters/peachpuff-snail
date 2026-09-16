@@ -67,8 +67,38 @@ import {
   downloadBestMatchCsv,
 } from "../../components/JobOpening/jobMatchTableHelpers";
 import {
+  assignJobRecruiterAPI,
   updateJobPostingStatusAPI,
 } from "../../apis/jobOpening";
+
+const resolveJobRecruiterName = (row, assignableUsers = []) => {
+  if (row?.recruiter?.name) return row.recruiter.name;
+  const r = row?.recruiter;
+  if (r?.firstName || r?.lastName) {
+    return [r.firstName, r.lastName].filter(Boolean).join(" ").trim();
+  }
+  const recruiterId =
+    row?.recruiterId ?? r?.id ?? r?._id ?? row?.recruiterUserId;
+  if (!recruiterId) return null;
+  const match = assignableUsers.find(
+    (u) =>
+      String(u?.id) === String(recruiterId) ||
+      String(u?._id) === String(recruiterId)
+  );
+  return match?.name || match?.label || null;
+};
+
+const enrichJobOpeningRows = (rows, assignableUsers) =>
+  (rows || []).map((row) => {
+    const name = resolveJobRecruiterName(row, assignableUsers);
+    if (!name) return row;
+    if (row?.recruiter?.name === name) return row;
+    return {
+      ...row,
+      recruiterId: row.recruiterId ?? row?.recruiter?.id ?? row?.recruiter?._id,
+      recruiter: { ...(row.recruiter || {}), name },
+    };
+  });
 
 const getDefaultExpiryDateISO = () => {
   const date = new Date();
@@ -184,14 +214,16 @@ const JobOpening = () => {
 
   useEffect(() => {
     if (JobOpenings?.results?.length >= 0) {
-      setjobOpeningList(JobOpenings?.results);
+      setjobOpeningList(
+        enrichJobOpeningRows(JobOpenings?.results, assignableUsers)
+      );
       setLoading(false);
     }
 
     if (JobOpenings?.isSuccess === true) {
       clearStates();
     }
-  }, [JobOpenings?.results]);
+  }, [JobOpenings?.results, assignableUsers]);
 
   useEffect(() => {
     if (copy) {
@@ -602,9 +634,11 @@ const JobOpening = () => {
 
     {
       name: "Posting Status",
+      minWidth: "240px",
       selector: (row) => row?.postingStatus || "open",
       cell: (row) => {
         const status = row?.postingStatus || "open";
+        const jobTitle = String(row?.designation || "").trim();
         const colorMap = {
           draft: "secondary",
           open: "info",
@@ -613,9 +647,27 @@ const JobOpening = () => {
           archived: "dark",
         };
         return (
-          <Badge color={colorMap[status] || "info"} pill>
-            {status}
-          </Badge>
+          <div className="d-flex flex-column align-items-center gap-25 px-50">
+            <div className="d-flex align-items-center gap-50 flex-wrap justify-content-center">
+              <Badge color={colorMap[status] || "info"} pill>
+                {status}
+              </Badge>
+              {jobTitle ? (
+                <span
+                  style={{
+                    fontSize: "12px",
+                    fontWeight: 600,
+                    maxWidth: "180px",
+                    lineHeight: 1.3,
+                    textAlign: "center",
+                  }}
+                  title={jobTitle}
+                >
+                  {jobTitle}
+                </span>
+              ) : null}
+            </div>
+          </div>
         );
       },
     },
@@ -649,7 +701,7 @@ const JobOpening = () => {
       minWidth: "140px",
       cell: (row) => (
         <span style={{ fontWeight: "500" }}>
-          {row?.recruiter?.name || "-"}
+          {resolveJobRecruiterName(row, assignableUsers) || "-"}
         </span>
       ),
       conditionalCellStyles: [
@@ -773,6 +825,9 @@ const JobOpening = () => {
       fm.append(key, payload[key]);
     }
     fm.delete("hotvacancy");
+    if (jobOpening?.recruiterId) {
+      fm.set("recruiterId", jobOpening.recruiterId);
+    }
     await dispatch({
       type: actions.UPDATE_JOBOPENING,
       payload: {
@@ -780,6 +835,17 @@ const JobOpening = () => {
         data: fm,
       },
     });
+    if (jobOpening?.id && jobOpening?.recruiterId) {
+      try {
+        await assignJobRecruiterAPI({
+          id: jobOpening.id,
+          recruiterId: jobOpening.recruiterId,
+        });
+        await getjobOpening(currentPage);
+      } catch (_) {
+        /* list still enriched from recruiterId + assignableUsers */
+      }
+    }
   };
 
   const Validations = async () => {
