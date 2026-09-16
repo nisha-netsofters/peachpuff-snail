@@ -150,7 +150,16 @@ const Professional = ({
   );
   return (
     <>
-      <Formik initialValues={{}}>
+      <Formik
+        enableReinitialize
+        initialValues={
+          professional &&
+          typeof professional === "object" &&
+          !Array.isArray(professional)
+            ? professional
+            : {}
+        }
+      >
         {({ values, setFieldValue }) => {
           // Normalize AI qualification to form option values
           const normalizeQualification = (q) => {
@@ -351,8 +360,10 @@ const Professional = ({
           const onNextHandler = async () => {
             const err = await Validations();
             if (err === false) {
+              // Sync latest Formik values immediately (avoid stale parent state / empty wipe)
+              setProfessional(values);
               if (isFinalStep) {
-                CandidateHandler();
+                CandidateHandler(values);
               } else {
                 stepper?.next();
               }
@@ -373,6 +384,8 @@ const Professional = ({
             }
           }, [values.currentSalary]);
           useEffect(() => {
+            // Do not wipe extracted/parent professional with empty Formik {}
+            if (!values || Object.keys(values).length === 0) return;
             setProfessional(values);
           }, [values]);
           const [focus, setIsfocus] = useState(null);

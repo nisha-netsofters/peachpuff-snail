@@ -2981,9 +2981,13 @@ const SecondPage = ({
       },
       {
         title: "Education",
-        value:
-          `${candidate?.professional?.field} [${candidate?.professional?.highestQualification}]` ||
-          "-",
+        value: (() => {
+          const field = candidate?.professional?.field;
+          const qual = candidate?.professional?.highestQualification;
+          if (!field && !qual) return "-";
+          if (field && qual) return `${field} [${qual}]`;
+          return field || qual || "-";
+        })(),
       },
       {
         title: "Pref. Location",

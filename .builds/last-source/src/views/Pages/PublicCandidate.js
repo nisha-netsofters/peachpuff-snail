@@ -33,6 +33,7 @@ import {
 } from "react-router-dom/cjs/react-router-dom.min";
 import { getAgencyDetailBySlugPublic } from "../../apis/agency";
 import { getPublicCandidateForApplyAPI } from "../../apis/candidate";
+import { awsUploadAssetsWithResp } from "../../helper/awsUploadAssets";
 // import awsUploadAssets from '../../helper/awsUploadAssets'
 
 const canvasStyles = {
@@ -249,9 +250,61 @@ const PublicCandidate = () => {
     }
   }, [getCandidateRes?.createPublicCandidatePopup]);
 
-  const CandidateHandler = async () => {
+  const appendCandidateFormData = (fm, source, profData, industriesData) => {
+    const skipKeys = new Set([
+      "professional",
+      "industries_relation",
+      "education",
+      "interviews",
+      "industries",
+    ]);
+    for (const key in source) {
+      if (skipKeys.has(key)) continue;
+      const val = source[key];
+      if (val === undefined || val === null || val === "") continue;
+      // Nested objects become "[object Object]" in FormData — never append raw
+      if (
+        typeof val === "object" &&
+        !(val instanceof File) &&
+        !(val instanceof Blob)
+      ) {
+        continue;
+      }
+      fm.append(key, val);
+    }
+    if (Array.isArray(industriesData) && industriesData.length > 0) {
+      fm.append("industries_relation", JSON.stringify(industriesData));
+    }
+    const prof =
+      profData && typeof profData === "object" && !Array.isArray(profData)
+        ? profData
+        : null;
+    if (prof && Object.keys(prof).some((k) => prof[k] !== "" && prof[k] != null)) {
+      fm.append("professional", JSON.stringify(prof));
+    }
+  };
+
+  const CandidateHandler = async (
+    professionalOverride = null,
+    industriesOverride = null
+  ) => {
     setLoading(true);
     setPointerEvents("none");
+    const profToSend =
+      professionalOverride &&
+      typeof professionalOverride === "object" &&
+      !Array.isArray(professionalOverride)
+        ? professionalOverride
+        : Array.isArray(professional)
+          ? null
+          : professional;
+    const industriesToSend =
+      industriesOverride != null ? industriesOverride : industries_relation;
+
+    if (profToSend) {
+      setProfessional(profToSend);
+    }
+
     if (update == true) {
       delete candidate.interviews;
       delete candidate.professional;
@@ -260,28 +313,17 @@ const PublicCandidate = () => {
       const typeImage = typeof candidate?.image;
 
       if (typeImage === "object" && candidate?.image !== null) {
-        // const resp = await uploadFiles(candidate?.image)
-        // candidate.image = `https:${resp.url}`
         const resp = await awsUploadAssetsWithResp(candidate?.image);
         candidate.image = `${resp.url}`;
       }
 
       if (typeResume === "object" && candidate?.resume !== null) {
-        // const resp = await uploadFiles(candidate?.resume)/
-        // candidate.resume = `https:${resp.url}`
         const resp = await awsUploadAssetsWithResp(candidate?.resume);
         candidate.resume = `${resp.url}`;
       }
 
       const fm = new FormData();
-      for (const key in candidate) {
-        fm.append(key, candidate[key]);
-      }
-      if (industries_relation?.length > 0) {
-        fm.append("industries_relation", JSON.stringify(industries_relation));
-      }
-      if (professional?.length !== 0)
-        fm.append("professional", JSON.stringify(professional));
+      appendCandidateFormData(fm, candidate, profToSend, industriesToSend);
       if (jobOpeningId) {
         fm.append("jobOpeningId", jobOpeningId);
         fm.append("userId", userId);
@@ -292,14 +334,7 @@ const PublicCandidate = () => {
       });
     } else {
       const fm = new FormData();
-      for (const key in candidate) {
-        fm.append(key, candidate[key]);
-      }
-      if (industries_relation?.length > 0) {
-        fm.append("industries_relation", JSON.stringify(industries_relation));
-      }
-      if (professional?.length !== 0)
-        fm.append("professional", JSON.stringify(professional));
+      appendCandidateFormData(fm, candidate, profToSend, industriesToSend);
       if (jobOpeningId) {
         fm.append("jobOpeningId", jobOpeningId);
         fm.append("userId", userId);
@@ -309,12 +344,6 @@ const PublicCandidate = () => {
         payload: { data: fm },
       });
     }
-    // if (candidate?.image) {
-    //   await awsUploadAssets(candidate?.image, "image", dispatch)
-    // }
-    // if (candidate?.resume) {
-    //   await awsUploadAssets(candidate?.resume, "resume", dispatch)
-    // }
   };
 
   const steps = [
