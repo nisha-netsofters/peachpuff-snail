@@ -255,8 +255,11 @@ const PublicCandidate = () => {
       "professional",
       "industries_relation",
       "education",
+      "experience",
       "interviews",
       "industries",
+      "resumeParsedAt",
+      "resumeParseCache",
     ]);
     for (const key in source) {
       if (skipKeys.has(key)) continue;
@@ -274,14 +277,22 @@ const PublicCandidate = () => {
     }
     if (Array.isArray(industriesData) && industriesData.length > 0) {
       fm.append("industries_relation", JSON.stringify(industriesData));
+    } else {
+      fm.append("industries_relation", JSON.stringify([]));
     }
     const prof =
       profData && typeof profData === "object" && !Array.isArray(profData)
         ? profData
-        : null;
-    if (prof && Object.keys(prof).some((k) => prof[k] !== "" && prof[k] != null)) {
-      fm.append("professional", JSON.stringify(prof));
-    }
+        : {};
+    // Always send professional JSON (same as admin create) so backend can persist
+    fm.append("professional", JSON.stringify(prof));
+    // Also flatten common fields — some publicCreate parsers read flat body keys
+    Object.keys(prof).forEach((key) => {
+      const val = prof[key];
+      if (val === undefined || val === null || val === "") return;
+      if (typeof val === "object") return;
+      fm.append(key, String(val));
+    });
   };
 
   const CandidateHandler = async (

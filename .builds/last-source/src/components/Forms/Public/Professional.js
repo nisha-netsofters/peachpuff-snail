@@ -22,6 +22,7 @@ const Professional = ({
   jobOpeningId,
   setIndustries_relation,
   jobOpeningIndustries,
+  professional,
   setProfessional,
   candidate,
   CandidateHandler = () => {},
@@ -81,11 +82,14 @@ const Professional = ({
 
   useEffect(() => {
     if (jobCategory?.length > 0) {
-      jobCategory.filter((item) => {
-        item.label = item.jobCategory;
-        return item;
-      });
-      setJobCategoryOptions(jobCategory);
+      setJobCategoryOptions(
+        jobCategory.map((item) => ({
+          ...item,
+          label: item.jobCategory,
+          value: item.id,
+          id: item.id,
+        }))
+      );
     }
   }, [jobCategory]);
 
@@ -353,17 +357,55 @@ const Professional = ({
             });
             setFieldValue("course", value);
           }, [courseOptions, candidate?.id, candidate?.resumeParsedAt]);
-          // Professional required fields are optional (nullable) so auto-extract submit is not blocked
           const Validations = async () => {
             return false;
+          };
+          const buildProfessionalPayload = () => {
+            const expected =
+              values?.expectedsalary &&
+              String(values.expectedsalary).toLowerCase().includes("salary")
+                ? ""
+                : values?.expectedsalary;
+            return {
+              ...values,
+              experienceInyear:
+                experienceInYear?.value || values?.experienceInyear || "",
+              highestQualification:
+                quelification?.value || values?.highestQualification || "",
+              field: field?.value || field?.label || values?.field || "",
+              course: subCourse?.value || subCourse?.label || values?.course || "",
+              jobCategoryId:
+                jobCat?.id || jobCat?.value || values?.jobCategoryId || "",
+              noticePeriod: noticePeriod?.value || values?.noticePeriod || "",
+              currentlyWorking:
+                currentlyWorking?.value || values?.currentlyWorking || "",
+              english: eng?.value || values?.english || "",
+              expectedsalary: expected || values?.expectedsalary || "",
+              designation: values?.designation || "",
+              currentEmployer: values?.currentEmployer || "",
+              currentSalary: values?.currentSalary || "",
+              skill: values?.skill || "",
+              preferedJobLocation:
+                values?.preferedJobLocation ||
+                values?.preferredJobLocation ||
+                "",
+            };
           };
           const onNextHandler = async () => {
             const err = await Validations();
             if (err === false) {
-              // Sync latest Formik values immediately (avoid stale parent state / empty wipe)
-              setProfessional(values);
+              const merged = buildProfessionalPayload();
+              const industriesPayload = (selectindustries || [])
+                .map((item) => ({
+                  industriesId: item?.value || item?.id || item?.industriesId,
+                }))
+                .filter((item) => item.industriesId);
+              setProfessional(merged);
+              if (industriesPayload.length) {
+                setIndustries_relation(industriesPayload);
+              }
               if (isFinalStep) {
-                CandidateHandler(values);
+                CandidateHandler(merged, industriesPayload);
               } else {
                 stepper?.next();
               }

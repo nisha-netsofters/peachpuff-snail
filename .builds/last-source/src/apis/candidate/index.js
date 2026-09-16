@@ -88,9 +88,8 @@ export const updateCandidateAPI = async (payload) => {
   return await apiCall.put(`/candidate/update`, payload.data);
 };
 export const updateCandidatePublicAPI = async (payload) => {
-  return await apiCall.post(`/candidate/apply/update`, payload.data, {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
+  // Do not set Content-Type manually — browser must add multipart boundary
+  return await apiCall.post(`/candidate/apply/update`, payload.data);
 };
 export const deleteCandidateAPI = async (payload) => {
   return await apiCall.delete(`/candidate/delete/${payload.id}`, {
@@ -114,9 +113,8 @@ export const candidateStatus = async (payload) => {
 };
 
 export const createCandidatePublicAPI = async (payload) => {
-  return await apiCall.post("/candidate/publicCreate", payload, {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
+  // Do not set Content-Type manually — browser must add multipart boundary
+  return await apiCall.post("/candidate/publicCreate", payload);
 };
 
 export const checkCandidatePublicAPI = async (payload) => {
