@@ -1088,6 +1088,32 @@ const SecondPage = ({
     setShow(true);
   };
 
+  /** Edit must always unlock fields (View Profile leaves isDisabledAllFields=true). */
+  const openEditCandidate = (row) => {
+    if (!row) return;
+    const canEdit =
+      row?.agency?.email == user?.agency?.email ||
+      user?.email == allAccessEmail ||
+      user?.agency?.email == allAccessEmail;
+    setIsDisabledAllFields(!canEdit);
+    setCandidate(row);
+    setIndustriesData(row?.industries_relation);
+    statusUpdate(row);
+    setEmail(row?.email);
+    setCreate(false);
+    setUpdate(true);
+    setShow(true);
+  };
+
+  const openCreateCandidate = () => {
+    setIsDisabledAllFields(false);
+    setCandidate({});
+    setIndustriesData([]);
+    setCreate(true);
+    setUpdate(false);
+    setShow(true);
+  };
+
   const handleOpenResume = (row) => {
     if (!hasValidResume(row?.resume)) {
       tostify("Resume file not available");
@@ -1231,27 +1257,7 @@ const SecondPage = ({
             {renderFavoriteStar(row)}
             <span
               style={{ cursor: "pointer" }}
-              onClick={async () => {
-                if (
-                  row?.agency?.email == user?.agency?.email ||
-                  user?.agency?.email == allAccessEmail
-                ) {
-                  setCandidate(row);
-                  setIndustriesData(row?.industries_relation);
-                  statusUpdate(row);
-                  setEmail(row?.email);
-                  setUpdate(true);
-                  setShow(true);
-                } else {
-                  setIsDisabledAllFields(true);
-                  setCandidate(row);
-                  setIndustriesData(row?.industries_relation);
-                  statusUpdate(row);
-                  setEmail(row?.email);
-                  setUpdate(true);
-                  setShow(true);
-                }
-              }}
+              onClick={() => openEditCandidate(row)}
             >
               <Edit size={17} className="mx-1" />
             </span>
@@ -2395,108 +2401,85 @@ const SecondPage = ({
     setLoading(true);
     delete candidate.interviews;
 
-    const data = candidates?.results?.filter(
-      (item) => item?.id == candidate?.id
-    );
-    const ObjData = Object.assign({}, ...data);
-    console.info("--------------------");
-    console.info("ObjDataObjDataObjData => ", ObjData);
-    console.info("--------------------");
-    console.info("--------------------");
-    console.info("ObjDataObjDataObjData => ", candidate);
-    console.info("--------------------");
-    const isMatch = _.isMatch(ObjData, candidate);
-    const listCat = String(ObjData?.professional?.jobCategoryId || "");
-    const formCat = String(candidate?.professional?.jobCategoryId || "");
-    const listSub = String(ObjData?.professional?.jobSubCategoryId || "");
-    const formSub = String(candidate?.professional?.jobSubCategoryId || "");
-    const categoryDirty = listCat !== formCat || listSub !== formSub;
+    // Always persist edit — do not skip when lodash isMatch thinks nothing changed
+    // (name/mobile edits were silently dropped that way).
+    candidate.professional = await ensureProfessionalJobCategory(candidate);
 
-    if (isMatch == false || categoryDirty) {
-      // Ensure rematched category is in professional before update POST
-      candidate.professional = await ensureProfessionalJobCategory(candidate);
+    const typeResume = typeof candidate?.resume;
+    const typeImage = typeof candidate?.image;
 
-      const typeResume = typeof candidate?.resume;
-      const typeImage = typeof candidate?.image;
+    const awsBucketUpdate = process.env.REACT_APP_AWS_BUCKET_NAME;
 
-      const awsBucketUpdate = process.env.REACT_APP_AWS_BUCKET_NAME;
-
-      if (typeImage === "object" && candidate?.image !== null) {
-        if (awsBucketUpdate) {
-          const resp = await awsUploadAssetsWithResp(candidate?.image);
-          candidate.image = `${resp.url}`;
-        }
-        // if no bucket configured, leave as File object for FormData to send to backend
+    if (typeImage === "object" && candidate?.image !== null) {
+      if (awsBucketUpdate) {
+        const resp = await awsUploadAssetsWithResp(candidate?.image);
+        candidate.image = `${resp.url}`;
       }
-
-      if (typeResume === "object" && candidate?.resume !== null) {
-        if (awsBucketUpdate) {
-          const resp = await awsUploadAssetsWithResp(candidate?.resume);
-          candidate.resume = `${resp.url}`;
-        }
-        // if no bucket configured, leave as File object for FormData to send to backend
-      }
-
-      const fm = new FormData();
-      const skipUpdateKeys = new Set([
-        "resumeParsedAt",
-        "resumeFiles",
-        "resumeParseCache",
-        "interviews",
-        "client",
-        "agency",
-        "jobCategory",
-        "industries",
-        "appliedStatus",
-        "matchScore",
-        "saved_Candidates",
-        "savedCandidates",
-        "_id",
-      ]);
-      for (const key in candidate) {
-        if (skipUpdateKeys.has(key)) continue;
-        if (key === "professional") {
-          fm.append("professional", JSON.stringify(candidate[key] || {}));
-        } else if (key === "industries_relation") {
-          fm.append(
-            "industries_relation",
-            JSON.stringify(candidate[key] || [])
-          );
-        } else if (key === "education") {
-          if (Array.isArray(candidate[key]) && candidate[key].length > 0) {
-            fm.append("education", JSON.stringify(candidate[key]));
-          }
-        } else if (key === "experience") {
-          if (Array.isArray(candidate[key]) && candidate[key].length > 0) {
-            fm.append("experience", JSON.stringify(candidate[key]));
-          }
-        } else if (key === "status") {
-          fm.append(key, "view");
-        } else if (
-          candidate[key] !== undefined &&
-          candidate[key] !== null &&
-          typeof candidate[key] !== "object"
-        ) {
-          fm.append(key, candidate[key]);
-        } else if (candidate[key] instanceof File) {
-          fm.append(key, candidate[key]);
-        }
-        // skip plain objects — FormData would coerce to "[object Object]"
-      }
-
-      await dispatch({
-        type: CandidateActions.UPDATE_CANDIDATE,
-        payload: {
-          id: candidate.id,
-          data: fm,
-          page: currentPage,
-          perPage: perPage,
-        },
-      });
-      setShow(false);
-    } else {
-      setLoading(false);
     }
+
+    if (typeResume === "object" && candidate?.resume !== null) {
+      if (awsBucketUpdate) {
+        const resp = await awsUploadAssetsWithResp(candidate?.resume);
+        candidate.resume = `${resp.url}`;
+      }
+    }
+
+    const fm = new FormData();
+    const skipUpdateKeys = new Set([
+      "resumeParsedAt",
+      "resumeFiles",
+      "resumeParseCache",
+      "interviews",
+      "client",
+      "agency",
+      "jobCategory",
+      "industries",
+      "appliedStatus",
+      "matchScore",
+      "saved_Candidates",
+      "savedCandidates",
+      "_id",
+    ]);
+    for (const key in candidate) {
+      if (skipUpdateKeys.has(key)) continue;
+      if (key === "professional") {
+        fm.append("professional", JSON.stringify(candidate[key] || {}));
+      } else if (key === "industries_relation") {
+        fm.append(
+          "industries_relation",
+          JSON.stringify(candidate[key] || [])
+        );
+      } else if (key === "education") {
+        if (Array.isArray(candidate[key]) && candidate[key].length > 0) {
+          fm.append("education", JSON.stringify(candidate[key]));
+        }
+      } else if (key === "experience") {
+        if (Array.isArray(candidate[key]) && candidate[key].length > 0) {
+          fm.append("experience", JSON.stringify(candidate[key]));
+        }
+      } else if (key === "status") {
+        fm.append(key, "view");
+      } else if (
+        candidate[key] !== undefined &&
+        candidate[key] !== null &&
+        typeof candidate[key] !== "object"
+      ) {
+        fm.append(key, candidate[key]);
+      } else if (candidate[key] instanceof File) {
+        fm.append(key, candidate[key]);
+      }
+    }
+
+    await dispatch({
+      type: CandidateActions.UPDATE_CANDIDATE,
+      payload: {
+        id: candidate.id,
+        data: fm,
+        page: currentPage,
+        perPage: perPage,
+      },
+    });
+    setShow(false);
   };
 
   const Validations = async () => {
@@ -2730,6 +2713,7 @@ const SecondPage = ({
 
   useEffect(() => {
     if (candidateId) {
+      setIsDisabledAllFields(false);
       setShow(true);
       setUpdate(true);
       setIndustriesData(candidates?.industries_relation);
@@ -3558,13 +3542,7 @@ const SecondPage = ({
             }
             className="add-new-user"
             color="default"
-            onClick={() => {
-              setCandidate({});
-              setIndustriesData([]);
-              setCreate(true);
-              setUpdate(false);
-              setShow(true);
-            }}
+            onClick={openCreateCandidate}
           >
             <UserPlus size={17} />
           </Button>
@@ -3611,13 +3589,7 @@ const SecondPage = ({
             setShow={setShow}
             setCreate={setCreate}
             store={candidates?.results}
-            onAddNew={() => {
-              setCandidate({});
-              setIndustriesData([]);
-              setCreate(true);
-              setUpdate(false);
-              setShow(true);
-            }}
+            onAddNew={openCreateCandidate}
           />
         )}
       </div>
@@ -3658,13 +3630,7 @@ const SecondPage = ({
                 setShow={setShow}
                 setCreate={setCreate}
                 store={candidates?.results}
-                onAddNew={() => {
-                  setCandidate({});
-                  setIndustriesData([]);
-                  setCreate(true);
-                  setUpdate(false);
-                  setShow(true);
-                }}
+                onAddNew={openCreateCandidate}
               />
             )}
           </div>
@@ -3905,32 +3871,7 @@ const SecondPage = ({
                                     onMouseEnter={() => setHoverIndex(1)}
                                     onMouseLeave={() => setHoverIndex(0)}
                                     className="w-100"
-                                    onClick={async () => {
-                                      if (
-                                        result?.agency?.email ==
-                                        user?.agency?.email ||
-                                        user?.email == allAccessEmail
-                                      ) {
-                                        setCandidate(result);
-                                        setIndustriesData(
-                                          result?.industries_relation
-                                        );
-                                        statusUpdate(result);
-                                        setEmail(result?.email);
-                                        setUpdate(true);
-                                        setShow(true);
-                                      } else {
-                                        setIsDisabledAllFields(true);
-                                        setCandidate(result);
-                                        setIndustriesData(
-                                          result?.industries_relation
-                                        );
-                                        statusUpdate(result);
-                                        setEmail(result?.email);
-                                        setUpdate(true);
-                                        setShow(true);
-                                      }
-                                    }}
+                                    onClick={() => openEditCandidate(result)}
                                   >
                                     Edit
                                   </DropdownItem>
@@ -4532,32 +4473,7 @@ const SecondPage = ({
                                     height: "40px",
                                     marginTop: "10px",
                                   }}
-                                  onClick={async () => {
-                                    if (
-                                      candidate?.agency?.email ==
-                                      user?.agency?.email ||
-                                      user?.email == allAccessEmail
-                                    ) {
-                                      setCandidate(candidate);
-                                      setIndustriesData(
-                                        candidate?.industries_relation
-                                      );
-                                      statusUpdate(candidate);
-                                      setEmail(candidate?.email);
-                                      setUpdate(true);
-                                      setShow(true);
-                                    } else {
-                                      setIsDisabledAllFields(true);
-                                      setCandidate(candidate);
-                                      setIndustriesData(
-                                        candidate?.industries_relation
-                                      );
-                                      statusUpdate(candidate);
-                                      setEmail(candidate?.email);
-                                      setUpdate(true);
-                                      setShow(true);
-                                    }
-                                  }}
+                                  onClick={() => openEditCandidate(candidate)}
                                 >
                                   <Edit size={25} color="black" />
                                 </div>

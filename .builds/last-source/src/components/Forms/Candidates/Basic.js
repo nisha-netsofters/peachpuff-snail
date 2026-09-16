@@ -753,12 +753,12 @@ const Basic = ({
               disabled={isDisabledAllFields}
               value={candidate?.email}
               onChange={(e) => {
-                setEmail(e.target.value.toLowerCase());
-                // handleChange(e)
-                setCandidate({
-                  ...candidate,
-                  [e.target.id]: e.target.value.toLowerCase(),
-                });
+                const next = e.target.value.toLowerCase();
+                setEmail(next);
+                setCandidate((prev) => ({
+                  ...(prev || {}),
+                  email: next,
+                }));
               }}
             />
           </div>
@@ -782,12 +782,11 @@ const Basic = ({
               disabled={isDisabledAllFields}
               value={candidate?.mobile}
               onChange={(e) => {
-                // setMobile(e.target.value)
-                setCandidate({
-                  ...candidate,
-                  [e.target.id]: e.target.value.replace(/\D/g, ""),
-                });
-                //  handleChange(e)
+                const next = e.target.value.replace(/\D/g, "");
+                setCandidate((prev) => ({
+                  ...(prev || {}),
+                  mobile: next,
+                }));
               }}
             />
           </div>
@@ -811,12 +810,11 @@ const Basic = ({
               disabled={isDisabledAllFields}
               value={candidate?.alternateMobile}
               onChange={(e) => {
-                // setAlternateMobile(e.target.value)
-                // handleChange(e)
-                setCandidate({
-                  ...candidate,
-                  [e.target.id]: e.target.value.replace(/\D/g, ""),
-                });
+                const next = e.target.value.replace(/\D/g, "");
+                setCandidate((prev) => ({
+                  ...(prev || {}),
+                  alternateMobile: next,
+                }));
               }}
             />
           </div>

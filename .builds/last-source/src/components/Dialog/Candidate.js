@@ -122,33 +122,47 @@ const Candidate = ({
 
   const handleChange = (e) => {
     if (e?.key == "state") {
-      setCandidate({ ...candidate, state: e.value, stateId: e.isoCode });
+      setCandidate((prev) => ({
+        ...(prev || {}),
+        state: e.value,
+        stateId: e.isoCode,
+      }));
     } else if (e?.key == "city") {
-      setCandidate({ ...candidate, city: e.value, cityId: e.value });
+      setCandidate((prev) => ({
+        ...(prev || {}),
+        city: e.value,
+        cityId: e.value,
+      }));
+    } else if (e?.target?.id === undefined) {
+      setCandidate((prev) => ({ ...(prev || {}), [e.id]: e.value }));
+    } else if (e.target.id === "street" || e.target.id === "area") {
+      setCandidate((prev) => ({
+        ...(prev || {}),
+        [e.target.id]: e.target.value,
+      }));
+    } else if (e.target.id === "firstname" || e.target.id === "lastname") {
+      // Allow letters + spaces / common name punctuation (was stripping spaces)
+      setCandidate((prev) => ({
+        ...(prev || {}),
+        [e.target.id]: e.target.value.replace(/[^a-zA-Z\s.'-]/g, ""),
+      }));
     } else {
-      if (e?.target?.id === undefined) {
-        setCandidate({ ...candidate, [e.id]: e.value });
-      } else {
-        if (e.target.id === "street" || e.target.id === "area")
-          setCandidate({ ...candidate, [e.target.id]: e.target.value });
-        else
-          setCandidate({
-            ...candidate,
-            [e.target.id]: e.target.value.replace(/[^a-z]/gi, ""),
-          });
-      }
+      setCandidate((prev) => ({
+        ...(prev || {}),
+        [e.target.id]: e.target.value.replace(/[^a-zA-Z\s]/g, ""),
+      }));
     }
   };
 
   const fileOnChangeHandler = (e) => {
     const files = Array.from(e?.target?.files || []);
-    setCandidate({
-      ...candidate,
+    setCandidate((prev) => ({
+      ...(prev || {}),
       [e.target.id]: files[0] || null,
       ...(e.target.id === "resume" && allowMultipleResumeSelection
         ? { resumeFiles: files }
         : {}),
-    });
+    }));
   };
   const themecolor = useSelector(
     (state) => state?.agency?.agencyDetail?.themecolor
@@ -212,7 +226,7 @@ const Candidate = ({
             pushfunction();
           }}
         >
-          {isDisabledAllFields ? "View Profile" : null}
+          {isDisabledAllFields ? "View Profile" : update ? "Edit Candidate" : create ? "Add Candidate" : null}
         </ModalHeader>
 
         {loading === true && !bulkUploadProgress?.active ? (
@@ -351,10 +365,10 @@ const Candidate = ({
                 value={candidate?.comments}
                 placeholder={isDisabledAllFields ? "" : "Enter Comments"}
                 onChange={(e) => {
-                  setCandidate({
-                    ...candidate,
-                    [e.target.id]: e.target.value,
-                  });
+                  setCandidate((prev) => ({
+                    ...(prev || {}),
+                    comments: e.target.value,
+                  }));
                 }}
               />
             </Col>
