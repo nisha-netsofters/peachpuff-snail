@@ -1,31 +1,30 @@
 import apiCall from "./axiosInterceptor";
 
 const DEFAULT_API_CONFIG_ERROR =
-  "Resume auto-extraction is unavailable. Please ask your Super Admin to enable and configure OCR & API Configuration (AI API key and model are required).";
+  "Resume auto-fill is not set up yet. Please ask your admin to turn it on, then try again.";
 
 export const AI_VALIDATION_MESSAGES = {
   AI_API_KEY_INVALID:
-    "Invalid AI API key. Please ask your Super Admin to update the API key in OCR & API Configuration, then try again.",
+    "Resume auto-fill is not working right now. Please ask your admin to check the settings, then try again.",
   AI_MODEL_INVALID:
-    "Invalid or retired AI model. For Claude use claude-haiku-4-5-20251001 in Super Admin → OCR & API Configuration.",
+    "Resume auto-fill is not working right now. Please ask your admin to check the settings, then try again.",
   AI_RATE_LIMIT:
-    "AI service rate limit reached. Please wait a moment and try again.",
+    "Too many resumes are being processed right now. Please wait a moment and try again.",
   AI_SERVICE_BUSY:
-    "Gemini is temporarily busy (high demand). Please wait a few seconds and upload again.",
+    "Our system is busy right now. Please wait a few seconds and upload again.",
   AI_NETWORK_ERROR:
-    "Live server could not reach Google Gemini. This is not an OCR config change — Hostinger may be blocking outbound Gemini API calls.",
+    "We could not read this resume right now. Please try again in a moment.",
   API_CONFIG_NOT_SET: DEFAULT_API_CONFIG_ERROR,
   EXTRACT_TIMEOUT:
-    "Resume extraction timed out. AI is taking too long or the connection dropped — try again with 1 file, or use a smaller PDF.",
+    "This resume is taking too long to read. Please try again with one file, or use a smaller PDF.",
   EXTRACT_NETWORK:
-    "Could not finish resume extraction (network/connection dropped). Backend is up — please retry once, or upload fewer files.",
+    "We could not finish reading this resume. Please try again, or upload fewer files at a time.",
   EXTRACT_GATEWAY:
-    "Server gateway timed out while extracting resume. Please retry with one smaller file.",
+    "This resume took too long to process. Please try again with one smaller file.",
 };
 
 /**
- * User-facing message for resume extract failures.
- * Never blame "backend down" when the real issue is timeout/AI/network cut.
+ * Plain language messages for normal users (no technical jargon).
  */
 export function getFriendlyExtractError(result, networkErr) {
   const status = result?.httpStatus || networkErr?.response?.status;
@@ -67,11 +66,9 @@ export function getFriendlyExtractError(result, networkErr) {
   const raw = result.error || result.msg || result.message || "";
   const lower = String(raw).toLowerCase();
 
-  // Already a friendly message from a previous pass — keep it
+  // Keep our own plain messages if already set
   if (
-    raw.includes("timed out") ||
-    raw.includes("network/connection dropped") ||
-    raw.includes("gateway timed out")
+    Object.values(AI_VALIDATION_MESSAGES).some((msg) => raw.includes(msg.slice(0, 40)))
   ) {
     return raw;
   }
@@ -80,7 +77,8 @@ export function getFriendlyExtractError(result, networkErr) {
     lower.includes("invalid api key") ||
     lower.includes("api key not valid") ||
     lower.includes("unauthorized") ||
-    lower.includes("invalid authentication")
+    lower.includes("invalid authentication") ||
+    /oauth|sign-in|developers\.google|access token/i.test(raw)
   ) {
     return AI_VALIDATION_MESSAGES.AI_API_KEY_INVALID;
   }
@@ -99,25 +97,32 @@ export function getFriendlyExtractError(result, networkErr) {
     return AI_VALIDATION_MESSAGES.AI_SERVICE_BUSY;
   }
   if (
-    lower.includes("model") &&
-    (lower.includes("invalid") || lower.includes("not found"))
+    (lower.includes("model") &&
+      (lower.includes("invalid") || lower.includes("not found"))) ||
+    lower.includes("status code 404") ||
+    lower.includes("not_found_error")
   ) {
     return AI_VALIDATION_MESSAGES.AI_MODEL_INVALID;
   }
-  if (lower.includes("status code 404") || lower.includes("not_found_error")) {
-    return AI_VALIDATION_MESSAGES.AI_MODEL_INVALID;
-  }
-  if (/oauth|sign-in|developers\.google|access token/i.test(raw)) {
-    return AI_VALIDATION_MESSAGES.AI_API_KEY_INVALID;
-  }
-  // Old misleading copy still stored in thrown Error.message
+  // Old technical / misleading copy
   if (
-    lower.includes("verify your backend server") ||
-    lower.includes("backend server is running")
+    lower.includes("verify your backend") ||
+    lower.includes("backend server") ||
+    lower.includes("hostinger") ||
+    lower.includes("gemini") ||
+    lower.includes("gateway") ||
+    lower.includes("ocr") ||
+    lower.includes("api key") ||
+    lower.includes("claude")
   ) {
     return AI_VALIDATION_MESSAGES.EXTRACT_NETWORK;
   }
-  return raw || "Unable to parse resume. Please try again.";
+
+  // Prefer a simple fallback over raw technical text
+  if (!raw || /error|exception|stack|undefined|null|econn|etimed/i.test(raw)) {
+    return "We could not read this resume. Please try again.";
+  }
+  return raw;
 }
 
 /**
