@@ -11,58 +11,12 @@ import {
 } from "../../../utility/normalizeResumeExtract";
 import course from "../Course";
 import ResumeExtractSpinner from "../../ResumeExtractSpinner";
+import {
+  getFriendlyExtractError,
+  AI_VALIDATION_MESSAGES,
+} from "../../../utility/parseResumeApi";
 
-const DEFAULT_API_CONFIG_ERROR =
-  "Resume auto-extraction is unavailable. Please ask your Super Admin to enable and configure OCR & API Configuration (AI API key and model are required).";
-
-const AI_VALIDATION_MESSAGES = {
-  AI_API_KEY_INVALID:
-    "Invalid AI API key. Please ask your Super Admin to update the API key in OCR & API Configuration, then try again.",
-  AI_MODEL_INVALID:
-    "Invalid or retired AI model. For Claude use claude-haiku-4-5-20251001 in Super Admin → OCR & API Configuration.",
-  AI_RATE_LIMIT:
-    "AI service rate limit reached. Please wait a moment and try again.",
-  AI_SERVICE_BUSY:
-    "Gemini is temporarily busy (high demand). Please wait a few seconds and upload again.",
-  AI_NETWORK_ERROR:
-    "Live server could not reach Google Gemini. This is not an OCR config change — Hostinger may be blocking outbound Gemini API calls.",
-  API_CONFIG_NOT_SET: DEFAULT_API_CONFIG_ERROR,
-};
-
-const getFriendlyExtractError = (result) => {
-  if (!result) {
-    return "Failed to extract resume data. Please verify your backend server is running.";
-  }
-  if (result.code && AI_VALIDATION_MESSAGES[result.code]) {
-    return AI_VALIDATION_MESSAGES[result.code];
-  }
-  const raw = result.error || result.msg || result.message || "";
-  const lower = String(raw).toLowerCase();
-  if (
-    lower.includes("invalid api key") ||
-    lower.includes("api key not valid") ||
-    lower.includes("unauthorized") ||
-    lower.includes("invalid authentication")
-  ) {
-    return AI_VALIDATION_MESSAGES.AI_API_KEY_INVALID;
-  }
-  if (lower.includes("cannot reach google gemini") || lower.includes("enotfound") || lower.includes("econnrefused")) {
-    return AI_VALIDATION_MESSAGES.AI_NETWORK_ERROR;
-  }
-  if (lower.includes("high demand") || lower.includes("try again later") || lower.includes("temporarily busy")) {
-    return AI_VALIDATION_MESSAGES.AI_SERVICE_BUSY;
-  }
-  if (lower.includes("model") && (lower.includes("invalid") || lower.includes("not found"))) {
-    return AI_VALIDATION_MESSAGES.AI_MODEL_INVALID;
-  }
-  if (lower.includes("status code 404") || lower.includes("not_found_error")) {
-    return AI_VALIDATION_MESSAGES.AI_MODEL_INVALID;
-  }
-  if (/oauth|sign-in|developers\.google|access token/i.test(raw)) {
-    return AI_VALIDATION_MESSAGES.AI_API_KEY_INVALID;
-  }
-  return raw || "Unable to parse resume. Please try again.";
-};
+const DEFAULT_API_CONFIG_ERROR = AI_VALIDATION_MESSAGES.API_CONFIG_NOT_SET;
 
 const getResumeDisplayName = (resume) => {
   if (!resume) return "";
@@ -344,9 +298,11 @@ const Attachment_File = ({
       formData.append("resume", file);
 
       let result = null;
+      let lastNetworkErr = null;
       try {
         result = await apiCall.post("/candidate/parse-resume", formData);
       } catch (err1) {
+        lastNetworkErr = err1;
         result = err1?.response?.data || null;
       }
 
@@ -375,6 +331,7 @@ const Attachment_File = ({
             result = pubRes;
           }
         } catch (ePub) {
+          lastNetworkErr = ePub;
           if (ePub?.response?.data) result = ePub.response.data;
         }
       }
@@ -384,9 +341,12 @@ const Attachment_File = ({
           setApiConfigReady(false);
           setApiConfigError(result.error || DEFAULT_API_CONFIG_ERROR);
         }
-        throw Object.assign(new Error(getFriendlyExtractError(result)), {
-          code: result?.code,
-        });
+        throw Object.assign(
+          new Error(getFriendlyExtractError(result, lastNetworkErr)),
+          {
+            code: result?.code || (lastNetworkErr ? "EXTRACT_NETWORK" : undefined),
+          }
+        );
       }
 
       applyExtractedData(result.data || {}, file, files);
@@ -395,10 +355,10 @@ const Attachment_File = ({
       tostifySuccess("Resume data extracted. Please review all fields before saving.");
     } catch (err) {
       const msg =
-        getFriendlyExtractError({
-          code: err?.code,
-          error: err?.message,
-        }) || "Unable to parse resume. Please try again.";
+        getFriendlyExtractError(
+          { code: err?.code, error: err?.message },
+          err
+        ) || "Unable to parse resume. Please try again.";
       setExtractError(msg);
       setExtracted(false);
       tostify(msg);

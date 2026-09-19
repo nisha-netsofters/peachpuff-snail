@@ -86,7 +86,7 @@ import {
 import { getAllJobSubCatAPI } from "../../apis/jobSubCategory";
 import course from "../Forms/Course";
 import { resolveAssetUrl } from "../../utility/resolveAssetUrl";
-import apiCall from "../../utility/axiosInterceptor";
+import { postParseResume } from "../../utility/parseResumeApi";
 import clientactions from "../../redux/client/actions";
 // import { uploadFiles } from './../../helper/fileUpload'
 import Loader from "../../components/Dialog/Loader";
@@ -1857,16 +1857,8 @@ const SecondPage = ({
   const parseResumeFile = async (file) => {
     const formData = new FormData();
     formData.append("resume", file);
-
-    try {
-      const result = await apiCall.post("/candidate/parse-resume", formData);
-      if (result?.success) return result.data || {};
-    } catch (e) {
-      try {
-        const pubRes = await apiCall.post("/candidate/publicParseResume", formData);
-        if (pubRes?.success) return pubRes.data || {};
-      } catch (e2) {}
-    }
+    const result = await postParseResume(formData);
+    if (result?.success) return result.data || {};
     return null;
   };
 
