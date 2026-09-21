@@ -619,21 +619,6 @@ const JobOpening = ({
         </Col>
 
         <Col lg={6} xs={12} xl={4}>
-          <Label>Department</Label>
-          <Input
-            disabled={isRecruiter}
-            id="department"
-            value={jobOpening?.department || ""}
-            placeholder="Enter Department"
-            maxLength={150}
-            onFocus={() => setIsfocus("department")}
-            onBlur={() => setIsfocus(null)}
-            style={{ borderColor: focus === "department" && themecolor }}
-            onChange={onTextChange}
-          />
-        </Col>
-
-        <Col lg={6} xs={12} xl={4}>
           <Label>Experience</Label>
           <Select
             isDisabled={isRecruiter}
