@@ -4742,7 +4742,11 @@ const SecondPage = ({
             resumePreview.previewUrl ? (
             <iframe
               title="Resume preview"
-              src={resumePreview.previewUrl}
+              src={
+                user?.role?.name === "Recruiter"
+                  ? `${String(resumePreview.previewUrl).split("#")[0]}#toolbar=0&navpanes=0`
+                  : resumePreview.previewUrl
+              }
               style={{
                 width: "100%",
                 height: "70vh",
