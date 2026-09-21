@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
+import { useSelector } from "react-redux";
 import { Button, ButtonGroup, Spinner } from "reactstrap";
 import {
   Download,
@@ -24,6 +25,9 @@ const ZOOM_STEP = 0.25;
 
 const ResumeViewer = () => {
   const location = useLocation();
+  const authUser = useSelector((state) => state?.auth?.user);
+  const roleName = authUser?.role?.name || "";
+  const canDownloadResume = roleName !== "Recruiter";
   const params = useMemo(
     () => new URLSearchParams(location.search),
     [location.search]
@@ -174,6 +178,7 @@ const ResumeViewer = () => {
   }, [fileUrl, fileName, pdf, office, docx, image, publicHttps]);
 
   const handleDownload = async () => {
+    if (!canDownloadResume) return;
     try {
       if (blobUrl) {
         const a = document.createElement("a");
@@ -195,7 +200,7 @@ const ResumeViewer = () => {
       a.remove();
       setTimeout(() => URL.revokeObjectURL(objectUrl), 1500);
     } catch (e) {
-      window.location.href = fileUrl;
+      if (fileUrl) window.open(fileUrl, "_blank", "noopener,noreferrer");
     }
   };
 
@@ -298,15 +303,17 @@ const ResumeViewer = () => {
               </Button>
             </ButtonGroup>
           ) : null}
-          <Button
-            color="primary"
-            size="sm"
-            disabled={!fileUrl || !!error}
-            onClick={handleDownload}
-          >
-            <Download size={16} className="me-50" />
-            Download
-          </Button>
+          {canDownloadResume ? (
+            <Button
+              color="primary"
+              size="sm"
+              disabled={!fileUrl || !!error}
+              onClick={handleDownload}
+            >
+              <Download size={16} className="me-50" />
+              Download
+            </Button>
+          ) : null}
         </div>
       </div>
 
@@ -399,14 +406,18 @@ const ResumeViewer = () => {
               <strong>{fileName}</strong>
             </p>
             <p className="text-muted mb-2">
-              {isDoc(fileName) || isDoc(fileUrl)
-                ? "Old Word (.doc) format cannot be previewed in browser. Use Download to open the file."
-                : "Preview is not available for this file type. Use Download to open the file."}
+              {canDownloadResume
+                ? isDoc(fileName) || isDoc(fileUrl)
+                  ? "Old Word (.doc) format cannot be previewed in browser. Use Download to open the file."
+                  : "Preview is not available for this file type. Use Download to open the file."
+                : "Preview is not available for this file type."}
             </p>
-            <Button color="primary" onClick={handleDownload}>
-              <Download size={16} className="me-50" />
-              Download
-            </Button>
+            {canDownloadResume ? (
+              <Button color="primary" onClick={handleDownload}>
+                <Download size={16} className="me-50" />
+                Download
+              </Button>
+            ) : null}
           </div>
         )}
       </div>

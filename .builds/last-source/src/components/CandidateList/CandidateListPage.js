@@ -1046,6 +1046,7 @@ const SecondPage = ({
   };
 
   const downloadResumeFromPreview = async () => {
+    if (user?.role?.name === "Recruiter") return;
     const fileName = resumePreview.fileName || "resume";
     try {
       if (resumePreview.blobUrl) {
@@ -4776,8 +4777,13 @@ const SecondPage = ({
                 <strong>{resumePreview.fileName || "Resume"}</strong>
               </p>
               <p className="mb-0 text-muted">
-                {isOfficeResume(resumePreview.fileName) ||
-                isOfficeResume(resumePreview.url)
+                {user?.role?.name === "Recruiter"
+                  ? isOfficeResume(resumePreview.fileName) ||
+                    isOfficeResume(resumePreview.url)
+                    ? "Word (.doc/.docx) files cannot be previewed here."
+                    : "Preview is not available for this file type."
+                  : isOfficeResume(resumePreview.fileName) ||
+                    isOfficeResume(resumePreview.url)
                   ? "Word (.doc/.docx) files cannot be previewed here. Use Download to open the file."
                   : "Preview is not available for this file type. Use Download to open the file."}
               </p>
@@ -4788,17 +4794,19 @@ const SecondPage = ({
           <Button color="secondary" onClick={closeResumePreview}>
             Close
           </Button>
-          <Button
-            color="default"
-            style={{ backgroundColor: themecolor, color: "white" }}
-            disabled={
-              !!resumePreview.error ||
-              (!resumePreview.url && !resumePreview.blobUrl)
-            }
-            onClick={downloadResumeFromPreview}
-          >
-            <Download size={16} className="me-50" /> Download
-          </Button>
+          {user?.role?.name !== "Recruiter" ? (
+            <Button
+              color="default"
+              style={{ backgroundColor: themecolor, color: "white" }}
+              disabled={
+                !!resumePreview.error ||
+                (!resumePreview.url && !resumePreview.blobUrl)
+              }
+              onClick={downloadResumeFromPreview}
+            >
+              <Download size={16} className="me-50" /> Download
+            </Button>
+          ) : null}
         </ModalFooter>
       </Modal>
       {show === true ? (

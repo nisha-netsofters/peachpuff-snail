@@ -79,6 +79,25 @@ const openStoredAsset = (path) => {
   window.open(url, "_blank", "noopener,noreferrer");
 };
 
+/** Open resume in-app viewer (Download button is role-gated on that page). */
+const openResumeViewer = (path) => {
+  const url = resolveAssetUrl(path);
+  if (!url) {
+    tostify("Resume file not available");
+    return;
+  }
+  let fileName = "resume";
+  try {
+    const decoded = decodeURIComponent(String(path || url));
+    fileName = decoded.substring(decoded.lastIndexOf("/") + 1) || "resume";
+  } catch (e) {
+    fileName = "resume";
+  }
+  const agencySlug = localStorage.getItem("slug") || "uniqueworld";
+  const qs = new URLSearchParams({ url, name: fileName });
+  window.open(`/${agencySlug}/resume-viewer?${qs.toString()}`, "_blank");
+};
+
 const Attachment_File = ({
   candidate,
   update,
@@ -419,7 +438,7 @@ const Attachment_File = ({
                 }
                 onClick={() => {
                   if (typeof candidate?.resume === "string" && candidate.resume) {
-                    openStoredAsset(candidate.resume);
+                    openResumeViewer(candidate.resume);
                   }
                 }}
               >
@@ -468,7 +487,7 @@ const Attachment_File = ({
                 type="button"
                 className="add-new-user"
                 color="link"
-                onClick={() => openStoredAsset(candidate?.resume)}
+                onClick={() => openResumeViewer(candidate?.resume)}
               >
                 View
               </Button>
