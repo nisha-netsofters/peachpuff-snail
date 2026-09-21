@@ -78,8 +78,9 @@ const ResumeViewer = () => {
         return;
       }
 
-      // Word on public HTTPS — Office Online embed
-      if (office && publicHttps) {
+      // Word on public HTTPS — Office Online embed (has its own Download).
+      // Recruiter: prefer HTML preview so download UI is not shown.
+      if (office && publicHttps && canDownloadResume) {
         if (!cancelled) {
           setPreviewUrl(
             `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(
@@ -175,7 +176,25 @@ const ResumeViewer = () => {
       cancelled = true;
       if (revoked) URL.revokeObjectURL(revoked);
     };
-  }, [fileUrl, fileName, pdf, office, docx, image, publicHttps]);
+  }, [fileUrl, fileName, pdf, office, docx, image, publicHttps, canDownloadResume]);
+
+  const iframeSrc = useMemo(() => {
+    if (!previewUrl) return "";
+    // Chrome/Edge built-in PDF viewer: hide toolbar (download/print) for Recruiter
+    if (!canDownloadResume && (pdf || previewKind === "iframe")) {
+      const base = String(previewUrl).split("#")[0];
+      // Only apply PDF hash params to blob/pdf URLs, not Office Online embeds
+      if (
+        base.startsWith("blob:") ||
+        isPdf(base) ||
+        isPdf(fileName) ||
+        isPdf(fileUrl)
+      ) {
+        return `${base}#toolbar=0&navpanes=0`;
+      }
+    }
+    return previewUrl;
+  }, [previewUrl, canDownloadResume, pdf, previewKind, fileName, fileUrl]);
 
   const handleDownload = async () => {
     if (!canDownloadResume) return;
@@ -382,7 +401,7 @@ const ResumeViewer = () => {
         ) : previewKind === "iframe" && previewUrl ? (
           <iframe
             title="Resume"
-            src={previewUrl}
+            src={iframeSrc}
             style={{
               width: "100%",
               height: "calc(100vh - 90px)",
@@ -390,6 +409,9 @@ const ResumeViewer = () => {
               background: "#fff",
               borderRadius: 8,
             }}
+            onContextMenu={
+              canDownloadResume ? undefined : (e) => e.preventDefault()
+            }
           />
         ) : (
           <div
