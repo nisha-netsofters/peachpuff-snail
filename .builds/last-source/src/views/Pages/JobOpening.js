@@ -167,8 +167,8 @@ const JobOpening = () => {
   const [jobOpeningList, setjobOpeningList] = useState();
   const { user } = useSelector((state) => state.auth);
   const roleName = user?.role?.name || loginUser?.role?.name || "";
-  const canDeleteJob = roleName === "Admin";
-  const canPublishJob = roleName === "Admin";
+  const canDeleteJob = roleName === "Admin" || roleName === "Recruiter";
+  const canPublishJob = roleName === "Admin" || roleName === "Recruiter";
   const canAssignRecruiter = roleName === "Admin";
   const canCloseJob =
     roleName === "Admin" ||
