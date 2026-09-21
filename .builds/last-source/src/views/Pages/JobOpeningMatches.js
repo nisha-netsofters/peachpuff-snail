@@ -548,43 +548,48 @@ const JobOpeningMatches = ({ jobIdOverride, embeddedMode = false }) => {
   };
 
   const viewProfileColumn = {
-    name: "Profile",
-    minWidth: "240px",
+    name: "View Profile",
+    minWidth: "130px",
     cell: (row) => {
       const label = getViewProfileButtonLabel(row, viewedCandidateIds);
       const isViewAgain = label === "View Again";
       return (
-        <div className="d-flex align-items-center flex-wrap" style={{ gap: 8 }}>
-          <Button
-            onClick={() => openViewProfile(row)}
-            style={{
-              padding: "10px",
-              backgroundColor: isViewAgain ? `${themeColor}70` : themeColor,
-              color: isViewAgain ? themeColor : "white",
-              border: isViewAgain ? `1px solid ${themeColor}` : "none",
-              fontWeight: isViewAgain ? "500" : "600",
-            }}
-            color="default"
-          >
-            {label}
-          </Button>
-          <Button
-            onClick={() => openEditProfile(row)}
-            style={{
-              padding: "10px",
-              backgroundColor: "transparent",
-              color: themeColor,
-              border: `1px solid ${themeColor || "#7367f0"}`,
-              fontWeight: "600",
-            }}
-            color="default"
-            title="Edit Profile"
-          >
-            Edit Profile
-          </Button>
-        </div>
+        <Button
+          onClick={() => openViewProfile(row)}
+          style={{
+            padding: "10px",
+            backgroundColor: isViewAgain ? `${themeColor}70` : themeColor,
+            color: isViewAgain ? themeColor : "white",
+            border: isViewAgain ? `1px solid ${themeColor}` : "none",
+            fontWeight: isViewAgain ? "500" : "600",
+          }}
+          color="default"
+        >
+          {label}
+        </Button>
       );
     },
+  };
+
+  const editProfileColumn = {
+    name: "Edit Profile",
+    minWidth: "130px",
+    cell: (row) => (
+      <Button
+        onClick={() => openEditProfile(row)}
+        style={{
+          padding: "10px",
+          backgroundColor: "transparent",
+          color: themeColor,
+          border: `1px solid ${themeColor || "#7367f0"}`,
+          fontWeight: "600",
+        }}
+        color="default"
+        title="Edit Profile"
+      >
+        Edit Profile
+      </Button>
+    ),
   };
 
   const interviewScheduleColumn = {
@@ -708,6 +713,7 @@ const JobOpeningMatches = ({ jobIdOverride, embeddedMode = false }) => {
     },
     interviewStatusColumn,
     viewProfileColumn,
+    editProfileColumn,
     interviewScheduleColumn,
   ];
   const subscriptionColumnsClients = [
@@ -776,6 +782,7 @@ const JobOpeningMatches = ({ jobIdOverride, embeddedMode = false }) => {
     },
     interviewStatusColumn,
     viewProfileColumn,
+    editProfileColumn,
     interviewScheduleColumn,
   ];
 
