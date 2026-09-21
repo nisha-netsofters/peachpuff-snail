@@ -11,12 +11,16 @@ const JobMatchProfileDialog = ({
   gender,
   setGender,
   setEmail,
+  isDisabledAllFields = true,
+  setIsDisabledAllFields = () => {},
+  CandidateHandler = () => {},
+  loading = false,
 }) => {
   if (!show) return null;
 
   return (
     <Candidate
-      loading={false}
+      loading={loading}
       industriesData={industriesData}
       setIndustriesData={setIndustriesData}
       show={show}
@@ -30,9 +34,9 @@ const JobMatchProfileDialog = ({
       create={false}
       setCreate={() => {}}
       setEmail={setEmail}
-      CandidateHandler={() => {}}
-      isDisabledAllFields
-      setIsDisabledAllFields={() => {}}
+      CandidateHandler={CandidateHandler}
+      isDisabledAllFields={isDisabledAllFields}
+      setIsDisabledAllFields={setIsDisabledAllFields}
       hideProfileCompletion
     />
   );

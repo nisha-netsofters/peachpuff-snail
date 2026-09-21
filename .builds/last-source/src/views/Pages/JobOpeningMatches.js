@@ -24,8 +24,11 @@ import interviewActions from "../../redux/interview/actions";
 import candidateActions from "../../redux/candidate/actions";
 import onBoardingActions from "../../redux/onBoarding/actions";
 import clientActions from "../../redux/client/actions";
-import { tostify } from "../../components/Tostify";
+import { tostify, tostifyError, tostifySuccess } from "../../components/Tostify";
 import { getInterviewAPI } from "../../apis/interview";
+import { updateCandidateAPI } from "../../apis/candidate";
+import { awsUploadAssetsWithResp } from "../../helper/awsUploadAssets";
+import { allAccessEmail } from "../../constant/constant";
 import Avatar from "@components/avatar";
 import { MdOutlineCategory } from "react-icons/md";
 
@@ -105,7 +108,9 @@ const JobOpeningMatches = ({ jobIdOverride, embeddedMode = false }) => {
   const [profileCandidate, setProfileCandidate] = useState({});
   const [industriesData, setIndustriesData] = useState([]);
   const [gender, setGender] = useState("");
-  const [, setProfileEmail] = useState("");
+  const [profileEmail, setProfileEmail] = useState("");
+  const [profileReadOnly, setProfileReadOnly] = useState(true);
+  const [profileSaving, setProfileSaving] = useState(false);
   const [viewedCandidateIds, setViewedCandidateIds] = useState(() => new Set());
   // Local gate so first paint never shows "no records" before saga sets isLoading
   const [initialLoad, setInitialLoad] = useState(true);
@@ -362,29 +367,222 @@ const JobOpeningMatches = ({ jobIdOverride, embeddedMode = false }) => {
     setIndustriesData(row?.industries_relation || []);
     setGender(row?.gender || "");
     setProfileEmail(row?.email || "");
+    setProfileReadOnly(true);
     setShowProfile(true);
   };
 
+  const openEditProfile = (row) => {
+    if (!row?.id) return;
+    const candidateId = String(row.id);
+    const isForeignAgency =
+      Boolean(row?.agency?.email) &&
+      Boolean(user?.agency?.email) &&
+      row.agency.email !== user.agency.email &&
+      user?.email !== allAccessEmail &&
+      user?.agency?.email !== allAccessEmail;
+
+    dispatch({
+      type: candidateActions.CANDIDATE_STATUS,
+      payload: { id: candidateId },
+    });
+    setViewedCandidateIds((prev) => new Set(prev).add(candidateId));
+
+    const normalizedMobile = String(row?.mobile || "")
+      .replace(/\D/g, "")
+      .slice(-10);
+    const normalizedAlt = String(row?.alternateMobile || "")
+      .replace(/\D/g, "")
+      .slice(-10);
+
+    setProfileCandidate({
+      ...row,
+      mobile: normalizedMobile,
+      alternateMobile: normalizedAlt || row?.alternateMobile || "",
+    });
+    setIndustriesData(row?.industries_relation || []);
+    setGender(row?.gender || "");
+    setProfileEmail(row?.email || "");
+    setProfileReadOnly(isForeignAgency);
+    setShowProfile(true);
+  };
+
+  const handleProfileSave = async () => {
+    if (profileReadOnly || !profileCandidate?.id) return;
+    try {
+      setProfileSaving(true);
+      const data = { ...profileCandidate };
+      delete data.interviews;
+
+      const typeResume = typeof data?.resume;
+      const typeImage = typeof data?.image;
+      const awsBucket = process.env.REACT_APP_AWS_BUCKET_NAME;
+
+      if (typeImage === "object" && data?.image !== null && awsBucket) {
+        const resp = await awsUploadAssetsWithResp(data.image);
+        data.image = `${resp.url}`;
+      }
+      if (typeResume === "object" && data?.resume !== null && awsBucket) {
+        const resp = await awsUploadAssetsWithResp(data.resume);
+        data.resume = `${resp.url}`;
+      }
+
+      const fm = new FormData();
+      const skipUpdateKeys = new Set([
+        "resumeParsedAt",
+        "resumeFiles",
+        "resumeParseCache",
+        "interviews",
+        "client",
+        "agency",
+        "jobCategory",
+        "industries",
+        "appliedStatus",
+        "matchScore",
+        "saved_Candidates",
+        "savedCandidates",
+        "_id",
+        "latestInterview",
+        "viewedByCurrentUser",
+        "profileCompleteness",
+      ]);
+      const mobileDigits = String(data?.mobile || "")
+        .replace(/\D/g, "")
+        .slice(-10);
+      const altDigits = String(data?.alternateMobile || "")
+        .replace(/\D/g, "")
+        .slice(-10);
+
+      fm.append("id", String(data?.id || ""));
+      fm.append("firstname", String(data?.firstname || ""));
+      fm.append("lastname", String(data?.lastname || ""));
+      fm.append(
+        "email",
+        String(data?.email || profileEmail || "").toLowerCase()
+      );
+      fm.append("mobile", mobileDigits);
+      if (altDigits) fm.append("alternateMobile", altDigits);
+      if (data?.gender || gender) {
+        fm.append("gender", String(data?.gender || gender));
+      }
+
+      for (const key in data) {
+        if (skipUpdateKeys.has(key)) continue;
+        if (
+          [
+            "id",
+            "firstname",
+            "lastname",
+            "email",
+            "mobile",
+            "alternateMobile",
+            "gender",
+          ].includes(key)
+        ) {
+          continue;
+        }
+        if (key === "professional") {
+          fm.append("professional", JSON.stringify(data[key] || {}));
+        } else if (key === "industries_relation") {
+          fm.append(
+            "industries_relation",
+            JSON.stringify(
+              Array.isArray(industriesData) && industriesData.length
+                ? industriesData
+                : data[key] || []
+            )
+          );
+        } else if (key === "education") {
+          if (Array.isArray(data[key]) && data[key].length > 0) {
+            fm.append("education", JSON.stringify(data[key]));
+          }
+        } else if (key === "experience") {
+          if (Array.isArray(data[key]) && data[key].length > 0) {
+            fm.append("experience", JSON.stringify(data[key]));
+          }
+        } else if (key === "status") {
+          fm.append(key, "view");
+        } else if (
+          data[key] !== undefined &&
+          data[key] !== null &&
+          typeof data[key] !== "object"
+        ) {
+          fm.append(key, data[key]);
+        } else if (data[key] instanceof File) {
+          fm.append(key, data[key]);
+        }
+      }
+
+      if (!fm.has("industries_relation")) {
+        fm.append(
+          "industries_relation",
+          JSON.stringify(
+            Array.isArray(industriesData) && industriesData.length
+              ? industriesData
+              : data?.industries_relation || []
+          )
+        );
+      }
+      if (!fm.has("professional")) {
+        fm.append("professional", JSON.stringify(data?.professional || {}));
+      }
+
+      const result = await updateCandidateAPI({
+        data: fm,
+      });
+      if (result?.error) {
+        tostifyError(result.error);
+        return;
+      }
+      if (result?.msg) {
+        tostifySuccess("Data Update Successfully");
+        setShowProfile(false);
+        reloadMatches();
+      } else {
+        tostifyError(result?.constraint || "Update failed");
+      }
+    } catch (err) {
+      tostifyError(err?.message || "Update failed");
+    } finally {
+      setProfileSaving(false);
+    }
+  };
+
   const viewProfileColumn = {
-    name: "View Profile",
-    minWidth: "130px",
+    name: "Profile",
+    minWidth: "240px",
     cell: (row) => {
       const label = getViewProfileButtonLabel(row, viewedCandidateIds);
       const isViewAgain = label === "View Again";
       return (
-        <Button
-          onClick={() => openViewProfile(row)}
-          style={{
-            padding: "10px",
-            backgroundColor: isViewAgain ? `${themeColor}70` : themeColor,
-            color: isViewAgain ? themeColor : "white",
-            border: isViewAgain ? `1px solid ${themeColor}` : "none",
-            fontWeight: isViewAgain ? "500" : "600",
-          }}
-          color="default"
-        >
-          {label}
-        </Button>
+        <div className="d-flex align-items-center flex-wrap" style={{ gap: 8 }}>
+          <Button
+            onClick={() => openViewProfile(row)}
+            style={{
+              padding: "10px",
+              backgroundColor: isViewAgain ? `${themeColor}70` : themeColor,
+              color: isViewAgain ? themeColor : "white",
+              border: isViewAgain ? `1px solid ${themeColor}` : "none",
+              fontWeight: isViewAgain ? "500" : "600",
+            }}
+            color="default"
+          >
+            {label}
+          </Button>
+          <Button
+            onClick={() => openEditProfile(row)}
+            style={{
+              padding: "10px",
+              backgroundColor: "transparent",
+              color: themeColor,
+              border: `1px solid ${themeColor || "#7367f0"}`,
+              fontWeight: "600",
+            }}
+            color="default"
+            title="Edit Profile"
+          >
+            Edit Profile
+          </Button>
+        </div>
       );
     },
   };
@@ -951,6 +1149,10 @@ const JobOpeningMatches = ({ jobIdOverride, embeddedMode = false }) => {
         gender={gender}
         setGender={setGender}
         setEmail={setProfileEmail}
+        isDisabledAllFields={profileReadOnly}
+        setIsDisabledAllFields={setProfileReadOnly}
+        CandidateHandler={handleProfileSave}
+        loading={profileSaving}
       />
     </>
   );
