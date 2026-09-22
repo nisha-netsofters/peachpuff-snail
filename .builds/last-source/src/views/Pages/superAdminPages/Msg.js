@@ -194,14 +194,14 @@ const MSG_CONFIG_SLOTS = [
     section: "job",
     title: "New Job Best Match",
     subtitle:
-      "on new job add — template job_create_3 (name, title, location, salary, experience)",
+      "on job create/publish — template job_create_4 (name, job, industry, sub category, experience, salary, city, area, employment type, qualification, description)",
     badge: "Job",
     badgeColor: "primary",
     defaultCurl: `curl -s -X POST 'https://wa2.netsofters.com/api/external-api-bridge/send-template-v2' \\
   -H 'Accept: application/json' \\
   -H 'Content-Type: application/json' \\
   -H 'x-security-key: YOUR_KEY' \\
-  -d '{"messaging_product":"whatsapp","recipient_type":"individual","to":"919999999999","type":"template","template":{"name":"job_create_3","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","parameter_name":"body_1","text":"{{fullname}}"},{"type":"text","parameter_name":"body_2","text":"{{jobTitle}}"},{"type":"text","parameter_name":"body_3","text":"{{jobLocation}}"},{"type":"text","parameter_name":"body_4","text":"{{job_salary}}"},{"type":"text","parameter_name":"body_5","text":"{{job_experience}}"}]}]}}'`,
+  -d '{"messaging_product":"whatsapp","recipient_type":"individual","to":"919999999999","type":"template","template":{"name":"job_create_4","language":{"code":"en"},"components":[{"type":"body","parameters":[{"type":"text","parameter_name":"body_1","text":"{{fullname}}"},{"type":"text","parameter_name":"body_2","text":"{{jobTitle}}"},{"type":"text","parameter_name":"body_3","text":"{{jobIndustry}}"},{"type":"text","parameter_name":"body_4","text":"{{jobSubCategory}}"},{"type":"text","parameter_name":"body_5","text":"{{job_experience}}"},{"type":"text","parameter_name":"body_6","text":"{{job_salary}}"},{"type":"text","parameter_name":"body_7","text":"{{jobCity}}"},{"type":"text","parameter_name":"body_8","text":"{{jobArea}}"},{"type":"text","parameter_name":"body_9","text":"{{jobEmploymentType}}"},{"type":"text","parameter_name":"body_10","text":"{{jobQualification}}"},{"type":"text","parameter_name":"body_11","text":"{{jobDescription}}"}]}]}}'`,
   },
   {
     id: "msg-interview-scheduled",
